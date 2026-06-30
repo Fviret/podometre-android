@@ -1,6 +1,26 @@
 <resources>
     <string name="app_name">Podomètre</string>
 
+    <!-- Onboarding -->
+    <string name="onboarding_next">Suivant</string>
+    <string name="onboarding_start">Lancer l\'app</string>
+
+    <string name="onboarding_slide1_title">Vos pas du jour,\nen un coup d\'œil</string>
+    <string name="onboarding_slide1_subtitle">Suivez votre activité quotidienne avec un anneau de progression clair et des statistiques hebdomadaires.</string>
+
+    <string name="onboarding_slide2_title">Marchez vers des\ndestinations légendaires</string>
+    <string name="onboarding_slide2_subtitle">Vos pas vous font avancer sur 19 trajets réels — du Lac d\'Annecy au Chemin de Compostelle.</string>
+
+    <string name="onboarding_slide3_title">Les données qui\nvous appartiennent</string>
+    <string name="onboarding_slide3_subtitle">Podomètre lit vos données de santé directement depuis Health Connect. Rien n\'est envoyé sur des serveurs.</string>
+    <string name="onboarding_slide3_perm_steps">Nombre de pas quotidiens</string>
+    <string name="onboarding_slide3_perm_distance">Distance parcourue</string>
+    <string name="onboarding_slide3_perm_location">Localisation (météo locale)</string>
+
+    <string name="onboarding_slide4_title">Quel est votre\nobjectif quotidien ?</string>
+    <string name="onboarding_slide4_subtitle">Vous pourrez le modifier à tout moment dans les paramètres.</string>
+    <string name="onboarding_slide4_goal_label">%1$d pas / jour</string>
+
     <!-- Navigation par onglets -->
     <string name="nav_tab_activity">Activité</string>
     <string name="nav_tab_journeys">Trajets</string>
