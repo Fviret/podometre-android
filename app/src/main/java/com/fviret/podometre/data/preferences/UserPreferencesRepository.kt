@@ -37,6 +37,8 @@ class UserPreferencesRepository @Inject constructor(
         val SHOW_WEATHER_FORECAST = booleanPreferencesKey("showWeatherForecast")
         val SHOW_MONTH_CALENDAR = booleanPreferencesKey("showMonthCalendar")
         val SHOW_WEEKLY_CHART = booleanPreferencesKey("showWeeklyChart")
+        val CACHED_STEPS_TODAY = longPreferencesKey("cachedStepsToday")
+        val CACHED_STEPS_TODAY_DATE = stringPreferencesKey("cachedStepsTodayDate")
     }
 
     // ── Lecture ─────────────────────────────────────────────────────────────
@@ -58,6 +60,8 @@ class UserPreferencesRepository @Inject constructor(
             showWeatherForecast = prefs[Keys.SHOW_WEATHER_FORECAST] ?: true,
             showMonthCalendar = prefs[Keys.SHOW_MONTH_CALENDAR] ?: true,
             showWeeklyChart = prefs[Keys.SHOW_WEEKLY_CHART] ?: true,
+            cachedStepsToday = prefs[Keys.CACHED_STEPS_TODAY] ?: 0L,
+            cachedStepsTodayDate = prefs[Keys.CACHED_STEPS_TODAY_DATE] ?: "",
         )
     }
 
@@ -119,5 +123,16 @@ class UserPreferencesRepository @Inject constructor(
     /** Afficher ou masquer le graphe comparatif hebdomadaire sur l'écran Activité. */
     suspend fun setShowWeeklyChart(show: Boolean) {
         dataStore.edit { it[Keys.SHOW_WEEKLY_CHART] = show }
+    }
+
+    /**
+     * Écrit le nombre de pas mis en cache par le SyncStepsWorker.
+     * [date] est la date ISO yyyy-MM-dd correspondant au comptage, pour invalider le cache le lendemain.
+     */
+    suspend fun updateCachedSteps(steps: Long, date: String) {
+        dataStore.edit { prefs ->
+            prefs[Keys.CACHED_STEPS_TODAY] = steps
+            prefs[Keys.CACHED_STEPS_TODAY_DATE] = date
+        }
     }
 }
