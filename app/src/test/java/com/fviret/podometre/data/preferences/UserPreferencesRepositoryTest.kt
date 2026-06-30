@@ -3,6 +3,7 @@ package com.fviret.podometre.data.preferences
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.edit
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -38,7 +39,8 @@ class UserPreferencesRepositoryTest {
 
     @AfterEach
     fun tearDown() {
-        // Le fichier temp est nettoyé par @TempDir
+        // Annuler le scope pour libérer les coroutines internes de DataStore
+        testScope.cancel()
     }
 
     @Test
