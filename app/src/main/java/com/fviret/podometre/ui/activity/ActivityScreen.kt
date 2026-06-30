@@ -5,18 +5,25 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 /** Placeholder — sera remplacé par l'écran Activité complet (KAN-19 à KAN-25). */
 @Composable
-fun ActivityScreen() {
+fun ActivityScreen(
+    viewModel: ActivityViewModel = hiltViewModel()
+) {
+    val prefs by viewModel.userPreferences.collectAsStateWithLifecycle()
+
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "Écran Activité\n(à venir — KAN-19 à KAN-25)",
+            text = "Écran Activité\nObjectif : ${prefs.dailyStepGoal} pas\n(à venir — KAN-19 à KAN-25)",
             style = MaterialTheme.typography.bodyLarge,
         )
     }
