@@ -2,6 +2,7 @@ package com.fviret.podometre.ui.onboarding
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.fviret.podometre.data.health.HealthConnectRepository
 import com.fviret.podometre.data.preferences.UserPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,6 +15,7 @@ data class OnboardingUiState(
     val currentPage: Int = 0,
     val selectedGoal: Int = 8_000,
     val isCompleted: Boolean = false,
+    val healthPermissionsGranted: Boolean = false,
 )
 
 /**
@@ -23,7 +25,8 @@ data class OnboardingUiState(
  */
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
-    private val userPreferencesRepository: UserPreferencesRepository
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val healthConnectRepository: HealthConnectRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(OnboardingUiState())
@@ -31,8 +34,14 @@ class OnboardingViewModel @Inject constructor(
 
     companion object {
         const val TOTAL_PAGES = 4
+
+        /** Index de la slide des permissions (slide 3) — déclenche la demande Health Connect. */
+        const val PERMISSIONS_PAGE_INDEX = 2
         val GOAL_OPTIONS = listOf(5_000, 8_000, 10_000, 15_000, 20_000)
     }
+
+    /** Retourne true si Health Connect est disponible — utilisé pour décider de lancer la demande de permissions. */
+    fun isHealthConnectAvailable(): Boolean = healthConnectRepository.isAvailable()
 
     /** Avance à la slide suivante. */
     fun nextPage() {
@@ -40,6 +49,18 @@ class OnboardingViewModel @Inject constructor(
         if (current < TOTAL_PAGES - 1) {
             _uiState.value = _uiState.value.copy(currentPage = current + 1)
         }
+    }
+
+    /**
+     * Enregistre le résultat de la demande de permissions Health Connect
+     * (accordées ou refusées) puis avance à la slide suivante.
+     * Si refusé, l'app continuera en mode dégradé (compteur à 0).
+     */
+    fun onHealthPermissionsResult(granted: Set<String>) {
+        _uiState.value = _uiState.value.copy(
+            healthPermissionsGranted = granted.containsAll(HealthConnectRepository.PERMISSIONS)
+        )
+        nextPage()
     }
 
     /** Met à jour l'objectif choisi par l'utilisateur sur la slide 4. */

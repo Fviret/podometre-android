@@ -16,6 +16,7 @@
     <string name="onboarding_slide3_perm_steps">Nombre de pas quotidiens</string>
     <string name="onboarding_slide3_perm_distance">Distance parcourue</string>
     <string name="onboarding_slide3_perm_location">Localisation (météo locale)</string>
+    <string name="onboarding_slide3_privacy">Ces données ne quittent jamais votre téléphone</string>
 
     <string name="onboarding_slide4_title">Quel est votre\nobjectif quotidien ?</string>
     <string name="onboarding_slide4_subtitle">Vous pourrez le modifier à tout moment dans les paramètres.</string>
