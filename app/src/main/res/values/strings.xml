@@ -1,3 +1,11 @@
 <resources>
-    <string name="app_name">podometre-android</string>
+    <string name="app_name">Podomètre</string>
+
+    <!-- Navigation par onglets -->
+    <string name="nav_tab_activity">Activité</string>
+    <string name="nav_tab_journeys">Trajets</string>
+    <string name="nav_tab_settings">Paramètres</string>
+    <string name="nav_tab_activity_desc">Voir mon activité quotidienne</string>
+    <string name="nav_tab_journeys_desc">Explorer les trajets virtuels</string>
+    <string name="nav_tab_settings_desc">Gérer mes paramètres</string>
 </resources>
