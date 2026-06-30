@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -33,9 +34,9 @@ import com.fviret.podometre.R
 import com.fviret.podometre.ui.theme.AppColors
 
 /**
- * Écran Activité — affiche l'anneau de progression journalier avec navigation par chevrons.
- * Rafraîchit les pas à chaque retour en foreground (ON_RESUME).
- * Sera enrichi avec météo, calendrier et graphe dans KAN-22 à KAN-25.
+ * Écran Activité — anneau de progression, navigation par chevrons, bannière météo.
+ * Rafraîchit les pas et la météo à chaque retour en foreground (ON_RESUME).
+ * Sera enrichi avec calendrier et graphe dans KAN-23 à KAN-25.
  * Équivalent iOS : ActivityView.swift.
  */
 @Composable
@@ -48,13 +49,26 @@ fun ActivityScreen(
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.refreshSteps()
+        viewModel.refreshWeather()
     }
 
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        ) {
+            // Bannière météo — masquée si showWeatherForecast=false ou si état null
+            if (prefs.showWeatherForecast) {
+                WeatherBanner(
+                    state = uiState.weatherState,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
             Text(
                 text = uiState.selectedDateLabel,
                 style = MaterialTheme.typography.titleMedium,

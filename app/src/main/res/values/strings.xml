@@ -33,6 +33,11 @@
     <string name="activity_ring_goal_label">Objectif : %1$d pas</string>
     <string name="activity_ring_accessibility_label">%1$d pas sur %2$d, %3$d %%</string>
 
+    <!-- Écran Activité — bannière météo (KAN-22) -->
+    <string name="weather_rain_now">Pluie en cours</string>
+    <string name="weather_rain_soon">Pluie dans moins d\'une heure</string>
+    <string name="weather_no_rain">Pas de pluie prévue</string>
+
     <!-- Écran Activité — navigation par chevrons (KAN-21) -->
     <string name="activity_chevron_prev_desc">Jour précédent</string>
     <string name="activity_chevron_next_desc">Jour suivant</string>
