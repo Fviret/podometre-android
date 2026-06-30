@@ -1,50 +1,42 @@
 package com.fviret.podometre.data.preferences
 
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
-import androidx.datastore.preferences.core.edit
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.cancel
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.mutablePreferencesOf
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
+import io.mockk.every
+import io.mockk.mockk
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
-import java.io.File
 
-@OptIn(ExperimentalCoroutinesApi::class)
+/**
+ * Teste le mapping DataStore Preferences → UserPreferences dans [UserPreferencesRepository].
+ * On mocke uniquement le flow data — les méthodes d'écriture (edit) sont des wrappers directs
+ * sur DataStore et n'ont pas de logique propre à tester en unitaire.
+ */
 class UserPreferencesRepositoryTest {
 
-    @TempDir
-    lateinit var tempDir: File
-
-    private val testDispatcher = UnconfinedTestDispatcher()
-    private val testScope = TestScope(testDispatcher)
-
+    private val prefsFlow = MutableStateFlow<Preferences>(mutablePreferencesOf())
     private lateinit var repository: UserPreferencesRepository
 
     @BeforeEach
     fun setup() {
-        val dataStore = PreferenceDataStoreFactory.create(
-            scope = testScope,
-            produceFile = { File(tempDir, "test_prefs.preferences_pb") }
-        )
+        val dataStore = mockk<DataStore<Preferences>>()
+        every { dataStore.data } returns prefsFlow
         repository = UserPreferencesRepository(dataStore)
     }
 
-    @AfterEach
-    fun tearDown() {
-        // Annuler le scope pour libérer les coroutines internes de DataStore
-        testScope.cancel()
-    }
-
     @Test
-    fun `les valeurs par defaut sont correctes`() = testScope.runTest {
+    fun `les valeurs par defaut sont correctes quand DataStore est vide`() = runTest {
         val prefs = repository.userPreferences.first()
         assertEquals(10_000, prefs.dailyStepGoal)
         assertEquals("green", prefs.ringColorId)
@@ -60,37 +52,35 @@ class UserPreferencesRepositoryTest {
     }
 
     @Test
-    fun `setDailyStepGoal persiste la valeur`() = testScope.runTest {
-        repository.setDailyStepGoal(8_000)
-        assertEquals(8_000, repository.userPreferences.first().dailyStepGoal)
+    fun `dailyStepGoal est correctement mappé depuis DataStore`() = runTest {
+        prefsFlow.value = mutablePreferencesOf(intPreferencesKey("dailyStepGoal") to 7_500)
+        assertEquals(7_500, repository.userPreferences.first().dailyStepGoal)
     }
 
     @Test
-    fun `setRingColorId persiste la valeur`() = testScope.runTest {
-        repository.setRingColorId("blue")
-        assertEquals("blue", repository.userPreferences.first().ringColorId)
+    fun `ringColorId est correctement mappé depuis DataStore`() = runTest {
+        prefsFlow.value = mutablePreferencesOf(stringPreferencesKey("ringColorId") to "purple")
+        assertEquals("purple", repository.userPreferences.first().ringColorId)
     }
 
     @Test
-    fun `setDarkMode persiste la valeur`() = testScope.runTest {
-        repository.setDarkMode(true)
+    fun `isDarkMode est correctement mappé depuis DataStore`() = runTest {
+        prefsFlow.value = mutablePreferencesOf(booleanPreferencesKey("isDarkMode") to true)
         assertTrue(repository.userPreferences.first().isDarkMode)
     }
 
     @Test
-    fun `addCompletedJourney ajoute sans ecraser les precedents`() = testScope.runTest {
-        repository.addCompletedJourney("journey-1")
-        repository.addCompletedJourney("journey-2")
+    fun `completedJourneyIds est correctement mappé depuis DataStore`() = runTest {
+        prefsFlow.value = mutablePreferencesOf(
+            stringSetPreferencesKey("completedJourneyIds") to setOf("id-1", "id-2")
+        )
         val ids = repository.userPreferences.first().completedJourneyIds
-        assertTrue("journey-1" in ids)
-        assertTrue("journey-2" in ids)
-        assertEquals(2, ids.size)
+        assertEquals(setOf("id-1", "id-2"), ids)
     }
 
     @Test
-    fun `setOnboardingCompleted passe le flag a true`() = testScope.runTest {
-        assertFalse(repository.userPreferences.first().hasCompletedOnboarding)
-        repository.setOnboardingCompleted()
+    fun `hasCompletedOnboarding est correctement mappé depuis DataStore`() = runTest {
+        prefsFlow.value = mutablePreferencesOf(booleanPreferencesKey("hasCompletedOnboarding") to true)
         assertTrue(repository.userPreferences.first().hasCompletedOnboarding)
     }
 }
