@@ -17,4 +17,8 @@ data class UserPreferences(
     val showWeatherForecast: Boolean = true,
     val showMonthCalendar: Boolean = true,
     val showWeeklyChart: Boolean = true,
+    /** Nombre de pas mis en cache par le SyncStepsWorker (fond d'écran). */
+    val cachedStepsToday: Long = 0L,
+    /** Date ISO (yyyy-MM-dd) de validité du cache de pas. */
+    val cachedStepsTodayDate: String = "",
 )

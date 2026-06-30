@@ -1,14 +1,18 @@
 package com.fviret.podometre.ui.activity
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.WorkManager
 import com.fviret.podometre.data.health.HealthConnectRepository
 import com.fviret.podometre.data.preferences.UserPreferences
 import com.fviret.podometre.data.preferences.UserPreferencesRepository
 import com.fviret.podometre.data.weather.WeatherData
 import com.fviret.podometre.data.weather.WeatherRepository
 import com.fviret.podometre.util.isEmulator
+import com.fviret.podometre.worker.SyncStepsWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -18,9 +22,10 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
-/** Pas mockés pour l'émulateur, faute de Health Connect réellement alimenté (KAN-19). */
+/** Pas mockés pour l'émulateur, faute de Health Connect réellement alimenté (KAN-19/20). */
 private const val EMULATOR_MOCK_STEPS = 7_430L
 
 /**
@@ -44,6 +49,7 @@ class ActivityViewModel @Inject constructor(
     private val healthConnectRepository: HealthConnectRepository,
     private val weatherRepository: WeatherRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     /** Préférences utilisateur exposées en StateFlow pour les Composables. */
@@ -58,15 +64,31 @@ class ActivityViewModel @Inject constructor(
         ActivityUiState(isHealthConnectAvailable = healthConnectRepository.isAvailable())
     )
 
-    /** État complet de l'écran — sera enrichi dans KAN-20 à KAN-25 (mise à jour temps réel, chevrons). */
+    /** État complet de l'écran — sera enrichi dans KAN-20 à KAN-25. */
     val uiState: StateFlow<ActivityUiState> = _uiState.asStateFlow()
 
     init {
         viewModelScope.launch {
             userPreferences.collect { prefs ->
-                _uiState.value = _uiState.value.copy(stepGoal = prefs.dailyStepGoal)
+                val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+                // Si le worker a déjà mis à jour le cache aujourd'hui et que l'UI n'a pas encore de données,
+                // on utilise la valeur cachée le temps que la requête HC aboutisse.
+                val cachedSteps = if (prefs.cachedStepsTodayDate == today) prefs.cachedStepsToday else 0L
+                _uiState.value = _uiState.value.copy(
+                    stepGoal = prefs.dailyStepGoal,
+                    stepsToday = maxOf(_uiState.value.stepsToday, cachedSteps)
+                )
             }
         }
+        loadStepsToday()
+        SyncStepsWorker.schedule(WorkManager.getInstance(context))
+    }
+
+    /**
+     * Relit les pas du jour depuis Health Connect.
+     * Appelé au lancement, au retour en foreground (ON_RESUME dans ActivityScreen), et par le worker via le cache DataStore.
+     */
+    fun refreshSteps() {
         loadStepsToday()
     }
 
