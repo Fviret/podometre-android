@@ -1,6 +1,7 @@
 package com.fviret.podometre.ui.onboarding
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fviret.podometre.R
+import com.fviret.podometre.data.health.HealthConnectRepository
 
 /**
  * Écran d'onboarding — carrousel 4 slides non dismissable.
@@ -44,6 +46,11 @@ fun OnboardingScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val pagerState = rememberPagerState(pageCount = { OnboardingViewModel.TOTAL_PAGES })
+
+    // Lance le dialogue système Health Connect ; avance à la slide suivante quel que soit le résultat
+    val healthPermissionLauncher = rememberLauncherForActivityResult(
+        contract = HealthConnectRepository.requestPermissionsContract()
+    ) { granted -> viewModel.onHealthPermissionsResult(granted) }
 
     // Synchronise le pager avec l'état du ViewModel
     LaunchedEffect(uiState.currentPage) {
@@ -92,10 +99,15 @@ fun OnboardingScreen(
 
             // ── Bouton navigation ─────────────────────────────────────────
             val isLastPage = uiState.currentPage == OnboardingViewModel.TOTAL_PAGES - 1
+            val isPermissionsPage = uiState.currentPage == OnboardingViewModel.PERMISSIONS_PAGE_INDEX
             Button(
                 onClick = {
-                    if (isLastPage) viewModel.completeOnboarding()
-                    else viewModel.nextPage()
+                    when {
+                        isLastPage -> viewModel.completeOnboarding()
+                        isPermissionsPage && viewModel.isHealthConnectAvailable() ->
+                            healthPermissionLauncher.launch(HealthConnectRepository.PERMISSIONS)
+                        else -> viewModel.nextPage()
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()

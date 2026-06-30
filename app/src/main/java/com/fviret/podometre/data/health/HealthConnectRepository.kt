@@ -2,6 +2,8 @@ package com.fviret.podometre.data.health
 
 import android.content.Context
 import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.PermissionController
+import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
@@ -50,11 +52,26 @@ class HealthConnectRepository @Inject constructor(
         }.getOrDefault(0.0)
     }
 
-    /**
-     * Vérifie si Health Connect est disponible sur cet appareil.
-     * Retourne false sur émulateur ou appareils sans Health Connect installé.
-     */
     /** Retourne true si Health Connect est installé et disponible sur cet appareil. */
     fun isAvailable(): Boolean =
         HealthConnectClient.getSdkStatus(context) == HealthConnectClient.SDK_AVAILABLE
+
+    /**
+     * Vérifie si toutes les permissions de lecture requises (pas, distance) sont accordées.
+     */
+    suspend fun hasAllPermissions(): Boolean =
+        runCatching {
+            client.permissionController.getGrantedPermissions().containsAll(PERMISSIONS)
+        }.getOrDefault(false)
+
+    companion object {
+        /** Permissions de lecture demandées à l'onboarding (KAN-18). */
+        val PERMISSIONS: Set<String> = setOf(
+            HealthPermission.getReadPermission(StepsRecord::class),
+            HealthPermission.getReadPermission(DistanceRecord::class),
+        )
+
+        /** Contrat système pour la demande de permissions Health Connect. */
+        fun requestPermissionsContract() = PermissionController.createRequestPermissionResultContract()
+    }
 }

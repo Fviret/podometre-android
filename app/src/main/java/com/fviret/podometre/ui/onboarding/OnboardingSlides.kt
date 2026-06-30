@@ -96,6 +96,14 @@ fun OnboardingSlide3() {
                 icon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
                 label = stringResource(R.string.onboarding_slide3_perm_location)
             )
+            Spacer(Modifier.height(24.dp))
+            Text(
+                text = stringResource(R.string.onboarding_slide3_privacy),
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+            )
         }
     )
 }
