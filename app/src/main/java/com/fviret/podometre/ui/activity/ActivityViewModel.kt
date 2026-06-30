@@ -23,10 +23,19 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import javax.inject.Inject
 
-/** Pas mockés pour l'émulateur, faute de Health Connect réellement alimenté (KAN-19/20). */
-private const val EMULATOR_MOCK_STEPS = 7_430L
+/** Pas mockés par décalage en jours (0 = aujourd'hui) pour l'émulateur. */
+private val EMULATOR_STEPS_BY_OFFSET = mapOf(
+    0 to 7_430L,
+    -1 to 6_200L,
+    -2 to 9_100L,
+    -3 to 4_850L,
+    -4 to 11_200L,
+    -5 to 7_760L,
+    -6 to 3_100L,
+)
 
 /**
  * État de l'écran Activité.
@@ -37,6 +46,10 @@ data class ActivityUiState(
     val stepsToday: Long = 0L,
     val weather: WeatherData? = null,
     val isHealthConnectAvailable: Boolean = false,
+    /** Décalage en jours par rapport à aujourd'hui (0 = aujourd'hui, -1 = hier, etc.). */
+    val selectedDayOffset: Int = 0,
+    /** Label affiché au-dessus de l'anneau : "Aujourd'hui" / "Hier" / "Lun. 23 juin". */
+    val selectedDateLabel: String = "Aujourd'hui",
 )
 
 /**
@@ -71,8 +84,6 @@ class ActivityViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferences.collect { prefs ->
                 val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
-                // Si le worker a déjà mis à jour le cache aujourd'hui et que l'UI n'a pas encore de données,
-                // on utilise la valeur cachée le temps que la requête HC aboutisse.
                 val cachedSteps = if (prefs.cachedStepsTodayDate == today) prefs.cachedStepsToday else 0L
                 _uiState.value = _uiState.value.copy(
                     stepGoal = prefs.dailyStepGoal,
@@ -80,28 +91,75 @@ class ActivityViewModel @Inject constructor(
                 )
             }
         }
-        loadStepsToday()
+        loadStepsForOffset(0)
         SyncStepsWorker.schedule(WorkManager.getInstance(context))
     }
 
-    /**
-     * Relit les pas du jour depuis Health Connect.
-     * Appelé au lancement, au retour en foreground (ON_RESUME dans ActivityScreen), et par le worker via le cache DataStore.
-     */
+    /** Rafraîchit les pas du jour courant sélectionné (appelé depuis ON_RESUME). */
     fun refreshSteps() {
-        loadStepsToday()
+        loadStepsForOffset(_uiState.value.selectedDayOffset)
     }
 
-    /** Charge le nombre de pas du jour courant depuis Health Connect (requête idempotente). */
-    private fun loadStepsToday() {
+    /** Navigue vers le jour précédent (décalage - 1). */
+    fun goToPreviousDay() {
+        val newOffset = _uiState.value.selectedDayOffset - 1
+        _uiState.value = _uiState.value.copy(
+            selectedDayOffset = newOffset,
+            selectedDateLabel = labelForOffset(newOffset),
+        )
+        loadStepsForOffset(newOffset)
+    }
+
+    /**
+     * Navigue vers le jour suivant (décalage + 1).
+     * Sans effet si on est déjà sur aujourd'hui ([selectedDayOffset] == 0).
+     */
+    fun goToNextDay() {
+        val current = _uiState.value.selectedDayOffset
+        if (current >= 0) return
+        val newOffset = current + 1
+        _uiState.value = _uiState.value.copy(
+            selectedDayOffset = newOffset,
+            selectedDateLabel = labelForOffset(newOffset),
+        )
+        loadStepsForOffset(newOffset)
+    }
+
+    /**
+     * Charge les pas depuis Health Connect pour le jour correspondant à [offset] (0 = aujourd'hui).
+     * Requête idempotente : recalcule depuis le début du jour cible.
+     */
+    private fun loadStepsForOffset(offset: Int) {
         viewModelScope.launch {
             val steps = if (isEmulator()) {
-                EMULATOR_MOCK_STEPS
+                EMULATOR_STEPS_BY_OFFSET[offset] ?: (5_000L + (offset * -137L).coerceAtLeast(0))
             } else {
-                val startOfDay = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant()
-                healthConnectRepository.readSteps(from = startOfDay, to = Instant.now())
+                val targetDate = LocalDate.now().plusDays(offset.toLong())
+                val from = targetDate.atStartOfDay(ZoneId.systemDefault()).toInstant()
+                val to = if (offset == 0) {
+                    Instant.now()
+                } else {
+                    targetDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
+                }
+                healthConnectRepository.readSteps(from = from, to = to)
             }
             _uiState.value = _uiState.value.copy(stepsToday = steps)
+        }
+    }
+
+    companion object {
+        /**
+         * Construit le label de date affiché au-dessus de l'anneau selon le décalage en jours.
+         * Exemples : 0 → "Aujourd'hui", -1 → "Hier", -5 → "Lun. 23 juin".
+         */
+        fun labelForOffset(offset: Int): String = when (offset) {
+            0 -> "Aujourd'hui"
+            -1 -> "Hier"
+            else -> {
+                val date = LocalDate.now().plusDays(offset.toLong())
+                val formatter = DateTimeFormatter.ofPattern("EEE d MMMM", Locale.FRENCH)
+                date.format(formatter).replaceFirstChar { it.uppercaseChar() }
+            }
         }
     }
 }

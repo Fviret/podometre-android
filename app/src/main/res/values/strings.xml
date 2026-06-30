@@ -33,6 +33,10 @@
     <string name="activity_ring_goal_label">Objectif : %1$d pas</string>
     <string name="activity_ring_accessibility_label">%1$d pas sur %2$d, %3$d %%</string>
 
+    <!-- Écran Activité — navigation par chevrons (KAN-21) -->
+    <string name="activity_chevron_prev_desc">Jour précédent</string>
+    <string name="activity_chevron_next_desc">Jour suivant</string>
+
     <!-- Navigation par onglets -->
     <string name="nav_tab_activity">Activité</string>
     <string name="nav_tab_journeys">Trajets</string>
