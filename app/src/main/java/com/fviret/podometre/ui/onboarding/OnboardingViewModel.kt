@@ -12,7 +12,7 @@ import javax.inject.Inject
 
 data class OnboardingUiState(
     val currentPage: Int = 0,
-    val selectedGoal: Int = 10_000,
+    val selectedGoal: Int = 8_000,
     val isCompleted: Boolean = false,
 )
 
@@ -31,8 +31,7 @@ class OnboardingViewModel @Inject constructor(
 
     companion object {
         const val TOTAL_PAGES = 4
-        val GOAL_OPTIONS = listOf(5_000, 6_000, 7_000, 8_000, 9_000, 10_000,
-            11_000, 12_000, 15_000, 20_000)
+        val GOAL_OPTIONS = listOf(5_000, 8_000, 10_000, 15_000, 20_000)
     }
 
     /** Avance à la slide suivante. */

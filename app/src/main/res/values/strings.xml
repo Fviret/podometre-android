@@ -20,6 +20,12 @@
     <string name="onboarding_slide4_title">Quel est votre\nobjectif quotidien ?</string>
     <string name="onboarding_slide4_subtitle">Vous pourrez le modifier à tout moment dans les paramètres.</string>
     <string name="onboarding_slide4_goal_label">%1$d pas / jour</string>
+    <string name="onboarding_goal_5000_desc">Idéal pour commencer</string>
+    <string name="onboarding_goal_8000_desc">Recommandé par l\'OMS</string>
+    <string name="onboarding_goal_10000_desc">Objectif classique</string>
+    <string name="onboarding_goal_15000_desc">Objectif sportif</string>
+    <string name="onboarding_goal_20000_desc">Je marche beaucoup</string>
+    <string name="onboarding_goal_selected_desc">Objectif sélectionné</string>
 
     <!-- Navigation par onglets -->
     <string name="nav_tab_activity">Activité</string>
