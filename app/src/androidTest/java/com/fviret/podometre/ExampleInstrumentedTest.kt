@@ -19,6 +19,7 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.fviret.podometre", appContext.packageName)
+        // Le suffix ".debug" est ajouté en build debug (applicationIdSuffix dans build.gradle.kts)
+        assertTrue(appContext.packageName.startsWith("com.fviret.podometre"))
     }
 }
