@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Internet (Open-Meteo API) -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -38,12 +39,13 @@
             </intent-filter>
         </activity>
 
-        <!-- Health Connect : déclarer les types de données utilisés -->
+        <!-- Health Connect : activité système fournie par l'app Health Connect, non instanciée par notre code -->
         <activity
             android:name="androidx.health.connect.client.PermissionController"
-            android:exported="true" />
+            android:exported="true"
+            tools:ignore="Instantiatable" />
 
-        <!-- WorkManager -->
+        <!-- WorkManager : initialisation on-demand via PodoMetreApplication.workManagerConfiguration -->
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"
@@ -51,7 +53,8 @@
             tools:node="merge">
             <meta-data
                 android:name="androidx.work.WorkManagerInitializer"
-                android:value="androidx.startup" />
+                android:value="androidx.startup"
+                tools:node="remove" />
         </provider>
 
     </application>

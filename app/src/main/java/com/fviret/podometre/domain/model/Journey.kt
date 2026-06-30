@@ -54,4 +54,4 @@ fun Journey.progressPercent(progress: JourneyProgress): Double =
 fun Journey.nextMilestone(progress: JourneyProgress): Milestone? =
     milestones
         .sortedBy { it.km }
-        .firstOrNull { it.id !in progress.unlockedMilestoneIds }
+        .firstOrNull { it.id.toString() !in progress.unlockedMilestoneIds }
