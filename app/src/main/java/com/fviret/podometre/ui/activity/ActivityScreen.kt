@@ -98,7 +98,7 @@ fun ActivityScreen(
             WeeklyChartView(
                 currentWeek = uiState.currentWeekSteps,
                 previousWeek = uiState.previousWeekSteps,
-                todayIndex = uiState.todayWeekIndex,
+                dayLabels = uiState.weekDayLabels,
                 accentColor = AppColors.colorForId(prefs.ringColorId),
                 modifier = Modifier.fillMaxWidth(),
             )

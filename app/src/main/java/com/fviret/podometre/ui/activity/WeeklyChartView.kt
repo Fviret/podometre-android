@@ -42,11 +42,12 @@ private val DAY_LABELS = listOf("Lu", "Ma", "Me", "Je", "Ve", "Sa", "Di")
 fun WeeklyChartView(
     currentWeek: List<Long>,
     previousWeek: List<Long>,
-    todayIndex: Int,
+    dayLabels: List<String>,         // 7 labels, index 6 = aujourd'hui
     accentColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    val a11yLabel = buildA11yLabel(currentWeek, previousWeek, todayIndex)
+    val todayIndex = 6               // aujourd'hui est toujours le dernier point
+    val a11yLabel = buildA11yLabel(currentWeek, previousWeek, dayLabels)
     val prevColor = Color(0xFFAAAAAA)
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -210,7 +211,7 @@ fun WeeklyChartView(
                 typeface = android.graphics.Typeface.DEFAULT_BOLD
                 isAntiAlias = true
             }
-            DAY_LABELS.forEachIndexed { idx, label ->
+            dayLabels.forEachIndexed { idx, label ->
                 drawContext.canvas.nativeCanvas.drawText(
                     label, xFor(idx), size.height - 4.dp.toPx(),
                     if (idx == todayIndex) dayToday else dayNormal
@@ -240,13 +241,12 @@ fun WeeklyChartView(
 private fun ceilToMultiple(value: Double, multiple: Double): Double =
     ceil(value / multiple) * multiple
 
-private fun buildA11yLabel(current: List<Long>, previous: List<Long>, todayIndex: Int): String {
-    val days = listOf("Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche")
-    val currStr = current.take(todayIndex + 1)
-        .mapIndexed { i, v -> if (v > 0) "${days[i]} ${"%,d".format(v).replace(',', ' ')}" else null }
-        .filterNotNull().joinToString(", ")
-    val prevStr = previous
-        .mapIndexed { i, v -> if (v > 0) "${days[i]} ${"%,d".format(v).replace(',', ' ')}" else null }
-        .filterNotNull().joinToString(", ")
+private fun buildA11yLabel(current: List<Long>, previous: List<Long>, labels: List<String>): String {
+    val currStr = current.mapIndexed { i, v ->
+        if (v > 0) "${labels.getOrElse(i) { "" }} ${"%,d".format(v).replace(',', ' ')}" else null
+    }.filterNotNull().joinToString(", ")
+    val prevStr = previous.mapIndexed { i, v ->
+        if (v > 0) "${labels.getOrElse(i) { "" }} ${"%,d".format(v).replace(',', ' ')}" else null
+    }.filterNotNull().joinToString(", ")
     return "Graphe 7 derniers jours. Cette semaine : $currStr. Semaine précédente : $prevStr."
 }

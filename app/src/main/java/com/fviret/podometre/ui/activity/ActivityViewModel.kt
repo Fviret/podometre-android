@@ -83,12 +83,12 @@ data class ActivityUiState(
     val calendarSteps: Map<LocalDate, Long> = emptyMap(),
     /** Total de pas pour le mois calendrier affiché. */
     val calendarTotal: Long = 0L,
-    /** Pas par jour de la semaine courante (lundi → dimanche, 7 valeurs, 0 = jour futur). */
+    /** Pas des 7 derniers jours (index 0 = il y a 6 jours, index 6 = aujourd'hui). */
     val currentWeekSteps: List<Long> = List(7) { 0L },
-    /** Pas par jour de la semaine précédente (lundi → dimanche, 7 valeurs). */
+    /** Pas des 7 jours précédents (index 0 = il y a 13 jours, index 6 = il y a 7 jours). */
     val previousWeekSteps: List<Long> = List(7) { 0L },
-    /** Indice du jour courant dans la semaine (0=lundi … 6=dimanche). */
-    val todayWeekIndex: Int = 0,
+    /** Labels abrégés des 7 derniers jours (ex. ["Me", "Je", …, "Me"]). */
+    val weekDayLabels: List<String> = List(7) { "" },
 )
 
 /**
@@ -256,51 +256,53 @@ class ActivityViewModel @Inject constructor(
     }
 
     /**
-     * Charge les pas des 7 jours de la semaine courante et de la semaine précédente.
-     * La semaine commence le lundi. Les jours futurs de la semaine courante valent 0.
+     * Charge les pas sur une fenêtre glissante de 7 jours :
+     * - currentWeek : les 7 derniers jours (index 6 = aujourd'hui, toujours à droite)
+     * - previousWeek : les 7 jours précédents (index 6 = il y a 7 jours)
+     * Équivalent iOS : les 7 points partent du jour le plus ancien vers aujourd'hui.
      */
     private fun loadWeeklyData() {
         viewModelScope.launch {
             val today = LocalDate.now()
-            // Lundi de la semaine courante (DayOfWeek.MONDAY = 1)
-            val thisMon = today.minusDays((today.dayOfWeek.value - 1).toLong())
-            val lastMon = thisMon.minusWeeks(1)
-            val todayIdx = today.dayOfWeek.value - 1 // 0=lundi … 6=dimanche
+            val dayFmt = DateTimeFormatter.ofPattern("EEE", Locale.FRENCH)
+
+            // Labels : abréviation du jour pour chacun des 7 derniers jours
+            val labels = List(7) { i ->
+                val d = today.minusDays((6 - i).toLong())
+                d.format(dayFmt).replaceFirstChar { it.uppercaseChar() }.take(2)
+            }
 
             if (isEmulator()) {
-                // Données mock pour l'émulateur
                 val mockCurrent = List(7) { i ->
-                    if (i > todayIdx) 0L else emulatorStepsForDay(thisMon.plusDays(i.toLong()))
+                    emulatorStepsForDay(today.minusDays((6 - i).toLong()))
                 }
-                val mockPrev = List(7) { i -> emulatorStepsForDay(lastMon.plusDays(i.toLong())) }
+                val mockPrev = List(7) { i ->
+                    emulatorStepsForDay(today.minusDays((13 - i).toLong()))
+                }
                 _uiState.value = _uiState.value.copy(
                     currentWeekSteps = mockCurrent,
                     previousWeekSteps = mockPrev,
-                    todayWeekIndex = todayIdx,
+                    weekDayLabels = labels,
                 )
             } else {
                 val zone = ZoneId.systemDefault()
+                val currFrom = today.minusDays(6).atStartOfDay(zone).toInstant()
+                val prevFrom = today.minusDays(13).atStartOfDay(zone).toInstant()
+                val prevTo = today.minusDays(6).atStartOfDay(zone).toInstant()
 
-                // Semaine courante : lundi 00:00 → maintenant
-                val currFrom = thisMon.atStartOfDay(zone).toInstant()
-                val currTo = Instant.now()
-                val currMap = healthConnectRepository.readStepsByDay(currFrom, currTo)
-
-                // Semaine précédente : lundi 00:00 → dimanche 23:59
-                val prevFrom = lastMon.atStartOfDay(zone).toInstant()
-                val prevTo = thisMon.atStartOfDay(zone).toInstant()
+                val currMap = healthConnectRepository.readStepsByDay(currFrom, Instant.now())
                 val prevMap = healthConnectRepository.readStepsByDay(prevFrom, prevTo)
 
                 val currentWeek = List(7) { i ->
-                    val d = thisMon.plusDays(i.toLong())
-                    if (d.isAfter(today)) 0L else currMap[d] ?: 0L
+                    currMap[today.minusDays((6 - i).toLong())] ?: 0L
                 }
-                val previousWeek = List(7) { i -> prevMap[lastMon.plusDays(i.toLong())] ?: 0L }
-
+                val previousWeek = List(7) { i ->
+                    prevMap[today.minusDays((13 - i).toLong())] ?: 0L
+                }
                 _uiState.value = _uiState.value.copy(
                     currentWeekSteps = currentWeek,
                     previousWeekSteps = previousWeek,
-                    todayWeekIndex = todayIdx,
+                    weekDayLabels = labels,
                 )
             }
         }
