@@ -29,6 +29,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -91,11 +92,18 @@ fun SettingsScreen(
             onColorSelected = { viewModel.updateRingColorId(it) },
         )
 
+        Spacer(modifier = Modifier.height(8.dp))
+
+        DarkModeRow(
+            isDarkMode = prefs.isDarkMode,
+            onToggle = { viewModel.updateDarkMode(it) },
+        )
+
         Spacer(modifier = Modifier.height(16.dp))
 
         SectionHeader(title = "Notifications")
-        ComingSoonRow(label = "Notifications de goal", ticket = "KAN-34")
-        ComingSoonRow(label = "Notifications de trajet", ticket = "KAN-35")
+        ComingSoonRow(label = "Notifications de goal", ticket = "KAN-35")
+        ComingSoonRow(label = "Notifications de trajet", ticket = "KAN-36")
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -329,6 +337,44 @@ private fun RingColorRow(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * Toggle "Mode sombre" — bascule le thème de toute l'application immédiatement.
+ * Équivalent iOS : Toggle isDarkMode dans SettingsView.swift.
+ */
+@Composable
+private fun DarkModeRow(
+    isDarkMode: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Mode sombre",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f),
+            )
+            Switch(
+                checked = isDarkMode,
+                onCheckedChange = onToggle,
+                modifier = Modifier.semantics {
+                    contentDescription = if (isDarkMode) "Mode sombre activé" else "Mode sombre désactivé"
+                },
+            )
         }
     }
 }

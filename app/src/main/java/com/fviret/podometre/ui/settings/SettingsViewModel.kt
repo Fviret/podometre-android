@@ -54,4 +54,14 @@ class SettingsViewModel @Inject constructor(
             userPreferencesRepository.setRingColorId(colorId)
         }
     }
+
+    /**
+     * Bascule le mode sombre / clair et le persiste dans DataStore.
+     * La valeur est propagée immédiatement via [MainViewModel] au thème racine.
+     */
+    fun updateDarkMode(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setDarkMode(enabled)
+        }
+    }
 }
