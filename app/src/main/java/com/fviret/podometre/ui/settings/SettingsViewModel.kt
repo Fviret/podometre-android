@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fviret.podometre.data.preferences.UserPreferences
 import com.fviret.podometre.data.preferences.UserPreferencesRepository
+import com.fviret.podometre.ui.theme.AppColors
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -40,6 +41,17 @@ class SettingsViewModel @Inject constructor(
         if (goal !in STEP_GOAL_OPTIONS) return
         viewModelScope.launch {
             userPreferencesRepository.setDailyStepGoal(goal)
+        }
+    }
+
+    /**
+     * Persiste l'identifiant de couleur de l'anneau dans DataStore.
+     * Seuls les IDs présents dans [AppColors.ringColorOptions] sont acceptés.
+     */
+    fun updateRingColorId(colorId: String) {
+        if (colorId !in AppColors.ringColorOptions) return
+        viewModelScope.launch {
+            userPreferencesRepository.setRingColorId(colorId)
         }
     }
 }
