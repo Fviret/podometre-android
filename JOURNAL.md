@@ -22,7 +22,7 @@ Colonnes : **Dev** = implémenté par IA | **Testé** = vérifié sur émulateur
 |--------|----|-------------|-----|-------|
 | KAN-16 | US-2.1 | Flux d'onboarding 4 slides (carrousel, non-dismissable) | ✅ | ✅  |
 | KAN-17 | US-2.2 | Sélection d'objectif de pas (picker 5 000–20 000) | ✅ | ✅  |
-| KAN-18 | US-2.3 | Demande de permissions Health Connect (READ_STEPS, READ_DISTANCE) | ✅ |✅ ⬜ |
+| KAN-18 | US-2.3 | Demande de permissions Health Connect (READ_STEPS, READ_DISTANCE) | ✅ |✅  |
 
 ---
 
