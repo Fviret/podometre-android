@@ -1,7 +1,7 @@
 # Journal de bord — Podomètre Android
 
 Suivi des tickets livrés, testés et validés.
-Colonnes : **Dev** = implémenté par IA | **Testé** = vérifié sur émulateur par l'humain ✅ / ⬜ en attente
+Colonnes : **Dev** = implémenté par IA | **Testé** = vérifié sur émulateur par l'humain ✅ / ✅
 
 ---
 
@@ -9,10 +9,10 @@ Colonnes : **Dev** = implémenté par IA | **Testé** = vérifié sur émulateur
 
 | Ticket | US | Description | Dev | Testé |
 |--------|----|-------------|-----|-------|
-| KAN-12 | — | Initialiser le projet Android (structure, Gradle, Hilt, Material 3) | ✅ | ⬜ |
-| KAN-13 | — | Navigation par onglets (Activité / Trajets / Paramètres) | ✅ | ⬜ |
-| KAN-14 | — | Persistance locale — DataStore Preferences + JSON (progressMap) | ✅ | ⬜ |
-| KAN-15 | — | Injection de dépendances Hilt (AppModule, repositories) | ✅ | ⬜ |
+| KAN-12 | — | Initialiser le projet Android (structure, Gradle, Hilt, Material 3) | ✅ | ✅  |
+| KAN-13 | — | Navigation par onglets (Activité / Trajets / Paramètres) | ✅ | ✅  |
+| KAN-14 | — | Persistance locale — DataStore Preferences + JSON (progressMap) | ✅ | ✅  |
+| KAN-15 | — | Injection de dépendances Hilt (AppModule, repositories) | ✅ | ✅  |
 
 ---
 
@@ -20,9 +20,9 @@ Colonnes : **Dev** = implémenté par IA | **Testé** = vérifié sur émulateur
 
 | Ticket | US | Description | Dev | Testé |
 |--------|----|-------------|-----|-------|
-| KAN-16 | US-2.1 | Flux d'onboarding 4 slides (carrousel, non-dismissable) | ✅ | ⬜ |
-| KAN-17 | US-2.2 | Sélection d'objectif de pas (picker 5 000–20 000) | ✅ | ⬜ |
-| KAN-18 | US-2.3 | Demande de permissions Health Connect (READ_STEPS, READ_DISTANCE) | ✅ | ⬜ |
+| KAN-16 | US-2.1 | Flux d'onboarding 4 slides (carrousel, non-dismissable) | ✅ | ✅  |
+| KAN-17 | US-2.2 | Sélection d'objectif de pas (picker 5 000–20 000) | ✅ | ✅  |
+| KAN-18 | US-2.3 | Demande de permissions Health Connect (READ_STEPS, READ_DISTANCE) | ✅ |✅ ⬜ |
 
 ---
 
@@ -45,7 +45,8 @@ Colonnes : **Dev** = implémenté par IA | **Testé** = vérifié sur émulateur
 | KAN-25 | Cercles de données au premier plan (z-order Canvas) | ✅ |
 | KAN-25 | Graphe iso iOS : fenêtre glissante, titre + légende, cercles plus grands | ✅ |
 | KAN-25 | Aujourd'hui toujours à droite du graphe (rolling window) | ✅ |
-| —     | Anneau de progression remonté en haut de l'écran Activité | ✅ |
+| —     | Anneau de progression remonté en haut de l'écran Activité | ⚠ |
+A la fin de ce sprint, des aller retour otnt été fait pour des coorection malgrès les tickets explicite. surement un problème de contexte.
 
 ---
 
