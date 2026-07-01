@@ -3,6 +3,7 @@ package com.fviret.podometre.ui.activity
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.location.Geocoder
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -10,6 +11,7 @@ import androidx.work.WorkManager
 import com.fviret.podometre.data.health.HealthConnectRepository
 import com.fviret.podometre.data.preferences.UserPreferences
 import com.fviret.podometre.data.preferences.UserPreferencesRepository
+import com.fviret.podometre.data.weather.DailyForecast
 import com.fviret.podometre.data.weather.WeatherRepository
 import com.fviret.podometre.data.weather.WeatherState
 import com.fviret.podometre.util.isEmulator
@@ -17,6 +19,7 @@ import com.fviret.podometre.worker.SyncStepsWorker
 import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +27,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -55,6 +59,8 @@ data class ActivityUiState(
     val stepGoal: Int = 10_000,
     val stepsToday: Long = 0L,
     val weatherState: WeatherState? = null,
+    val dailyForecasts: List<DailyForecast> = emptyList(),
+    val cityName: String? = null,
     val isHealthConnectAvailable: Boolean = false,
     /** Décalage en jours par rapport à aujourd'hui (0 = aujourd'hui, -1 = hier, etc.). */
     val selectedDayOffset: Int = 0,
@@ -106,12 +112,12 @@ class ActivityViewModel @Inject constructor(
         SyncStepsWorker.schedule(WorkManager.getInstance(context))
     }
 
-    /** Rafraîchit les pas et la météo au retour en foreground (ON_RESUME). */
+    /** Rafraîchit les pas au retour en foreground (ON_RESUME). */
     fun refreshSteps() {
         loadStepsForOffset(_uiState.value.selectedDayOffset)
     }
 
-    /** Rafraîchit la météo (appelé depuis ON_RESUME si la permission est accordée). */
+    /** Rafraîchit la météo et les prévisions au retour en foreground. */
     fun refreshWeather() {
         loadWeather()
     }
@@ -152,11 +158,8 @@ class ActivityViewModel @Inject constructor(
             } else {
                 val targetDate = LocalDate.now().plusDays(offset.toLong())
                 val from = targetDate.atStartOfDay(ZoneId.systemDefault()).toInstant()
-                val to = if (offset == 0) {
-                    Instant.now()
-                } else {
-                    targetDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
-                }
+                val to = if (offset == 0) Instant.now()
+                else targetDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
                 healthConnectRepository.readSteps(from = from, to = to)
             }
             _uiState.value = _uiState.value.copy(stepsToday = steps)
@@ -164,7 +167,7 @@ class ActivityViewModel @Inject constructor(
     }
 
     /**
-     * Charge l'état météo via Open-Meteo en utilisant la dernière position connue.
+     * Charge l'état météo, les prévisions 7 jours et le nom de ville.
      * Ne fait rien si la permission de localisation n'est pas accordée.
      */
     private fun loadWeather() {
@@ -181,8 +184,16 @@ class ActivityViewModel @Inject constructor(
             } else {
                 coords
             }
+
             val state = weatherRepository.getWeatherState(lat, lon)
-            _uiState.value = _uiState.value.copy(weatherState = state)
+            val forecasts = weatherRepository.getDailyForecasts(lat, lon)
+            val city = getCityName(lat, lon)
+
+            _uiState.value = _uiState.value.copy(
+                weatherState = state,
+                dailyForecasts = forecasts,
+                cityName = city,
+            )
         }
     }
 
@@ -204,6 +215,22 @@ class ActivityViewModel @Inject constructor(
             } catch (e: SecurityException) {
                 cont.resume(null)
             }
+        }
+
+    /**
+     * Reverse geocoding via Android [Geocoder] pour obtenir le nom de la ville.
+     * Retourne null si le Geocoder est indisponible ou si aucun résultat n'est trouvé.
+     */
+    @Suppress("DEPRECATION")
+    private suspend fun getCityName(lat: Double, lon: Double): String? =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                if (!Geocoder.isPresent()) return@runCatching null
+                val geocoder = Geocoder(context, Locale.getDefault())
+                val addresses = geocoder.getFromLocation(lat, lon, 1)
+                addresses?.firstOrNull()?.locality
+                    ?: addresses?.firstOrNull()?.subAdminArea
+            }.getOrNull()
         }
 
     companion object {
