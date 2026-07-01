@@ -148,7 +148,7 @@ private fun StepGoalRow(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Objectif quotidien",
+                    text = "Pas par jour",
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.weight(1f),
                 )
@@ -257,9 +257,19 @@ private fun GoalCell(
     }
 }
 
+/** Noms français des couleurs de l'anneau, dans le même ordre qu'[AppColors.ringColorOptions]. */
+private val ringColorNames: Map<String, String> = mapOf(
+    "green"  to "Forêt",
+    "blue"   to "Ciel",
+    "orange" to "Soleil",
+    "red"    to "Framboise",
+    "purple" to "Lavande",
+    "teal"   to "Menthe",
+)
+
 /**
- * Section "Couleur de l'anneau" — grille de 6 cercles colorés cliquables.
- * La couleur sélectionnée est mise en évidence par une bordure blanche épaisse + ombre.
+ * Section "Couleur de l'anneau" — nom de la couleur sélectionnée + grille de 6 cercles.
+ * Cercle sélectionné : bordure noire épaisse (comme iOS).
  * Équivalent iOS : Section "Personnalisation des couleurs" dans SettingsView.swift.
  */
 @Composable
@@ -267,6 +277,9 @@ private fun RingColorRow(
     selectedColorId: String,
     onColorSelected: (String) -> Unit,
 ) {
+    val selectedColor = AppColors.colorForId(selectedColorId)
+    val selectedName = ringColorNames[selectedColorId] ?: selectedColorId
+
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
@@ -275,25 +288,40 @@ private fun RingColorRow(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-            Text(
-                text = "Couleur de l'anneau",
-                style = MaterialTheme.typography.bodyLarge,
+            // Nom de la couleur sélectionnée avec pastille (iso iOS)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(bottom = 16.dp),
-            )
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(14.dp)
+                        .clip(CircleShape)
+                        .background(selectedColor),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = selectedName,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
+            // Grille des 6 cercles
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
                 AppColors.ringColorOptions.forEach { (id, color) ->
                     val isSelected = id == selectedColorId
-                    val a11yLabel = "Couleur $id${if (isSelected) ", sélectionnée" else ""}"
+                    val name = ringColorNames[id] ?: id
+                    val a11yLabel = "$name${if (isSelected) ", sélectionnée" else ""}"
                     Box(
                         modifier = Modifier
                             .size(44.dp)
                             .clip(CircleShape)
                             .background(color)
                             .then(
-                                if (isSelected) Modifier.border(3.dp, MaterialTheme.colorScheme.surface, CircleShape)
+                                if (isSelected)
+                                    Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
                                 else Modifier
                             )
                             .clickable(onClickLabel = a11yLabel) { onColorSelected(id) }
