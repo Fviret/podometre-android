@@ -35,9 +35,8 @@ import com.fviret.podometre.R
 import com.fviret.podometre.ui.theme.AppColors
 
 /**
- * Écran Activité — bannière météo, prévisions 7 jours, calendrier mensuel, anneau de progression.
+ * Écran Activité — anneau en haut, puis météo, calendrier, graphe en scrollant.
  * Rafraîchit les données à chaque retour en foreground (ON_RESUME).
- * Scrollable verticalement pour accueillir tous les composants.
  * Équivalent iOS : ActivityView.swift.
  */
 @Composable
@@ -61,50 +60,7 @@ fun ActivityScreen(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 16.dp),
     ) {
-        // Bannière météo + prévisions 7 jours — masquées si showWeatherForecast=false
-        if (prefs.showWeatherForecast) {
-            WeatherBanner(
-                state = uiState.weatherState,
-                modifier = Modifier.fillMaxWidth()
-            )
-            if (uiState.dailyForecasts.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                WeeklyForecastBanner(
-                    forecasts = uiState.dailyForecasts,
-                    cityName = uiState.cityName,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        // Calendrier mensuel — masquable via toggle Paramètres
-        if (prefs.showMonthCalendar) {
-            MonthCalendarView(
-                month = uiState.calendarMonth,
-                stepsPerDay = uiState.calendarSteps,
-                goal = uiState.stepGoal,
-                total = uiState.calendarTotal,
-                onPreviousMonth = { viewModel.navigateCalendarPrevious() },
-                onNextMonth = { viewModel.navigateCalendarNext() },
-                onDayTap = { date -> viewModel.onCalendarDayTap(date) },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        // Graphe comparaison hebdomadaire — masquable via toggle Paramètres
-        if (prefs.showWeeklyChart) {
-            WeeklyChartView(
-                currentWeek = uiState.currentWeekSteps,
-                previousWeek = uiState.previousWeekSteps,
-                todayIndex = uiState.todayWeekIndex,
-                accentColor = AppColors.colorForId(prefs.ringColorId),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
+        // ── 1. Anneau de progression (en haut) ────────────────────────────────
         Text(
             text = uiState.selectedDateLabel,
             style = MaterialTheme.typography.titleMedium,
@@ -117,7 +73,6 @@ fun ActivityScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            // Chevron gauche — toujours visible (pas de limite de jours)
             IconButton(
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -138,7 +93,6 @@ fun ActivityScreen(
                 ringColor = AppColors.colorForId(prefs.ringColorId)
             )
 
-            // Chevron droit — ghost slot (Spacer) quand on est sur aujourd'hui
             if (uiState.selectedDayOffset < 0) {
                 IconButton(
                     onClick = {
@@ -156,6 +110,51 @@ fun ActivityScreen(
             } else {
                 Spacer(modifier = Modifier.size(48.dp))
             }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // ── 2. Bannière météo + prévisions 7 jours ────────────────────────────
+        if (prefs.showWeatherForecast) {
+            WeatherBanner(
+                state = uiState.weatherState,
+                modifier = Modifier.fillMaxWidth()
+            )
+            if (uiState.dailyForecasts.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                WeeklyForecastBanner(
+                    forecasts = uiState.dailyForecasts,
+                    cityName = uiState.cityName,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // ── 3. Calendrier mensuel ─────────────────────────────────────────────
+        if (prefs.showMonthCalendar) {
+            MonthCalendarView(
+                month = uiState.calendarMonth,
+                stepsPerDay = uiState.calendarSteps,
+                goal = uiState.stepGoal,
+                total = uiState.calendarTotal,
+                onPreviousMonth = { viewModel.navigateCalendarPrevious() },
+                onNextMonth = { viewModel.navigateCalendarNext() },
+                onDayTap = { date -> viewModel.onCalendarDayTap(date) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // ── 4. Graphe comparaison hebdomadaire ────────────────────────────────
+        if (prefs.showWeeklyChart) {
+            WeeklyChartView(
+                currentWeek = uiState.currentWeekSteps,
+                previousWeek = uiState.previousWeekSteps,
+                dayLabels = uiState.weekDayLabels,
+                accentColor = AppColors.colorForId(prefs.ringColorId),
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
