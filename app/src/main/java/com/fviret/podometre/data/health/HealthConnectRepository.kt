@@ -2,12 +2,16 @@ package com.fviret.podometre.data.health
 
 import android.content.Context
 import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.PermissionController
+import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -37,6 +41,23 @@ class HealthConnectRepository @Inject constructor(
     }
 
     /**
+     * Lit les pas par jour pour la plage [from]–[to].
+     * Retourne une map LocalDate → nombre de pas (jours sans données absents de la map).
+     * Requête idempotente : recalcule depuis [from].
+     */
+    suspend fun readStepsByDay(from: Instant, to: Instant): Map<LocalDate, Long> {
+        val request = ReadRecordsRequest(
+            recordType = StepsRecord::class,
+            timeRangeFilter = TimeRangeFilter.between(from, to)
+        )
+        return runCatching {
+            client.readRecords(request).records
+                .groupBy { it.startTime.atZone(ZoneId.systemDefault()).toLocalDate() }
+                .mapValues { (_, records) -> records.sumOf { it.count } }
+        }.getOrDefault(emptyMap())
+    }
+
+    /**
      * Lit la distance totale parcourue (en km) entre [from] et [to].
      * Requête idempotente : recalcule depuis [from], ne jamais incrémenter.
      */
@@ -50,11 +71,26 @@ class HealthConnectRepository @Inject constructor(
         }.getOrDefault(0.0)
     }
 
-    /**
-     * Vérifie si Health Connect est disponible sur cet appareil.
-     * Retourne false sur émulateur ou appareils sans Health Connect installé.
-     */
     /** Retourne true si Health Connect est installé et disponible sur cet appareil. */
     fun isAvailable(): Boolean =
         HealthConnectClient.getSdkStatus(context) == HealthConnectClient.SDK_AVAILABLE
+
+    /**
+     * Vérifie si toutes les permissions de lecture requises (pas, distance) sont accordées.
+     */
+    suspend fun hasAllPermissions(): Boolean =
+        runCatching {
+            client.permissionController.getGrantedPermissions().containsAll(PERMISSIONS)
+        }.getOrDefault(false)
+
+    companion object {
+        /** Permissions de lecture demandées à l'onboarding (KAN-18). */
+        val PERMISSIONS: Set<String> = setOf(
+            HealthPermission.getReadPermission(StepsRecord::class),
+            HealthPermission.getReadPermission(DistanceRecord::class),
+        )
+
+        /** Contrat système pour la demande de permissions Health Connect. */
+        fun requestPermissionsContract() = PermissionController.createRequestPermissionResultContract()
+    }
 }

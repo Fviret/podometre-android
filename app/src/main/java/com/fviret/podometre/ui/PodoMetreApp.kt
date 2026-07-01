@@ -1,5 +1,7 @@
 package com.fviret.podometre.ui
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DirectionsWalk
@@ -14,6 +16,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -23,15 +27,31 @@ import androidx.navigation.compose.rememberNavController
 import com.fviret.podometre.R
 import com.fviret.podometre.ui.activity.ActivityScreen
 import com.fviret.podometre.ui.journey.JourneyListScreen
+import com.fviret.podometre.ui.onboarding.OnboardingScreen
 import com.fviret.podometre.ui.settings.SettingsScreen
 
 /**
  * Racine de l'application Compose.
- * Gère la BottomNavigationBar à 3 onglets et le NavHost principal.
- * Équivalent iOS : TabView dans ContentView.swift
+ * Affiche l'onboarding si [hasCompletedOnboarding] est false,
+ * sinon la BottomNavigationBar à 3 onglets.
+ * Équivalent iOS : ContentView + fullScreenCover OnboardingView.
  */
 @Composable
-fun PodoMetreApp() {
+fun PodoMetreApp(
+    viewModel: MainViewModel = hiltViewModel()
+) {
+    val showOnboarding by viewModel.showOnboarding.collectAsStateWithLifecycle()
+
+    // null = état initial non encore chargé → rien (évite le flash)
+    when (showOnboarding) {
+        null -> Box(modifier = Modifier.fillMaxSize())
+        true -> OnboardingScreen(onComplete = { /* DataStore mis à jour → recomposition auto */ })
+        false -> MainContent()
+    }
+}
+
+@Composable
+private fun MainContent() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination

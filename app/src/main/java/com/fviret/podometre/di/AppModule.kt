@@ -9,6 +9,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import okhttp3.OkHttpClient
 import javax.inject.Singleton
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "user_preferences")
@@ -25,4 +26,9 @@ object AppModule {
     @Singleton
     fun provideDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
         context.dataStore
+
+    /** Fournit le client HTTP partagé pour les appels Open-Meteo et autres APIs. */
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(): OkHttpClient = OkHttpClient.Builder().build()
 }
