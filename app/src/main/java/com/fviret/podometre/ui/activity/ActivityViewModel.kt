@@ -310,22 +310,27 @@ class ActivityViewModel @Inject constructor(
 
     /**
      * Charge l'état météo, les prévisions 7 jours et le nom de ville.
-     * Ne fait rien si la permission de localisation n'est pas accordée.
+     * Sur émulateur : données mock statiques (pas d'appel réseau).
+     * Ne fait rien si la permission de localisation n'est pas accordée (hors émulateur).
      */
     private fun loadWeather() {
-        val hasPermission = ContextCompat.checkSelfPermission(
-            context, Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-
-        if (!hasPermission) return
-
         viewModelScope.launch {
-            val coords = getLastKnownLocation()
-            val (lat, lon) = if (isEmulator() || coords == null) {
-                EMULATOR_LATITUDE to EMULATOR_LONGITUDE
-            } else {
-                coords
+            if (isEmulator()) {
+                _uiState.value = _uiState.value.copy(
+                    weatherState = WeatherState.NO_RAIN,
+                    dailyForecasts = emulatorDailyForecasts(),
+                    cityName = "Paris",
+                )
+                return@launch
             }
+
+            val hasPermission = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!hasPermission) return@launch
+
+            val coords = getLastKnownLocation()
+            val (lat, lon) = coords ?: (EMULATOR_LATITUDE to EMULATOR_LONGITUDE)
 
             val state = weatherRepository.getWeatherState(lat, lon)
             val forecasts = weatherRepository.getDailyForecasts(lat, lon)
@@ -335,6 +340,27 @@ class ActivityViewModel @Inject constructor(
                 weatherState = state,
                 dailyForecasts = forecasts,
                 cityName = city,
+            )
+        }
+    }
+
+    /**
+     * Prévisions météo mock sur 7 jours glissants pour l'émulateur.
+     * Codes WMO variés pour tester tous les emojis et cas de précipitations.
+     */
+    private fun emulatorDailyForecasts(): List<DailyForecast> {
+        val today = java.time.LocalDate.now()
+        val codes  = listOf(0, 1, 3, 61, 80, 2, 95)
+        val maxT   = listOf(24.0, 22.0, 19.0, 17.0, 21.0, 25.0, 23.0)
+        val minT   = listOf(14.0, 13.0, 11.0, 10.0, 12.0, 15.0, 14.0)
+        val precip = listOf(0.0, 0.0, 0.0, 5.2, 1.8, 0.0, 3.0)
+        return List(7) { i ->
+            DailyForecast(
+                date = today.plusDays(i.toLong()),
+                weatherCode = codes[i],
+                tempMaxCelsius = maxT[i],
+                tempMinCelsius = minT[i],
+                precipitationMm = precip[i],
             )
         }
     }
