@@ -39,6 +39,7 @@ class UserPreferencesRepository @Inject constructor(
         val SHOW_WEEKLY_CHART = booleanPreferencesKey("showWeeklyChart")
         val CACHED_STEPS_TODAY = longPreferencesKey("cachedStepsToday")
         val CACHED_STEPS_TODAY_DATE = stringPreferencesKey("cachedStepsTodayDate")
+        val ACTIVE_JOURNEY_ID = stringPreferencesKey("activeJourneyId")
     }
 
     // ── Lecture ─────────────────────────────────────────────────────────────
@@ -62,6 +63,7 @@ class UserPreferencesRepository @Inject constructor(
             showWeeklyChart = prefs[Keys.SHOW_WEEKLY_CHART] ?: true,
             cachedStepsToday = prefs[Keys.CACHED_STEPS_TODAY] ?: 0L,
             cachedStepsTodayDate = prefs[Keys.CACHED_STEPS_TODAY_DATE] ?: "",
+            activeJourneyId = prefs[Keys.ACTIVE_JOURNEY_ID],
         )
     }
 
@@ -133,6 +135,20 @@ class UserPreferencesRepository @Inject constructor(
         dataStore.edit { prefs ->
             prefs[Keys.CACHED_STEPS_TODAY] = steps
             prefs[Keys.CACHED_STEPS_TODAY_DATE] = date
+        }
+    }
+
+    /**
+     * Définit l'UUID du trajet actuellement actif.
+     * Passer null pour indiquer qu'aucun trajet n'est en cours.
+     */
+    suspend fun setActiveJourneyId(journeyId: String?) {
+        dataStore.edit { prefs ->
+            if (journeyId != null) {
+                prefs[Keys.ACTIVE_JOURNEY_ID] = journeyId
+            } else {
+                prefs.remove(Keys.ACTIVE_JOURNEY_ID)
+            }
         }
     }
 }

@@ -21,4 +21,6 @@ data class UserPreferences(
     val cachedStepsToday: Long = 0L,
     /** Date ISO (yyyy-MM-dd) de validité du cache de pas. */
     val cachedStepsTodayDate: String = "",
+    /** UUID du trajet actuellement actif, null si aucun trajet en cours. */
+    val activeJourneyId: String? = null,
 )
