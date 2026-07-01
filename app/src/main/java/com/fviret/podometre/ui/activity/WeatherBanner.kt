@@ -1,6 +1,7 @@
 package com.fviret.podometre.ui.activity
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -59,7 +60,8 @@ fun WeatherBanner(
             .background(color = bgColor, shape = RoundedCornerShape(12.dp))
             .padding(horizontal = 16.dp, vertical = 10.dp)
             .clearAndSetSemantics { contentDescription = label },
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
     ) {
         Icon(
             imageVector = Icons.Filled.WaterDrop,
