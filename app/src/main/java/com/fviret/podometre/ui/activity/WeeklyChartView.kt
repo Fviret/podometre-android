@@ -129,11 +129,6 @@ fun WeeklyChartView(
                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 5f), 0f),
             ),
         )
-        // Points semaine précédente
-        previousWeek.forEachIndexed { idx, v ->
-            drawCircle(color = prevColor, radius = 3.dp.toPx(), center = Offset(xFor(idx), yFor(v)))
-        }
-
         // ── Courbe semaine courante (accent, pleine, 2dp) ─────────────────────
         val currPath = Path()
         var started = false
@@ -148,12 +143,6 @@ fun WeeklyChartView(
             color = accentColor,
             style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
         )
-        // Points semaine courante
-        currentWeek.forEachIndexed { idx, v ->
-            if (v <= 0L) return@forEachIndexed
-            drawCircle(color = accentColor, radius = 4.dp.toPx(), center = Offset(xFor(idx), yFor(v)))
-            drawCircle(color = Color.White, radius = 2.dp.toPx(), center = Offset(xFor(idx), yFor(v)))
-        }
 
         // ── Labels jours en bas ───────────────────────────────────────────────
         val dayPaintNormal = Paint().apply {
@@ -174,6 +163,16 @@ fun WeeklyChartView(
             drawContext.canvas.nativeCanvas.drawText(
                 label, xFor(idx), size.height - 6.dp.toPx(), paint
             )
+        }
+
+        // ── Cercles des points de données — dessinés en dernier (premier plan) ─
+        previousWeek.forEachIndexed { idx, v ->
+            drawCircle(color = prevColor, radius = 3.dp.toPx(), center = Offset(xFor(idx), yFor(v)))
+        }
+        currentWeek.forEachIndexed { idx, v ->
+            if (v <= 0L) return@forEachIndexed
+            drawCircle(color = accentColor, radius = 4.dp.toPx(), center = Offset(xFor(idx), yFor(v)))
+            drawCircle(color = Color.White, radius = 2.dp.toPx(), center = Offset(xFor(idx), yFor(v)))
         }
     }
 }
