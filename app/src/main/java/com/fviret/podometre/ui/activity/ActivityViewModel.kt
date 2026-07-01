@@ -83,6 +83,12 @@ data class ActivityUiState(
     val calendarSteps: Map<LocalDate, Long> = emptyMap(),
     /** Total de pas pour le mois calendrier affiché. */
     val calendarTotal: Long = 0L,
+    /** Pas par jour de la semaine courante (lundi → dimanche, 7 valeurs, 0 = jour futur). */
+    val currentWeekSteps: List<Long> = List(7) { 0L },
+    /** Pas par jour de la semaine précédente (lundi → dimanche, 7 valeurs). */
+    val previousWeekSteps: List<Long> = List(7) { 0L },
+    /** Indice du jour courant dans la semaine (0=lundi … 6=dimanche). */
+    val todayWeekIndex: Int = 0,
 )
 
 /**
@@ -127,6 +133,7 @@ class ActivityViewModel @Inject constructor(
         loadStepsForOffset(0)
         loadWeather()
         loadCalendarMonth(YearMonth.now())
+        loadWeeklyData()
         SyncStepsWorker.schedule(WorkManager.getInstance(context))
     }
 
@@ -138,6 +145,7 @@ class ActivityViewModel @Inject constructor(
     /** Rafraîchit le calendrier au retour en foreground (recharge le mois affiché). */
     fun refreshCalendar() {
         loadCalendarMonth(_uiState.value.calendarMonth)
+        loadWeeklyData()
     }
 
     /** Rafraîchit la météo et les prévisions au retour en foreground. */
@@ -244,6 +252,57 @@ class ActivityViewModel @Inject constructor(
                 calendarSteps = stepsMap,
                 calendarTotal = total,
             )
+        }
+    }
+
+    /**
+     * Charge les pas des 7 jours de la semaine courante et de la semaine précédente.
+     * La semaine commence le lundi. Les jours futurs de la semaine courante valent 0.
+     */
+    private fun loadWeeklyData() {
+        viewModelScope.launch {
+            val today = LocalDate.now()
+            // Lundi de la semaine courante (DayOfWeek.MONDAY = 1)
+            val thisMon = today.minusDays((today.dayOfWeek.value - 1).toLong())
+            val lastMon = thisMon.minusWeeks(1)
+            val todayIdx = today.dayOfWeek.value - 1 // 0=lundi … 6=dimanche
+
+            if (isEmulator()) {
+                // Données mock pour l'émulateur
+                val mockCurrent = List(7) { i ->
+                    if (i > todayIdx) 0L else emulatorStepsForDay(thisMon.plusDays(i.toLong()))
+                }
+                val mockPrev = List(7) { i -> emulatorStepsForDay(lastMon.plusDays(i.toLong())) }
+                _uiState.value = _uiState.value.copy(
+                    currentWeekSteps = mockCurrent,
+                    previousWeekSteps = mockPrev,
+                    todayWeekIndex = todayIdx,
+                )
+            } else {
+                val zone = ZoneId.systemDefault()
+
+                // Semaine courante : lundi 00:00 → maintenant
+                val currFrom = thisMon.atStartOfDay(zone).toInstant()
+                val currTo = Instant.now()
+                val currMap = healthConnectRepository.readStepsByDay(currFrom, currTo)
+
+                // Semaine précédente : lundi 00:00 → dimanche 23:59
+                val prevFrom = lastMon.atStartOfDay(zone).toInstant()
+                val prevTo = thisMon.atStartOfDay(zone).toInstant()
+                val prevMap = healthConnectRepository.readStepsByDay(prevFrom, prevTo)
+
+                val currentWeek = List(7) { i ->
+                    val d = thisMon.plusDays(i.toLong())
+                    if (d.isAfter(today)) 0L else currMap[d] ?: 0L
+                }
+                val previousWeek = List(7) { i -> prevMap[lastMon.plusDays(i.toLong())] ?: 0L }
+
+                _uiState.value = _uiState.value.copy(
+                    currentWeekSteps = currentWeek,
+                    previousWeekSteps = previousWeek,
+                    todayWeekIndex = todayIdx,
+                )
+            }
         }
     }
 

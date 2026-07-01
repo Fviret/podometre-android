@@ -93,6 +93,18 @@ fun ActivityScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
+        // Graphe comparaison hebdomadaire — masquable via toggle Paramètres
+        if (prefs.showWeeklyChart) {
+            WeeklyChartView(
+                currentWeek = uiState.currentWeekSteps,
+                previousWeek = uiState.previousWeekSteps,
+                todayIndex = uiState.todayWeekIndex,
+                accentColor = AppColors.colorForId(prefs.ringColorId),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
         Text(
             text = uiState.selectedDateLabel,
             style = MaterialTheme.typography.titleMedium,
