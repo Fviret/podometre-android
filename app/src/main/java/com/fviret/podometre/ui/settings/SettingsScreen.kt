@@ -101,9 +101,34 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // ── Section : Mon écran principal ─────────────────────────────────────
+        SectionHeader(title = "Mon écran principal")
+
+        ModuleToggleCard {
+            ModuleToggleRow(
+                label = "Météo & prévisions",
+                checked = prefs.showWeatherForecast,
+                onToggle = { viewModel.updateShowWeatherForecast(it) },
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            ModuleToggleRow(
+                label = "Calendrier mensuel",
+                checked = prefs.showMonthCalendar,
+                onToggle = { viewModel.updateShowMonthCalendar(it) },
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            ModuleToggleRow(
+                label = "Graphe hebdomadaire",
+                checked = prefs.showWeeklyChart,
+                onToggle = { viewModel.updateShowWeeklyChart(it) },
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         SectionHeader(title = "Notifications")
-        ComingSoonRow(label = "Notifications de goal", ticket = "KAN-35")
-        ComingSoonRow(label = "Notifications de trajet", ticket = "KAN-36")
+        ComingSoonRow(label = "Notifications de goal", ticket = "KAN-?")
+        ComingSoonRow(label = "Notifications de trajet", ticket = "KAN-?")
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -376,6 +401,51 @@ private fun DarkModeRow(
                 },
             )
         }
+    }
+}
+
+/**
+ * Conteneur Card pour une liste de toggles de modules.
+ * Regroupe les lignes dans une carte arrondie (même style que les autres sections).
+ */
+@Composable
+private fun ModuleToggleCard(content: @Composable () -> Unit) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        content()
+    }
+}
+
+/** Ligne toggle individuelle pour un module de l'écran Activité. */
+@Composable
+private fun ModuleToggleRow(
+    label: String,
+    checked: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(
+            checked = checked,
+            onCheckedChange = onToggle,
+            modifier = Modifier.semantics {
+                contentDescription = "$label : ${if (checked) "activé" else "désactivé"}"
+            },
+        )
     }
 }
 

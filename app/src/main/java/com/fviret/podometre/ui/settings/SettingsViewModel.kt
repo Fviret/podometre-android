@@ -64,4 +64,19 @@ class SettingsViewModel @Inject constructor(
             userPreferencesRepository.setDarkMode(enabled)
         }
     }
+
+    /** Affiche ou masque la bannière météo + prévisions 7 jours sur l'écran Activité. */
+    fun updateShowWeatherForecast(show: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.setShowWeatherForecast(show) }
+    }
+
+    /** Affiche ou masque le calendrier mensuel sur l'écran Activité. */
+    fun updateShowMonthCalendar(show: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.setShowMonthCalendar(show) }
+    }
+
+    /** Affiche ou masque le graphe comparatif hebdomadaire sur l'écran Activité. */
+    fun updateShowWeeklyChart(show: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.setShowWeeklyChart(show) }
+    }
 }
