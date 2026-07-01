@@ -260,11 +260,11 @@ private fun GoalCell(
 /** Noms français des couleurs de l'anneau, dans le même ordre qu'[AppColors.ringColorOptions]. */
 private val ringColorNames: Map<String, String> = mapOf(
     "green"  to "Forêt",
-    "blue"   to "Ciel",
+    "blue"   to "Océan",
     "orange" to "Soleil",
-    "red"    to "Framboise",
-    "purple" to "Lavande",
-    "teal"   to "Menthe",
+    "red"    to "Corail",
+    "purple" to "Violet",
+    "teal"   to "Glace",
 )
 
 /**
