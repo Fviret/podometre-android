@@ -65,6 +65,22 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Active ou désactive les notifications d'objectif journalier.
+     * Appelé après vérification de la permission POST_NOTIFICATIONS dans le Composable.
+     */
+    fun onToggleGoalNotifications(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.setNotificationsEnabled(enabled) }
+    }
+
+    /**
+     * Active ou désactive les notifications de progression des trajets.
+     * Appelé après vérification de la permission POST_NOTIFICATIONS dans le Composable.
+     */
+    fun onToggleJourneyNotifications(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.setJourneyNotificationsEnabled(enabled) }
+    }
+
     /** Affiche ou masque la bannière météo + prévisions 7 jours sur l'écran Activité. */
     fun updateShowWeatherForecast(show: Boolean) {
         viewModelScope.launch { userPreferencesRepository.setShowWeatherForecast(show) }

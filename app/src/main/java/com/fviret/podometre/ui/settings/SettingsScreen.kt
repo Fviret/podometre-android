@@ -46,6 +46,17 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fviret.podometre.ui.theme.AppColors
@@ -127,8 +138,13 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         SectionHeader(title = "Notifications")
-        ComingSoonRow(label = "Notifications de goal", ticket = "KAN-?")
-        ComingSoonRow(label = "Notifications de trajet", ticket = "KAN-?")
+
+        NotificationsCard(
+            notificationsEnabled = prefs.notificationsEnabled,
+            journeyNotificationsEnabled = prefs.journeyNotificationsEnabled,
+            onToggleGoal = { viewModel.onToggleGoalNotifications(it) },
+            onToggleJourney = { viewModel.onToggleJourneyNotifications(it) },
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -401,6 +417,65 @@ private fun DarkModeRow(
                 },
             )
         }
+    }
+}
+
+/**
+ * Section Notifications — deux toggles avec gestion de la permission POST_NOTIFICATIONS.
+ * Si la permission est refusée et que l'utilisateur active un toggle, on ouvre les
+ * paramètres système Android pour qu'il puisse l'accorder manuellement.
+ * Équivalent iOS : Section "Notifications" dans SettingsView.swift.
+ */
+@Composable
+private fun NotificationsCard(
+    notificationsEnabled: Boolean,
+    journeyNotificationsEnabled: Boolean,
+    onToggleGoal: (Boolean) -> Unit,
+    onToggleJourney: (Boolean) -> Unit,
+) {
+    val context = LocalContext.current
+
+    val hasPermission = remember(context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) true
+        else ContextCompat.checkSelfPermission(
+            context, Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (!granted) {
+            // Permission refusée : ouvre les paramètres système
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.fromParts("package", context.packageName, null)
+            }
+            context.startActivity(intent)
+        }
+    }
+
+    fun requestIfNeeded(enable: Boolean, onGranted: (Boolean) -> Unit) {
+        if (!enable) { onGranted(false); return }
+        if (hasPermission) { onGranted(true); return }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            onGranted(true)
+        }
+    }
+
+    ModuleToggleCard {
+        ModuleToggleRow(
+            label = "Objectif journalier",
+            checked = notificationsEnabled,
+            onToggle = { requestIfNeeded(it) { granted -> onToggleGoal(granted) } },
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+        ModuleToggleRow(
+            label = "Progression des trajets",
+            checked = journeyNotificationsEnabled,
+            onToggle = { requestIfNeeded(it) { granted -> onToggleJourney(granted) } },
+        )
     }
 }
 
