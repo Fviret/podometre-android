@@ -30,11 +30,15 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import javax.inject.Inject
 import kotlin.coroutines.resume
+
+/** Nombre de mois en arrière maximum pour la navigation calendrier. */
+private const val MAX_CALENDAR_MONTHS_BACK = 12
 
 /** Pas mockés par décalage en jours (0 = aujourd'hui) pour l'émulateur. */
 private val EMULATOR_STEPS_BY_OFFSET = mapOf(
@@ -46,6 +50,13 @@ private val EMULATOR_STEPS_BY_OFFSET = mapOf(
     -5 to 7_760L,
     -6 to 3_100L,
 )
+
+/** Génère un nombre de pas réaliste pour un jour donné sur émulateur (déterministe par jour). */
+private fun emulatorStepsForDay(date: LocalDate): Long {
+    val seed = date.dayOfMonth + date.monthValue * 31
+    val bases = longArrayOf(3_200, 8_500, 6_700, 11_200, 4_900, 9_800, 7_100, 5_500, 12_000, 2_800)
+    return bases[seed % bases.size]
+}
 
 /** Coordonnées mockées pour l'émulateur (Paris). */
 private const val EMULATOR_LATITUDE = 48.8566
@@ -66,6 +77,12 @@ data class ActivityUiState(
     val selectedDayOffset: Int = 0,
     /** Label affiché au-dessus de l'anneau : "Aujourd'hui" / "Hier" / "Lun. 23 juin". */
     val selectedDateLabel: String = "Aujourd'hui",
+    /** Mois affiché dans le calendrier. */
+    val calendarMonth: YearMonth = YearMonth.now(),
+    /** Pas par jour pour le mois affiché (absents de la map = aucun pas). */
+    val calendarSteps: Map<LocalDate, Long> = emptyMap(),
+    /** Total de pas pour le mois calendrier affiché. */
+    val calendarTotal: Long = 0L,
 )
 
 /**
@@ -109,12 +126,18 @@ class ActivityViewModel @Inject constructor(
         }
         loadStepsForOffset(0)
         loadWeather()
+        loadCalendarMonth(YearMonth.now())
         SyncStepsWorker.schedule(WorkManager.getInstance(context))
     }
 
     /** Rafraîchit les pas au retour en foreground (ON_RESUME). */
     fun refreshSteps() {
         loadStepsForOffset(_uiState.value.selectedDayOffset)
+    }
+
+    /** Rafraîchit le calendrier au retour en foreground (recharge le mois affiché). */
+    fun refreshCalendar() {
+        loadCalendarMonth(_uiState.value.calendarMonth)
     }
 
     /** Rafraîchit la météo et les prévisions au retour en foreground. */
@@ -130,6 +153,38 @@ class ActivityViewModel @Inject constructor(
             selectedDateLabel = labelForOffset(newOffset),
         )
         loadStepsForOffset(newOffset)
+    }
+
+    /** Navigue vers le mois précédent dans le calendrier (limité à [MAX_CALENDAR_MONTHS_BACK]). */
+    fun navigateCalendarPrevious() {
+        val newMonth = _uiState.value.calendarMonth.minusMonths(1)
+        val limit = YearMonth.now().minusMonths(MAX_CALENDAR_MONTHS_BACK.toLong())
+        if (newMonth < limit) return
+        _uiState.value = _uiState.value.copy(calendarMonth = newMonth)
+        loadCalendarMonth(newMonth)
+    }
+
+    /** Navigue vers le mois suivant dans le calendrier (sans dépasser le mois courant). */
+    fun navigateCalendarNext() {
+        val newMonth = _uiState.value.calendarMonth.plusMonths(1)
+        if (newMonth > YearMonth.now()) return
+        _uiState.value = _uiState.value.copy(calendarMonth = newMonth)
+        loadCalendarMonth(newMonth)
+    }
+
+    /**
+     * Appelé quand l'utilisateur tape sur un jour du calendrier.
+     * Navigue l'anneau vers ce jour (offset depuis aujourd'hui).
+     */
+    fun onCalendarDayTap(date: LocalDate) {
+        val today = LocalDate.now()
+        if (date.isAfter(today)) return
+        val offset = (date.toEpochDay() - today.toEpochDay()).toInt()
+        _uiState.value = _uiState.value.copy(
+            selectedDayOffset = offset,
+            selectedDateLabel = labelForOffset(offset),
+        )
+        loadStepsForOffset(offset)
     }
 
     /**
@@ -163,6 +218,32 @@ class ActivityViewModel @Inject constructor(
                 healthConnectRepository.readSteps(from = from, to = to)
             }
             _uiState.value = _uiState.value.copy(stepsToday = steps)
+        }
+    }
+
+    /**
+     * Charge les pas par jour pour le mois [month] depuis Health Connect.
+     * Sur émulateur, génère des données mock réalistes basées sur le jour du mois.
+     */
+    private fun loadCalendarMonth(month: YearMonth) {
+        viewModelScope.launch {
+            val today = LocalDate.now()
+            val stepsMap: Map<LocalDate, Long> = if (isEmulator()) {
+                (1..month.lengthOfMonth())
+                    .map { month.atDay(it) }
+                    .filter { !it.isAfter(today) }
+                    .associateWith { date -> emulatorStepsForDay(date) }
+            } else {
+                val from = month.atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
+                val to = if (month == YearMonth.now()) Instant.now()
+                else month.atEndOfMonth().plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
+                healthConnectRepository.readStepsByDay(from, to)
+            }
+            val total = stepsMap.values.sum()
+            _uiState.value = _uiState.value.copy(
+                calendarSteps = stepsMap,
+                calendarTotal = total,
+            )
         }
     }
 

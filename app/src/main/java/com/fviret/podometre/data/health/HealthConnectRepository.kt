@@ -10,6 +10,8 @@ import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -36,6 +38,23 @@ class HealthConnectRepository @Inject constructor(
         return runCatching {
             client.readRecords(request).records.sumOf { it.count }
         }.getOrDefault(0L)
+    }
+
+    /**
+     * Lit les pas par jour pour la plage [from]–[to].
+     * Retourne une map LocalDate → nombre de pas (jours sans données absents de la map).
+     * Requête idempotente : recalcule depuis [from].
+     */
+    suspend fun readStepsByDay(from: Instant, to: Instant): Map<LocalDate, Long> {
+        val request = ReadRecordsRequest(
+            recordType = StepsRecord::class,
+            timeRangeFilter = TimeRangeFilter.between(from, to)
+        )
+        return runCatching {
+            client.readRecords(request).records
+                .groupBy { it.startTime.atZone(ZoneId.systemDefault()).toLocalDate() }
+                .mapValues { (_, records) -> records.sumOf { it.count } }
+        }.getOrDefault(emptyMap())
     }
 
     /**
