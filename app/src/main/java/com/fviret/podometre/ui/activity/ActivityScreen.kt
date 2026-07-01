@@ -60,12 +60,20 @@ fun ActivityScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(horizontal = 16.dp)
         ) {
-            // Bannière météo — masquée si showWeatherForecast=false ou si état null
+            // Bannière météo + prévisions 7 jours — masquées si showWeatherForecast=false
             if (prefs.showWeatherForecast) {
                 WeatherBanner(
                     state = uiState.weatherState,
                     modifier = Modifier.fillMaxWidth()
                 )
+                if (uiState.dailyForecasts.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    WeeklyForecastBanner(
+                        forecasts = uiState.dailyForecasts,
+                        cityName = uiState.cityName,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
