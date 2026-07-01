@@ -1,16 +1,20 @@
 package com.fviret.podometre.ui.activity
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
 import com.fviret.podometre.data.health.HealthConnectRepository
 import com.fviret.podometre.data.preferences.UserPreferences
 import com.fviret.podometre.data.preferences.UserPreferencesRepository
-import com.fviret.podometre.data.weather.WeatherData
 import com.fviret.podometre.data.weather.WeatherRepository
+import com.fviret.podometre.data.weather.WeatherState
 import com.fviret.podometre.util.isEmulator
 import com.fviret.podometre.worker.SyncStepsWorker
+import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,12 +23,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import javax.inject.Inject
+import kotlin.coroutines.resume
 
 /** Pas mockés par décalage en jours (0 = aujourd'hui) pour l'émulateur. */
 private val EMULATOR_STEPS_BY_OFFSET = mapOf(
@@ -37,6 +43,10 @@ private val EMULATOR_STEPS_BY_OFFSET = mapOf(
     -6 to 3_100L,
 )
 
+/** Coordonnées mockées pour l'émulateur (Paris). */
+private const val EMULATOR_LATITUDE = 48.8566
+private const val EMULATOR_LONGITUDE = 2.3522
+
 /**
  * État de l'écran Activité.
  * Sera enrichi au fil des tickets KAN-19 à KAN-25.
@@ -44,7 +54,7 @@ private val EMULATOR_STEPS_BY_OFFSET = mapOf(
 data class ActivityUiState(
     val stepGoal: Int = 10_000,
     val stepsToday: Long = 0L,
-    val weather: WeatherData? = null,
+    val weatherState: WeatherState? = null,
     val isHealthConnectAvailable: Boolean = false,
     /** Décalage en jours par rapport à aujourd'hui (0 = aujourd'hui, -1 = hier, etc.). */
     val selectedDayOffset: Int = 0,
@@ -77,7 +87,7 @@ class ActivityViewModel @Inject constructor(
         ActivityUiState(isHealthConnectAvailable = healthConnectRepository.isAvailable())
     )
 
-    /** État complet de l'écran — sera enrichi dans KAN-20 à KAN-25. */
+    /** État complet de l'écran. */
     val uiState: StateFlow<ActivityUiState> = _uiState.asStateFlow()
 
     init {
@@ -92,12 +102,18 @@ class ActivityViewModel @Inject constructor(
             }
         }
         loadStepsForOffset(0)
+        loadWeather()
         SyncStepsWorker.schedule(WorkManager.getInstance(context))
     }
 
-    /** Rafraîchit les pas du jour courant sélectionné (appelé depuis ON_RESUME). */
+    /** Rafraîchit les pas et la météo au retour en foreground (ON_RESUME). */
     fun refreshSteps() {
         loadStepsForOffset(_uiState.value.selectedDayOffset)
+    }
+
+    /** Rafraîchit la météo (appelé depuis ON_RESUME si la permission est accordée). */
+    fun refreshWeather() {
+        loadWeather()
     }
 
     /** Navigue vers le jour précédent (décalage - 1). */
@@ -146,6 +162,49 @@ class ActivityViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(stepsToday = steps)
         }
     }
+
+    /**
+     * Charge l'état météo via Open-Meteo en utilisant la dernière position connue.
+     * Ne fait rien si la permission de localisation n'est pas accordée.
+     */
+    private fun loadWeather() {
+        val hasPermission = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!hasPermission) return
+
+        viewModelScope.launch {
+            val coords = getLastKnownLocation()
+            val (lat, lon) = if (isEmulator() || coords == null) {
+                EMULATOR_LATITUDE to EMULATOR_LONGITUDE
+            } else {
+                coords
+            }
+            val state = weatherRepository.getWeatherState(lat, lon)
+            _uiState.value = _uiState.value.copy(weatherState = state)
+        }
+    }
+
+    /**
+     * Récupère la dernière position connue via FusedLocationProviderClient.
+     * Retourne null si indisponible ou si la permission a été révoquée entre-temps.
+     */
+    private suspend fun getLastKnownLocation(): Pair<Double, Double>? =
+        suspendCancellableCoroutine { cont ->
+            try {
+                LocationServices.getFusedLocationProviderClient(context)
+                    .lastLocation
+                    .addOnSuccessListener { location ->
+                        cont.resume(location?.let { it.latitude to it.longitude })
+                    }
+                    .addOnFailureListener {
+                        cont.resume(null)
+                    }
+            } catch (e: SecurityException) {
+                cont.resume(null)
+            }
+        }
 
     companion object {
         /**
