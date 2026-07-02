@@ -146,6 +146,25 @@ main          ← stable, protégé
 
 Les PRs sont ouvertes vers `dev`. `main` n'est mis à jour que depuis `dev` avec `--no-ff`.
 
+### Skill `/feature` — automatisation bout-en-bout
+
+Ce projet utilise un **skill Claude Code personnalisé** défini dans `.claude/commands/feature.md`.
+
+Taper `/feature` (ou `/feature KAN-XX`) déclenche automatiquement la séquence complète :
+
+1. Fetch du ticket Jira (ou sélection automatique du premier "À faire")
+2. Analyse du codebase concerné
+3. Création de la branche `feature/<ticket>-<slug>` depuis `dev`
+4. Implémentation selon les conventions du `CLAUDE.md`
+5. Compilation (`assembleDebug`) + tests unitaires
+6. Commit signé `Co-Authored-By: Claude`
+7. Push + création de la PR GitHub vers `dev`
+8. Transition Jira → "Revue en cours" + commentaire avec lien PR
+
+**Résultat :** un ticket Jira complet en une seule commande, de la lecture des specs jusqu'à la PR ouverte. L'humain garde la main sur la review et le merge.
+
+> Ce skill illustre l'approche *build in public* du projet : l'IA code, l'humain valide.
+
 ---
 
 ## Trajets disponibles (19)

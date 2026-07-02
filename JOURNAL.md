@@ -109,6 +109,43 @@ Colonnes : **Dev** = implémenté par IA | **Testé** = vérifié sur émulateur
 
 ---
 
+## Outillage IA — Skill `/feature`
+
+Une des décisions techniques les plus structurantes du projet n'est pas dans le code Kotlin : c'est la création du skill `/feature` pour Claude Code.
+
+### Contexte
+
+Dès le sprint 3, le rythme dev IA → review humain → merge commençait à montrer une friction : l'IA devait retrouver le bon ticket Jira, créer la bonne branche, respecter les conventions, ouvrir la PR au bon endroit, et transitionner le ticket. Autant d'étapes répétitives et sources d'erreurs de contexte.
+
+### Ce qu'est le skill
+
+Un fichier Markdown dans `.claude/commands/feature.md` qui encode la procédure complète en 11 étapes. Claude Code l'exécute quand on tape `/feature` dans le chat.
+
+```
+/feature          → prend le premier ticket "À faire" dans Jira
+/feature KAN-49   → traite ce ticket précis
+```
+
+La séquence automatisée :
+1. Fetch Jira (description, critères d'acceptation)
+2. Exploration du codebase concerné
+3. Création de branche depuis `dev`
+4. Implémentation + respect des conventions `CLAUDE.md`
+5. `assembleDebug` + `testDebugUnitTest`
+6. Commit signé Co-Authored-By Claude
+7. Push + PR GitHub vers `dev`
+8. Transition Jira → "Revue en cours" + lien PR en commentaire
+
+### Impact observé
+
+À partir du sprint 4, chaque ticket a été livré de bout en bout en une seule invocation `/feature`, sans intervention manuelle entre la demande et la PR ouverte. Sur les sprints 4 à 6 (KAN-26 à KAN-39 + KAN-49), soit **15 tickets**, le skill a été invoqué 15 fois avec 0 oubli de PR ou de transition Jira.
+
+### Limite identifiée
+
+Le tri JQL initial (`ORDER BY priority ASC, created ASC`) a causé un saut de KAN-38 : le ticket avait été touché manuellement, décalant sa date de mise à jour. Détecté et corrigé par le développeur lors d'une vérification manuelle du backlog. La leçon : l'automatisation ne remplace pas la relecture humaine du backlog.
+
+---
+
 ## Notes personnelles
 
 <!-- Zone libre — écris ici tes observations, idées, blocages -->
