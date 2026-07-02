@@ -24,8 +24,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.fviret.podometre.R
 import com.fviret.podometre.ui.activity.ActivityScreen
+import com.fviret.podometre.ui.journey.JourneyDetailScreen
 import com.fviret.podometre.ui.journey.JourneyListScreen
 import com.fviret.podometre.ui.onboarding.OnboardingScreen
 import com.fviret.podometre.ui.settings.SettingsScreen
@@ -121,7 +124,19 @@ private fun MainContent() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(NavRoutes.ACTIVITY) { ActivityScreen() }
-            composable(NavRoutes.JOURNEYS) { JourneyListScreen() }
+            composable(NavRoutes.JOURNEYS) {
+                JourneyListScreen(
+                    onNavigateToDetail = { journeyId ->
+                        navController.navigate(NavRoutes.journeyDetail(journeyId))
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.JOURNEY_DETAIL,
+                arguments = listOf(navArgument("journeyId") { type = NavType.StringType })
+            ) {
+                JourneyDetailScreen(onBack = { navController.popBackStack() })
+            }
             composable(NavRoutes.SETTINGS) { SettingsScreen() }
         }
     }

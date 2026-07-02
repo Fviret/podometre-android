@@ -6,14 +6,17 @@ Portage Android de l'application iOS Podomètre — suivi de pas quotidiens avec
 
 ## Fonctionnalités
 
-- **Anneau de progression** — visualisation circulaire des pas du jour par rapport à l'objectif
+- **Anneau de progression** — visualisation circulaire des pas du jour par rapport à l'objectif (Canvas Compose, dégradé animé)
 - **Météo** — bannière et prévisions 7 jours via Open-Meteo (sans clé API)
-- **Calendrier mensuel** — historique des jours actifs
-- **Graphe hebdomadaire** — comparaison des 2 dernières semaines
-- **Trajets virtuels** — 19 trajets réels (Promenades, Sentiers, Histoire, Mythes & Épopées) progressant avec la distance parcourue
-- **Jalons & badges** — notifications locales à chaque jalon débloqué, badges de complétion
-- **Streak** — série de jours consécutifs actifs (jusqu'à 365 jours)
-- **Paramètres** — objectif de pas (5 000–20 000), couleur de l'anneau, mode sombre, notifications
+- **Calendrier mensuel** — historique des jours actifs avec navigation par mois
+- **Graphe hebdomadaire** — comparaison des 2 dernières semaines en fenêtre glissante
+- **Trajets virtuels** — 19 trajets réels (Promenades, Sentiers, Histoire, Mythes & Épopées) progressant avec la distance parcourue via Health Connect
+- **Catalogue trajets** — cartes par catégorie, feuille de prévisualisation, écran de détail avec timeline auto-scroll
+- **Jalons & notifications** — notifications locales à chaque jalon débloqué et à la complétion d'un trajet
+- **Streak** — série de jours consécutifs où l'objectif a été atteint (jusqu'à 365 jours)
+- **Badges** — grille 3 colonnes : 6 badges de seuils de pas + 19 badges de trajets complétés
+- **Notification objectif** — alerte locale « Objectif atteint ! 🎉 » (max 1 par jour)
+- **Paramètres** — objectif de pas (5 000–20 000), couleur de l'anneau (6 presets), mode sombre, modules de l'écran principal, notifications
 
 ---
 
@@ -45,8 +48,8 @@ Pattern **MVVM** avec Hilt pour l'injection de dépendances.
 app/src/main/java/com/fviret/podometre/
 ├── ui/
 │   ├── activity/        ← Écran Activité (anneau, météo, calendrier, graphe)
-│   ├── journey/         ← Catalogue trajets, preview, détail
-│   ├── settings/        ← Paramètres, badges, streak
+│   ├── journey/         ← Catalogue trajets, preview, détail progression
+│   ├── settings/        ← Paramètres, streak, badges
 │   ├── onboarding/      ← Flux d'onboarding 4 slides
 │   └── theme/           ← MaterialTheme, couleurs, typographie
 ├── data/
@@ -55,10 +58,10 @@ app/src/main/java/com/fviret/podometre/
 │   ├── weather/         ← WeatherRepository (Open-Meteo)
 │   └── preferences/     ← UserPreferencesRepository (DataStore)
 ├── domain/
-│   ├── model/           ← Journey, Milestone, JourneyProgress, Badge
+│   ├── model/           ← Journey, Milestone, JourneyProgress
 │   └── JourneyData.kt   ← Les 19 trajets définis comme constantes
 ├── di/                  ← Modules Hilt (AppModule, HealthConnectModule)
-└── worker/              ← WorkManager workers (sync steps, journey progress)
+└── worker/              ← SyncStepsWorker, SyncJourneyWorker, notifications
 ```
 
 ### Principes clés
@@ -68,6 +71,7 @@ app/src/main/java/com/fviret/podometre/
 - `collectAsStateWithLifecycle()` dans les Composables
 - Health Connect : lecture toujours depuis la source, jamais de stockage local
 - Requêtes HK idempotentes : recalcul depuis `startDate`, jamais d'incrémentation
+- Graphes : Canvas Compose uniquement, aucune bibliothèque tierce
 
 ---
 
@@ -140,16 +144,35 @@ main          ← stable, protégé
 
 Les PRs sont ouvertes vers `dev`. `main` n'est mis à jour que depuis `dev` avec `--no-ff`.
 
+### Skill `/feature` — automatisation bout-en-bout
+
+Ce projet utilise un **skill Claude Code personnalisé** défini dans `.claude/commands/feature.md`.
+
+Taper `/feature` (ou `/feature KAN-XX`) déclenche automatiquement la séquence complète :
+
+1. Fetch du ticket Jira (ou sélection automatique du premier "À faire")
+2. Analyse du codebase concerné
+3. Création de la branche `feature/<ticket>-<slug>` depuis `dev`
+4. Implémentation selon les conventions du `CLAUDE.md`
+5. Compilation (`assembleDebug`) + tests unitaires
+6. Commit signé `Co-Authored-By: Claude`
+7. Push + création de la PR GitHub vers `dev`
+8. Transition Jira → "Revue en cours" + commentaire avec lien PR
+
+**Résultat :** un ticket Jira complet en une seule commande, de la lecture des specs jusqu'à la PR ouverte. L'humain garde la main sur la review et le merge.
+
+> Ce skill illustre l'approche *build in public* du projet : l'IA code, l'humain valide.
+
 ---
 
 ## Trajets disponibles (19)
 
-| Catégorie | Exemples |
+| Catégorie | Trajets |
 |---|---|
-| 🚶 Promenades | Boucle du Lac d'Annecy (35 km), Tour du Mont-Blanc (170 km) |
-| 🏔 Sentiers | GR20 Corse (180 km), Chemin de Stevenson (275 km) |
-| 🏛 Histoire | Route de Napoléon (325 km), Chemin des Dames (40 km) |
-| ⚔️ Mythes & Épopées | Via Francigena (1 900 km), Chemin de Compostelle (800 km) |
+| 🚶 Promenades | Tour des Jardins de Paris (12 km), Bords de Seine (8 km), Promenade des Anglais (7 km), Chemin des Lavandes (15 km) |
+| 🏔 Sentiers | Tour du Mont-Blanc (170 km), GR20 Corse (180 km), Sentier des Douaniers (45 km), Gorges du Verdon (25 km) |
+| 🏛 Histoire | Route des Cathédrales (280 km), Châteaux de la Loire (120 km), Sur les Pas de Napoléon (320 km), Route des Vins d'Alsace (70 km) |
+| ⚔️ Mythes & Épopées | Chemin de Saint-Jacques (750 km), Odyssée d'Ulysse (3 000 km), Quête du Graal (500 km), Travaux d'Hercule (1 200 km), Tour du Monde en 80 Jours (40 000 km), Route de la Soie (8 000 km), Expédition Shackleton (1 300 km) |
 
 La progression est calculée depuis `DistanceRecord` Health Connect à partir de la date de démarrage du trajet — toujours recalculée, jamais incrémentée.
 
@@ -157,16 +180,16 @@ La progression est calculée depuis `DistanceRecord` Health Connect à partir de
 
 ## Roadmap
 
-| Sprint | Épic | Statut |
-|---|---|---|
-| 1 | KAN-4 Fondations & KAN-5 Onboarding | 🔄 En cours |
-| 2 | KAN-6 Écran Activité (US 3.1–3.3) | ⏳ À venir |
-| 3 | KAN-6 Écran Activité (US 3.4–3.7) | ⏳ À venir |
-| 4 | KAN-7 Trajets (US 4.1–4.3) | ⏳ À venir |
-| 5 | KAN-7 Trajets (US 4.4–4.6) | ⏳ À venir |
-| 6 | KAN-8 Paramètres + Badges + Streak | ⏳ À venir |
-| 7 | KAN-9 Catalogue 19 trajets | ⏳ À venir |
-| 8 | KAN-10 Accessibilité + KAN-11 Tests | ⏳ À venir |
+| Sprint | Épic | Tickets | Statut |
+|---|---|---|---|
+| 1 | Fondations | KAN-12 à KAN-15 | ✅ Terminé |
+| 2 | Onboarding | KAN-16 à KAN-18 | ✅ Terminé |
+| 3 | Écran Activité | KAN-19 à KAN-25 | ✅ Terminé |
+| 4 | Système de Trajets (modèle + sync) | KAN-26 à KAN-28 | ✅ Terminé |
+| 5 | Système de Trajets (UI + notifs) | KAN-29 à KAN-31 | ✅ Terminé |
+| 6 | Paramètres + Badges + Streak + Notifs | KAN-32 à KAN-39 | ✅ Terminé |
+| 7 | Catalogue 19 trajets (données complètes) | KAN-40 à KAN-43 | 🔄 En cours |
+| 8 | Accessibilité + Tests | KAN-10, KAN-11 | ⏳ À venir |
 
 Suivi des tickets : [floviret.atlassian.net/jira/software/projects/KAN](https://floviret.atlassian.net/jira/software/projects/KAN)
 

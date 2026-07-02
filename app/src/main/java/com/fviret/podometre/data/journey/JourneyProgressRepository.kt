@@ -1,11 +1,17 @@
 package com.fviret.podometre.data.journey
 
 import android.content.Context
+import com.fviret.podometre.domain.JourneyData
+import com.fviret.podometre.domain.model.Journey
 import com.fviret.podometre.domain.model.JourneyProgress
+import com.fviret.podometre.domain.model.Milestone
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -40,6 +46,17 @@ class JourneyProgressRepository @Inject constructor(
     /** Map journeyId → progression, mise à jour à chaque modification. */
     val progressMap: StateFlow<Map<String, JourneyProgress>> = _progressMap.asStateFlow()
 
+    /** Émis quand un trajet est complété à 100% pour la première fois. Valeur : journeyId. */
+    private val _journeyCompleted = MutableSharedFlow<String>()
+    val journeyCompleted: SharedFlow<String> = _journeyCompleted.asSharedFlow()
+
+    /**
+     * Émis quand un jalon est nouvellement débloqué.
+     * Valeur : Pair(journeyId, milestoneId).
+     */
+    private val _milestoneUnlocked = MutableSharedFlow<Pair<String, String>>()
+    val milestoneUnlocked: SharedFlow<Pair<String, String>> = _milestoneUnlocked.asSharedFlow()
+
     // ── Initialisation ───────────────────────────────────────────────────────
 
     /**
@@ -65,6 +82,60 @@ class JourneyProgressRepository @Inject constructor(
     // ── Écriture ─────────────────────────────────────────────────────────────
 
     /**
+     * Démarre un trajet si pas encore démarré.
+     * Crée une [JourneyProgress] initiale avec la date de départ à maintenant.
+     */
+    suspend fun startJourney(journeyId: String) {
+        if (getProgress(journeyId) != null) return
+        saveProgress(JourneyProgress(journeyId = journeyId))
+    }
+
+    /**
+     * Met à jour la progression d'un trajet depuis une distance [newKm] lue depuis Health Connect.
+     * Requête idempotente : si [newKm] ≤ ancienne distance, rien ne se passe.
+     * Détecte les jalons nouvellement débloqués, émet [milestoneUnlocked] et [journeyCompleted].
+     * Retourne un [JourneySyncResult] pour que l'appelant puisse envoyer des notifications.
+     */
+    suspend fun syncJourney(journey: Journey, newKm: Double): JourneySyncResult {
+        val journeyId = journey.id.toString()
+        val progress = getProgress(journeyId)
+            ?: return JourneySyncResult(emptyList(), false)
+        if (newKm <= progress.totalKm) return JourneySyncResult(emptyList(), false)
+
+        val previousUnlocked = progress.unlockedMilestoneIds
+        val nowUnlocked = journey.milestones
+            .filter { it.km <= newKm }
+            .map { it.id.toString() }
+            .toSet()
+        val newlyUnlockedIds = nowUnlocked - previousUnlocked
+
+        saveProgress(
+            progress.copy(
+                totalKm = newKm,
+                unlockedMilestoneIds = previousUnlocked + nowUnlocked,
+                lastUpdatedMs = System.currentTimeMillis(),
+            )
+        )
+
+        newlyUnlockedIds.forEach { milestoneId ->
+            _milestoneUnlocked.emit(journeyId to milestoneId)
+        }
+
+        val wasAlreadyComplete = journey.milestones.all { it.id.toString() in previousUnlocked }
+        val isNowComplete = newKm >= journey.totalKm
+        val isNewlyCompleted = isNowComplete && !wasAlreadyComplete
+        if (isNewlyCompleted) {
+            _journeyCompleted.emit(journeyId)
+        }
+
+        val newlyUnlockedMilestones = journey.milestones
+            .filter { it.id.toString() in newlyUnlockedIds }
+            .sortedBy { it.km }
+
+        return JourneySyncResult(newlyUnlockedMilestones, isNewlyCompleted)
+    }
+
+    /**
      * Met à jour (ou crée) la progression d'un trajet et persiste la map.
      * Thread-safe grâce au [Mutex].
      */
@@ -77,7 +148,7 @@ class JourneyProgressRepository @Inject constructor(
     }
 
     /**
-     * Supprime la progression d'un trajet (réinitialisation).
+     * Supprime la progression d'un trajet (réinitialisation ou abandon).
      */
     suspend fun deleteProgress(journeyId: String) = withContext(Dispatchers.IO) {
         mutex.withLock {
@@ -85,6 +156,35 @@ class JourneyProgressRepository @Inject constructor(
             persist(updated)
             _progressMap.value = updated
         }
+    }
+
+    /**
+     * Injecte des données mock pour l'émulateur :
+     * - GR20 à 55% de progression (~99 km)
+     * - Berges de la Seine terminées (5 km)
+     */
+    suspend fun injectEmulatorMock() {
+        val gr20 = JourneyData.all.firstOrNull { it.name.contains("GR20") } ?: return
+        val berges = JourneyData.all.firstOrNull { it.name.contains("Berges") } ?: return
+
+        val gr20Km = gr20.totalKm * 0.55
+        val gr20Progress = JourneyProgress(
+            journeyId = gr20.id.toString(),
+            totalKm = gr20Km,
+            unlockedMilestoneIds = gr20.milestones
+                .filter { it.km <= gr20Km }
+                .map { it.id.toString() }
+                .toSet(),
+        )
+        val bergesProgress = JourneyProgress(
+            journeyId = berges.id.toString(),
+            totalKm = berges.totalKm,
+            unlockedMilestoneIds = berges.milestones
+                .map { it.id.toString() }
+                .toSet(),
+        )
+        saveProgress(gr20Progress)
+        saveProgress(bergesProgress)
     }
 
     // ── Persistance ─────────────────────────────────────────────────────────
@@ -103,3 +203,12 @@ class JourneyProgressRepository @Inject constructor(
         private const val FILE_NAME = "journey_progress.json"
     }
 }
+
+/**
+ * Résultat d'une synchronisation de trajet.
+ * Permet à l'appelant ([SyncJourneyWorker]) d'envoyer les notifications appropriées.
+ */
+data class JourneySyncResult(
+    val newlyUnlockedMilestones: List<Milestone>,
+    val isNewlyCompleted: Boolean,
+)
