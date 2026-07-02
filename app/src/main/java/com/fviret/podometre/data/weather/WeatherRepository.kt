@@ -1,5 +1,6 @@
 package com.fviret.podometre.data.weather
 
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -132,7 +133,9 @@ class WeatherRepository @Inject constructor(
             cachedData = WeatherData(temperatureCelsius = 0.0, weatherCode = current.weatherCode)
 
             cachedForecasts = daily.time.mapIndexedNotNull { i, dateStr ->
-                val date = runCatching { LocalDate.parse(dateStr) }.getOrNull() ?: return@mapIndexedNotNull null
+                val date = runCatching { LocalDate.parse(dateStr) }
+                    .onFailure { Log.w(TAG, "Date de prévision invalide : $dateStr", it) }
+                    .getOrNull() ?: return@mapIndexedNotNull null
                 DailyForecast(
                     date = date,
                     weatherCode = daily.weatherCode.getOrElse(i) { 0 },
@@ -143,7 +146,7 @@ class WeatherRepository @Inject constructor(
             }
 
             lastFetchMs = System.currentTimeMillis()
-        }
+        }.onFailure { Log.w(TAG, "Échec de la récupération météo Open-Meteo, cache non mis à jour", it) }
     }
 
     /**
@@ -151,7 +154,9 @@ class WeatherRepository @Inject constructor(
      */
     private fun nextHourCode(currentTime: String, hourly: HourlyWeather): Int? {
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")
-        val current = runCatching { LocalDateTime.parse(currentTime, formatter) }.getOrNull()
+        val current = runCatching { LocalDateTime.parse(currentTime, formatter) }
+            .onFailure { Log.w(TAG, "Heure courante invalide : $currentTime", it) }
+            .getOrNull()
             ?: return null
         val nextHour = current.plusHours(1).format(formatter)
         val idx = hourly.time.indexOf(nextHour)
@@ -168,6 +173,7 @@ class WeatherRepository @Inject constructor(
             "&timezone=auto"
 
     companion object {
+        private const val TAG = "WeatherRepository"
         private const val CACHE_DURATION_MS = 30 * 60 * 1_000L
     }
 }

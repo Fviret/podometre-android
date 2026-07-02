@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Geocoder
+import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -398,10 +399,13 @@ class ActivityViewModel @Inject constructor(
                 val addresses = geocoder.getFromLocation(lat, lon, 1)
                 addresses?.firstOrNull()?.locality
                     ?: addresses?.firstOrNull()?.subAdminArea
-            }.getOrNull()
+            }.onFailure { Log.w(TAG, "getCityName a échoué pour ($lat, $lon)", it) }
+                .getOrNull()
         }
 
     companion object {
+        private const val TAG = "ActivityViewModel"
+
         /**
          * Construit le label de date affiché au-dessus de l'anneau selon le décalage en jours.
          * Exemples : 0 → "Aujourd'hui", -1 → "Hier", -5 → "Lun. 23 juin".

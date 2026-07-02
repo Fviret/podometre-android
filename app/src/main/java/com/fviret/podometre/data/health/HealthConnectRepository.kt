@@ -1,6 +1,7 @@
 package com.fviret.podometre.data.health
 
 import android.content.Context
+import android.util.Log
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
@@ -39,7 +40,8 @@ class HealthConnectRepository @Inject constructor(
         )
         return runCatching {
             client.readRecords(request).records.sumOf { it.count }
-        }.getOrDefault(0L)
+        }.onFailure { Log.w(TAG, "readSteps a échoué, retour à 0", it) }
+            .getOrDefault(0L)
     }
 
     /**
@@ -56,7 +58,8 @@ class HealthConnectRepository @Inject constructor(
             client.readRecords(request).records
                 .groupBy { it.startTime.atZone(ZoneId.systemDefault()).toLocalDate() }
                 .mapValues { (_, records) -> records.sumOf { it.count } }
-        }.getOrDefault(emptyMap())
+        }.onFailure { Log.w(TAG, "readStepsByDay a échoué, retour à une map vide", it) }
+            .getOrDefault(emptyMap())
     }
 
     /**
@@ -70,7 +73,8 @@ class HealthConnectRepository @Inject constructor(
         )
         return runCatching {
             client.readRecords(request).records.sumOf { it.distance.inKilometers }
-        }.getOrDefault(0.0)
+        }.onFailure { Log.w(TAG, "readDistance a échoué, retour à 0.0", it) }
+            .getOrDefault(0.0)
     }
 
     /**
@@ -136,9 +140,11 @@ class HealthConnectRepository @Inject constructor(
     suspend fun hasAllPermissions(): Boolean =
         runCatching {
             client.permissionController.getGrantedPermissions().containsAll(PERMISSIONS)
-        }.getOrDefault(false)
+        }.onFailure { Log.w(TAG, "hasAllPermissions a échoué, retour à false", it) }
+            .getOrDefault(false)
 
     companion object {
+        private const val TAG = "HealthConnectRepository"
         /** Permissions de lecture demandées à l'onboarding (KAN-18). */
         val PERMISSIONS: Set<String> = setOf(
             HealthPermission.getReadPermission(StepsRecord::class),
