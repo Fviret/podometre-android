@@ -74,6 +74,28 @@ class HealthConnectRepository @Inject constructor(
     }
 
     /**
+     * Compte, pour chaque seuil de [thresholds], le nombre de jours dans tout l'historique
+     * Health Connect où le nombre de pas a atteint ou dépassé ce seuil.
+     * Retourne une map seuil → nombre de jours (0 si jamais atteint).
+     * Sur émulateur, retourne des valeurs mock réalistes.
+     * Équivalent iOS : BadgeData.swift countDaysAboveThreshold()
+     */
+    suspend fun readStepBadgeCounts(thresholds: List<Long>): Map<Long, Int> {
+        if (isEmulator()) {
+            return mapOf(5_000L to 45, 10_000L to 12, 20_000L to 3, 30_000L to 0, 50_000L to 0, 100_000L to 0)
+        }
+
+        val zone = ZoneId.systemDefault()
+        val from = LocalDate.of(2020, 1, 1).atStartOfDay(zone).toInstant()
+        val to = ZonedDateTime.now(zone).toInstant()
+
+        val stepsByDay = readStepsByDay(from, to)
+        return thresholds.associateWith { threshold ->
+            stepsByDay.values.count { it >= threshold }
+        }
+    }
+
+    /**
      * Calcule le streak de jours consécutifs où le nombre de pas >= [goalSteps].
      * Remonte depuis aujourd'hui jusqu'à 365 jours en arrière.
      * Aujourd'hui est inclus uniquement si ses pas atteignent l'objectif.
