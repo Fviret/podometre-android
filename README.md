@@ -171,10 +171,10 @@ Taper `/feature` (ou `/feature KAN-XX`) déclenche automatiquement la séquence 
 
 | Catégorie | Trajets |
 |---|---|
-| 🚶 Promenades | Tour des Jardins de Paris (12 km), Bords de Seine (8 km), Promenade des Anglais (7 km), Chemin des Lavandes (15 km) |
-| 🏔 Sentiers | Tour du Mont-Blanc (170 km), GR20 Corse (180 km), Sentier des Douaniers (45 km), Gorges du Verdon (25 km) |
-| 🏛 Histoire | Route des Cathédrales (280 km), Châteaux de la Loire (120 km), Sur les Pas de Napoléon (320 km), Route des Vins d'Alsace (70 km) |
-| ⚔️ Mythes & Épopées | Chemin de Saint-Jacques (750 km), Odyssée d'Ulysse (3 000 km), Quête du Graal (500 km), Travaux d'Hercule (1 200 km), Tour du Monde en 80 Jours (40 000 km), Route de la Soie (8 000 km), Expédition Shackleton (1 300 km) |
+| 🚶 Promenades | Tour des Tuileries (2,5 km), Berges de la Seine (5 km), Boucle de Central Park (10 km), Semi-marathon de Paris (21 km), Marathon de Paris (42 km) |
+| 🏔 Sentiers | GR20 Complet (180 km), Camino Francés tronçon final (111 km), Camino Francés complet (780 km), Via de la Plata (1 000 km), Tour du Mont Blanc (170 km), Via Francigena tronçon final (420 km) |
+| 🏛 Histoire | Route Royale Perse (2 700 km), Alexandre — Campagne Perse (5 000 km), Alexandre — Épopée Complète (35 000 km), Route de la Soie (6 400 km), Marco Polo (12 000 km) |
+| ⚔️ Mythes & Épopées | L'Odyssée — Trajet Réel (900 km), L'Odyssée — Voyage Complet (8 000 km), L'Iliade — Siège de Troie (400 km) |
 
 La progression est calculée depuis `DistanceRecord` Health Connect à partir de la date de démarrage du trajet — toujours recalculée, jamais incrémentée.
 
@@ -190,7 +190,7 @@ La progression est calculée depuis `DistanceRecord` Health Connect à partir de
 | 4 | Système de Trajets (modèle + sync) | KAN-26 à KAN-28 | ✅ Terminé |
 | 5 | Système de Trajets (UI + notifs) | KAN-29 à KAN-31 | ✅ Terminé |
 | 6 | Paramètres + Badges + Streak + Notifs | KAN-32 à KAN-39 | ✅ Terminé |
-| 7 | Catalogue 19 trajets (données complètes) | KAN-40 à KAN-43 | 🔄 En cours |
+| 7 | Catalogue 19 trajets (données complètes) | KAN-40 à KAN-43 | ✅ Terminé |
 | 8 | Accessibilité + Tests | KAN-10, KAN-11 | ⏳ À venir |
 
 Suivi des tickets : [floviret.atlassian.net/jira/software/projects/KAN](https://floviret.atlassian.net/jira/software/projects/KAN)
