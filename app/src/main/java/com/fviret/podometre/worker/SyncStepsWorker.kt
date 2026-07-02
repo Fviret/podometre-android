@@ -49,25 +49,19 @@ class SyncStepsWorker @AssistedInject constructor(
     }
 
     /**
-     * Envoie la notification "Objectif atteint !" si :
-     * - les notifications sont activées
-     * - le nombre de pas atteint l'objectif
-     * - la notification n'a pas encore été envoyée aujourd'hui
+     * Envoie la notification "Objectif atteint !" si [shouldNotifyGoalReached] l'autorise.
      * Met à jour [goalNotifiedDate] dans DataStore après envoi.
      */
     private suspend fun checkAndNotifyGoalReached(steps: Long, today: LocalDate) {
         val prefs = userPreferencesRepository.userPreferences.first()
-        if (!prefs.notificationsEnabled) return
-        if (steps < prefs.dailyStepGoal) return
-
-        val lastNotifiedMs = prefs.goalNotifiedDate
-        val lastNotifiedDay = if (lastNotifiedMs > 0L) {
-            Instant.ofEpochMilli(lastNotifiedMs)
-                .atZone(ZoneId.systemDefault())
-                .toLocalDate()
-        } else null
-
-        if (lastNotifiedDay == today) return
+        val shouldNotify = shouldNotifyGoalReached(
+            steps = steps,
+            dailyStepGoal = prefs.dailyStepGoal,
+            notificationsEnabled = prefs.notificationsEnabled,
+            goalNotifiedDateMs = prefs.goalNotifiedDate,
+            today = today,
+        )
+        if (!shouldNotify) return
 
         goalNotificationService.notifyGoalReached(steps)
         userPreferencesRepository.setGoalNotifiedDate(System.currentTimeMillis())
@@ -90,4 +84,31 @@ class SyncStepsWorker @AssistedInject constructor(
             )
         }
     }
+}
+
+/**
+ * Détermine si la notification "Objectif atteint !" doit être envoyée aujourd'hui.
+ * Fonction pure (aucun effet de bord) extraite de [SyncStepsWorker] pour être testable
+ * indépendamment de WorkManager/Hilt :
+ * - les notifications doivent être activées
+ * - le nombre de pas doit atteindre l'objectif
+ * - la notification ne doit pas avoir déjà été envoyée aujourd'hui
+ */
+fun shouldNotifyGoalReached(
+    steps: Long,
+    dailyStepGoal: Int,
+    notificationsEnabled: Boolean,
+    goalNotifiedDateMs: Long,
+    today: LocalDate,
+    zone: ZoneId = ZoneId.systemDefault(),
+): Boolean {
+    if (!notificationsEnabled) return false
+    if (steps < dailyStepGoal) return false
+
+    val lastNotifiedDay = if (goalNotifiedDateMs > 0L) {
+        Instant.ofEpochMilli(goalNotifiedDateMs).atZone(zone).toLocalDate()
+    } else {
+        null
+    }
+    return lastNotifiedDay != today
 }
