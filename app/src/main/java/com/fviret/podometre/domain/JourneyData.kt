@@ -89,57 +89,90 @@ object JourneyData {
 
             // ── SENTIERS ────────────────────────────────────────────────────
             Journey(
-                id = UUID.fromString("00000000-0000-0000-0000-000000000005"),
-                name = "Tour du Mont-Blanc",
+                id = UUID.fromString("c0000000-0000-0000-0000-000000000001"),
+                name = "GR20 Complet",
+                subtitle = "Calenzana → Conca, la traversée mythique de la Corse",
+                totalKm = 180.0,
+                category = JourneyCategory.TRAIL,
+                emoji = "🏔️",
+                milestones = listOf(
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000001"), 60.0, "Refuge de Ciottulu di i Mori", "Les premières crêtes de Haute-Corse avec vue sur les pozzines, prairies d'altitude parsemées de lacs."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000002"), 120.0, "Vizzavona", "Passage en Corse du Sud, la forêt de pins laricio offre une fraîcheur bienvenue à mi-parcours."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000003"), 180.0, "Conca", "Tu termines le GR20, l'un des sentiers les plus difficiles d'Europe. Un exploit dont tu seras fier toute ta vie."),
+                )
+            ),
+            Journey(
+                id = UUID.fromString("c0000000-0000-0000-0000-000000000002"),
+                name = "Camino Francés — Tronçon final",
+                subtitle = "Sarria → Santiago de Compostela",
+                totalKm = 111.0,
+                category = JourneyCategory.TRAIL,
+                emoji = "⚜️",
+                milestones = listOf(
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000004"), 22.0, "Portomarín", "Traversée du río Miño sur un pont romain. Le village a été déplacé pierre par pierre lors de la construction du barrage."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000005"), 45.0, "Palas de Rei", "Tu entres en plein cœur de la Galice, la terre des pèlerins. Les eucalyptus remplacent les chênes."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000006"), 67.0, "Melide", "Ici convergent plusieurs chemins. Arrête-toi pour manger un pulpo a feira — la pieuvre galicienne est incontournable."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000007"), 90.0, "Pedrouzo", "Dernière étape avant Santiago. Cette nuit, des centaines de pèlerins vibrent à l'unisson."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000008"), 111.0, "Cathédrale de Santiago", "Tu entres dans la Plaza del Obradoiro. La façade baroque s'impose, les bras du Bernin t'accueillent. Buen Camino !"),
+                )
+            ),
+            Journey(
+                id = UUID.fromString("c0000000-0000-0000-0000-000000000003"),
+                name = "Camino Francés Complet",
+                subtitle = "Saint-Jean-Pied-de-Port → Santiago de Compostela",
+                totalKm = 780.0,
+                category = JourneyCategory.TRAIL,
+                emoji = "🐚",
+                milestones = listOf(
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000009"), 25.0, "Col de Roncevaux", "Tu franchis les Pyrénées et entres en Espagne sur les traces de Roland, neveu de Charlemagne."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000010"), 200.0, "Burgos", "La cathédrale gothique de Burgos, chef-d'œuvre du XIIIe siècle, domine la ville et les pèlerins."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000011"), 400.0, "León", "La cathédrale de León et ses 1 800 m² de vitraux médiévaux baignent la nef dans une lumière irréelle."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000012"), 600.0, "O Cebreiro", "Le col qui marque l'entrée en Galice. Brume, granite et petites chapelles romanes t'accueillent."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000013"), 780.0, "Cathédrale de Santiago", "Après 780 km, tu traverses la Plaza del Obradoiro. Le Botafumeiro se balance dans la cathédrale. Tu l'as fait."),
+                )
+            ),
+            Journey(
+                id = UUID.fromString("c0000000-0000-0000-0000-000000000004"),
+                name = "Via de la Plata",
+                subtitle = "Séville → Santiago, le chemin de l'argent",
+                totalKm = 1000.0,
+                category = JourneyCategory.TRAIL,
+                emoji = "🌿",
+                milestones = listOf(
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000014"), 100.0, "Mérida", "L'ancienne capitale romaine avec son théâtre antique et son aqueduc remarquablement conservés depuis le Ier siècle."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000015"), 300.0, "Cáceres", "La vieille ville médiévale classée à l'UNESCO, dont le centre historique est inchangé depuis le XVe siècle."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000016"), 500.0, "Salamanque", "L'université la plus ancienne d'Espagne (fondée en 1218) et sa Plaza Mayor, doyenne des grandes places espagnoles."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000017"), 750.0, "Zamora", "La ville aux 23 églises romanes, le plus grand patrimoine roman du monde concentré en si peu d'espace."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000018"), 1000.0, "Cathédrale de Santiago", "Tu arrives par le Camino le plus solitaire et le plus sauvage. Santiago n'en a que plus de saveur."),
+                )
+            ),
+            Journey(
+                id = UUID.fromString("c0000000-0000-0000-0000-000000000005"),
+                name = "Tour du Mont Blanc",
                 subtitle = "Entre France, Italie et Suisse",
                 totalKm = 170.0,
                 category = JourneyCategory.TRAIL,
                 emoji = "🏔️",
                 milestones = listOf(
-                    Milestone(UUID.fromString("10000000-0000-0000-0000-000000000041"), 25.0, "Les Houches", "Tu quitters Chamonix, le Mont-Blanc (4 808 m) domine l'horizon."),
-                    Milestone(UUID.fromString("10000000-0000-0000-0000-000000000042"), 60.0, "Courmayeur", "Tu passes en Italie ! La Vallée d'Aoste t'accueille avec sa cuisine et ses vins."),
-                    Milestone(UUID.fromString("10000000-0000-0000-0000-000000000043"), 110.0, "Champex-Lac", "Côté suisse, ce lac de montagne offre un reflet parfait des sommets environnants."),
-                    Milestone(UUID.fromString("10000000-0000-0000-0000-000000000044"), 170.0, "Chamonix", "Tu boucles la boucle ! 170 km, 3 pays, un chef-d'œuvre alpin accompli."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000019"), 40.0, "Les Houches", "Tu quittes Chamonix, le Mont-Blanc (4 808 m) domine l'horizon de toute sa majesté."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000020"), 85.0, "Courmayeur", "Tu passes en Italie ! La Vallée d'Aoste t'accueille avec sa cuisine et ses vins généreux."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000021"), 130.0, "Champex-Lac", "Côté suisse, ce lac de montagne offre un reflet parfait des sommets environnants."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000022"), 170.0, "Chamonix", "Tu boucles la boucle ! 170 km, 3 pays, 10 000 m de dénivelé positif. Un chef-d'œuvre alpin accompli."),
                 )
             ),
             Journey(
-                id = UUID.fromString("00000000-0000-0000-0000-000000000006"),
-                name = "GR20 — Corse",
-                subtitle = "La traversée mythique de l'île",
-                totalKm = 180.0,
+                id = UUID.fromString("c0000000-0000-0000-0000-000000000006"),
+                name = "Via Francigena — Tronçon final",
+                subtitle = "Lucques → Rome, sur les traces des pèlerins médiévaux",
+                totalKm = 420.0,
                 category = JourneyCategory.TRAIL,
-                emoji = "🌿",
+                emoji = "🕊️",
                 milestones = listOf(
-                    Milestone(UUID.fromString("10000000-0000-0000-0000-000000000051"), 30.0, "Refuge de Ciottulu", "Les premières crêtes de Haute-Corse, avec vue sur les pozzines, prairies d'altitude."),
-                    Milestone(UUID.fromString("10000000-0000-0000-0000-000000000052"), 90.0, "Vizzavona", "Passage en Corse du Sud, la forêt de pins laricio offre une fraîcheur bienvenue."),
-                    Milestone(UUID.fromString("10000000-0000-0000-0000-000000000053"), 140.0, "Monte Incudine", "Le plus haut sommet du sud, à 2 134 m, panorama à 360° sur toute l'île."),
-                    Milestone(UUID.fromString("10000000-0000-0000-0000-000000000054"), 180.0, "Conca", "Tu termines le GR20, l'un des sentiers les plus difficiles d'Europe. Bravo !"),
-                )
-            ),
-            Journey(
-                id = UUID.fromString("00000000-0000-0000-0000-000000000007"),
-                name = "Sentier des Douaniers",
-                subtitle = "Bretagne, entre falaises et mer",
-                totalKm = 45.0,
-                category = JourneyCategory.TRAIL,
-                emoji = "🌊",
-                milestones = listOf(
-                    Milestone(UUID.fromString("10000000-0000-0000-0000-000000000061"), 10.0, "Cap Fréhel", "Ces falaises de grès rose dominant la mer à 70 m sont un spectacle saisissant."),
-                    Milestone(UUID.fromString("10000000-0000-0000-0000-000000000062"), 25.0, "Fort La Latte", "Ce château médiéval suspendu au-dessus de la mer semble sorti d'un conte."),
-                    Milestone(UUID.fromString("10000000-0000-0000-0000-000000000063"), 45.0, "Saint-Malo", "Tu arrives dans la cité corsaire, ses remparts te surplombent depuis la mer."),
-                )
-            ),
-            Journey(
-                id = UUID.fromString("00000000-0000-0000-0000-000000000008"),
-                name = "Gorges du Verdon",
-                subtitle = "Le Grand Canyon européen",
-                totalKm = 25.0,
-                category = JourneyCategory.TRAIL,
-                emoji = "🏞️",
-                milestones = listOf(
-                    Milestone(UUID.fromString("10000000-0000-0000-0000-000000000071"), 6.0, "Belvédère de Mayreste", "Première vue plongeante sur le canyon aux eaux émeraude."),
-                    Milestone(UUID.fromString("10000000-0000-0000-0000-000000000072"), 14.0, "Sentier Martel", "Tu plonges dans les entrailles des gorges sur ce sentier mythique."),
-                    Milestone(UUID.fromString("10000000-0000-0000-0000-000000000073"), 25.0, "Lac de Sainte-Croix", "Le lac artificiel aux eaux turquoise clôture cette aventure provençale."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000023"), 80.0, "Sienne", "La place del Campo, l'une des plus belles d'Europe, avec sa tour del Mangia qui défie le ciel toscan."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000024"), 160.0, "Bolsena", "Le lac volcanique de Bolsena, ses eaux translucides et ses îles médiévales marquent l'entrée dans le Latium."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000025"), 250.0, "Viterbo", "La cité des papes au XIIIe siècle, avec son quartier médiéval parfaitement conservé de San Pellegrino."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000026"), 350.0, "Sutri", "L'amphithéâtre romain creusé dans le tuf volcanique est l'un des secrets les mieux gardés du Latium."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000027"), 420.0, "Saint-Pierre de Rome", "Tu arrives place Saint-Pierre, la colonnade du Bernin t'embrasse. La Via Francigena s'achève ici."),
                 )
             ),
 
