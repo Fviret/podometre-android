@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -662,7 +663,7 @@ private fun StepBadgeCell(
             .aspectRatio(1f)
             .alpha(if (isUnlocked) 1f else 0.35f)
             .clickable(enabled = isUnlocked, onClickLabel = a11y, onClick = onClick)
-            .semantics { contentDescription = a11y },
+            .clearAndSetSemantics { contentDescription = a11y },
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -722,7 +723,7 @@ private fun JourneyBadgeCell(
         modifier = modifier
             .aspectRatio(1f)
             .alpha(if (isUnlocked) 1f else 0.35f)
-            .semantics { contentDescription = a11y },
+            .clearAndSetSemantics { contentDescription = a11y },
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -762,7 +763,7 @@ private fun StreakBanner(streakDays: Int) {
         ),
         modifier = Modifier
             .fillMaxWidth()
-            .semantics { contentDescription = "Série de $streakDays jours consécutifs" },
+            .clearAndSetSemantics { contentDescription = "Série de $streakDays jours consécutifs" },
     ) {
         Column(
             modifier = Modifier

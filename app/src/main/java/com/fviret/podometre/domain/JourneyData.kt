@@ -258,49 +258,49 @@ object JourneyData {
 
             // ── MYTHES & ÉPOPÉES ────────────────────────────────────────────
             Journey(
-                id = UUID.fromString("g0000000-0000-0000-0000-000000000001"),
+                id = UUID.fromString("10000000-0000-0000-0000-000000000001"),
                 name = "L'Odyssée — Trajet Réel",
                 subtitle = "Troie → Ithaque, la route reconstituée",
                 totalKm = 900.0,
                 category = JourneyCategory.MYTH,
                 emoji = "🌊",
                 milestones = listOf(
-                    Milestone(UUID.fromString("h0000000-0000-0000-0000-000000000001"), 100.0, "Ismaros", "Ulysse saccage la ville des Kikoniens. Premier arrêt, premier désastre : leurs alliés arrivent et massacrent ses hommes."),
-                    Milestone(UUID.fromString("h0000000-0000-0000-0000-000000000002"), 250.0, "Détroit des Dardanelles", "Tu traverses le détroit là où Troie veillait sur le passage entre deux mondes depuis des siècles."),
-                    Milestone(UUID.fromString("h0000000-0000-0000-0000-000000000003"), 450.0, "Cap Malée", "Le cap le plus redouté des marins grecs. Une tempête ici envoie Ulysse bien au-delà de sa route prévue."),
-                    Milestone(UUID.fromString("h0000000-0000-0000-0000-000000000004"), 600.0, "Mer Ionienne", "Tu navigues dans les eaux qui séparent la Grèce de l'Italie, où Charybde et Scylla guettent les imprudents."),
-                    Milestone(UUID.fromString("h0000000-0000-0000-0000-000000000005"), 750.0, "Corfou (Phéaciens)", "Les Phéaciens t'accueillent. Nausicaa trouve Ulysse sur la plage. Le retour est enfin possible."),
-                    Milestone(UUID.fromString("h0000000-0000-0000-0000-000000000006"), 900.0, "Ithaque", "Ulysse rentre incognito après 20 ans d'absence. Il bande son arc, perce les anneaux. Pénélope est libre."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000001"), 100.0, "Ismaros", "Ulysse saccage la ville des Kikoniens. Premier arrêt, premier désastre : leurs alliés arrivent et massacrent ses hommes."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000002"), 250.0, "Détroit des Dardanelles", "Tu traverses le détroit là où Troie veillait sur le passage entre deux mondes depuis des siècles."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000003"), 450.0, "Cap Malée", "Le cap le plus redouté des marins grecs. Une tempête ici envoie Ulysse bien au-delà de sa route prévue."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000004"), 600.0, "Mer Ionienne", "Tu navigues dans les eaux qui séparent la Grèce de l'Italie, où Charybde et Scylla guettent les imprudents."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000005"), 750.0, "Corfou (Phéaciens)", "Les Phéaciens t'accueillent. Nausicaa trouve Ulysse sur la plage. Le retour est enfin possible."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000006"), 900.0, "Ithaque", "Ulysse rentre incognito après 20 ans d'absence. Il bande son arc, perce les anneaux. Pénélope est libre."),
                 )
             ),
             Journey(
-                id = UUID.fromString("g0000000-0000-0000-0000-000000000002"),
+                id = UUID.fromString("10000000-0000-0000-0000-000000000002"),
                 name = "L'Odyssée — Voyage Complet",
                 subtitle = "L'errance mythique d'Ulysse à travers la Méditerranée",
                 totalKm = 8000.0,
                 category = JourneyCategory.MYTH,
                 emoji = "🔱",
                 milestones = listOf(
-                    Milestone(UUID.fromString("h0000000-0000-0000-0000-000000000007"), 500.0, "Île des Lotophages", "Un peuple qui mange le lotus et oublie tout désir de rentrer. Ulysse doit traîner ses hommes de force."),
-                    Milestone(UUID.fromString("h0000000-0000-0000-0000-000000000008"), 1200.0, "Île des Cyclopes", "Tu échappes à Polyphème grâce à la ruse d'Ulysse : « Personne » — c'est mon nom !"),
-                    Milestone(UUID.fromString("h0000000-0000-0000-0000-000000000009"), 2000.0, "Île d'Éole", "Le dieu des vents offre une outre renfermant tous les vents contraires. Les marins l'ouvrent. Désastre."),
-                    Milestone(UUID.fromString("h0000000-0000-0000-0000-000000000010"), 3000.0, "Île de Circé", "La magicienne transforme les compagnons en porcs. Ulysse résiste grâce à l'herbe moly d'Hermès."),
-                    Milestone(UUID.fromString("h0000000-0000-0000-0000-000000000011"), 4000.0, "Les Enfers", "Ulysse convoque les morts pour consulter Tirésias. Il y revoit Achille, Ajax, et sa propre mère."),
-                    Milestone(UUID.fromString("h0000000-0000-0000-0000-000000000012"), 5500.0, "Charybde et Scylla", "Tu navigues entre le gouffre tourbillonnant et le monstre à six têtes. La mer tremble de colère."),
-                    Milestone(UUID.fromString("h0000000-0000-0000-0000-000000000013"), 6500.0, "Île de Calypso", "La nymphe retient Ulysse 7 ans. Même l'immortalité ne peut effacer le mal du pays."),
-                    Milestone(UUID.fromString("h0000000-0000-0000-0000-000000000014"), 8000.0, "Ithaque", "Après 10 ans d'errance et 20 ans d'absence, Ulysse retrouve Pénélope et Télémaque. L'Odyssée s'achève."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000007"), 500.0, "Île des Lotophages", "Un peuple qui mange le lotus et oublie tout désir de rentrer. Ulysse doit traîner ses hommes de force."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000008"), 1200.0, "Île des Cyclopes", "Tu échappes à Polyphème grâce à la ruse d'Ulysse : « Personne » — c'est mon nom !"),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000009"), 2000.0, "Île d'Éole", "Le dieu des vents offre une outre renfermant tous les vents contraires. Les marins l'ouvrent. Désastre."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000010"), 3000.0, "Île de Circé", "La magicienne transforme les compagnons en porcs. Ulysse résiste grâce à l'herbe moly d'Hermès."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000011"), 4000.0, "Les Enfers", "Ulysse convoque les morts pour consulter Tirésias. Il y revoit Achille, Ajax, et sa propre mère."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000012"), 5500.0, "Charybde et Scylla", "Tu navigues entre le gouffre tourbillonnant et le monstre à six têtes. La mer tremble de colère."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000013"), 6500.0, "Île de Calypso", "La nymphe retient Ulysse 7 ans. Même l'immortalité ne peut effacer le mal du pays."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000014"), 8000.0, "Ithaque", "Après 10 ans d'errance et 20 ans d'absence, Ulysse retrouve Pénélope et Télémaque. L'Odyssée s'achève."),
                 )
             ),
             Journey(
-                id = UUID.fromString("g0000000-0000-0000-0000-000000000003"),
+                id = UUID.fromString("10000000-0000-0000-0000-000000000003"),
                 name = "L'Iliade — Siège de Troie",
                 subtitle = "Mycènes → Troie, la guerre qui façonna l'Occident",
                 totalKm = 400.0,
                 category = JourneyCategory.MYTH,
                 emoji = "🐴",
                 milestones = listOf(
-                    Milestone(UUID.fromString("h0000000-0000-0000-0000-000000000015"), 100.0, "Aulis", "La flotte grecque de mille navires se rassemble ici. Agamemnon sacrifie Iphigénie pour que les vents soufflent."),
-                    Milestone(UUID.fromString("h0000000-0000-0000-0000-000000000016"), 400.0, "Troie (Ilion)", "Dix ans de siège, la colère d'Achille, la mort d'Hector, le cheval de bois. La cité brûle. La légende commence."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000015"), 100.0, "Aulis", "La flotte grecque de mille navires se rassemble ici. Agamemnon sacrifie Iphigénie pour que les vents soufflent."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000016"), 400.0, "Troie (Ilion)", "Dix ans de siège, la colère d'Achille, la mort d'Hector, le cheval de bois. La cité brûle. La légende commence."),
                 )
             ),
         )

@@ -39,6 +39,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.invisibleToUser
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -159,6 +163,7 @@ fun JourneyListScreen(
  * Affiche l'emoji, nom, sous-titre, distance, nombre d'étapes,
  * et une barre de progression si le trajet est en cours.
  */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun JourneyCard(
     journey: Journey,
@@ -191,7 +196,11 @@ private fun JourneyCard(
                         .background(MaterialTheme.colorScheme.surface),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = journey.emoji, style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        text = journey.emoji,
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.semantics { invisibleToUser() },
+                    )
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -250,7 +259,10 @@ private fun JourneyCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp)),
+                        .clip(RoundedCornerShape(2.dp))
+                        .semantics {
+                            contentDescription = "Progression : ${(progressPercent * 100).toInt()} %"
+                        },
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -296,7 +308,7 @@ private fun MetaBadge(text: String) {
  * Header + badges métadonnées + timeline verticale des jalons (scrollable) + bouton fixe en bas.
  * Équivalent iOS : JourneyPreviewSheet.swift
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 private fun JourneyPreviewSheet(
     journey: Journey,
@@ -326,7 +338,11 @@ private fun JourneyPreviewSheet(
             ) {
                 // Header
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = journey.emoji, style = MaterialTheme.typography.displaySmall)
+                    Text(
+                        text = journey.emoji,
+                        style = MaterialTheme.typography.displaySmall,
+                        modifier = Modifier.semantics { invisibleToUser() },
+                    )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
@@ -410,6 +426,7 @@ private fun JourneyPreviewSheet(
  * connecteur vertical vers le jalon suivant si [showConnector],
  * nom + distance depuis le départ + description complète.
  */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun MilestoneRow(
     number: Int,
@@ -439,6 +456,7 @@ private fun MilestoneRow(
                     fontWeight = FontWeight.Bold,
                     color = if (isUnlocked) MaterialTheme.colorScheme.onPrimary
                     else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.semantics { invisibleToUser() },
                 )
             }
             if (showConnector) {
