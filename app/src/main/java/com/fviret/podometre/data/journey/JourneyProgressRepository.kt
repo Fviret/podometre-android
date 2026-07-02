@@ -4,6 +4,7 @@ import android.content.Context
 import com.fviret.podometre.domain.JourneyData
 import com.fviret.podometre.domain.model.Journey
 import com.fviret.podometre.domain.model.JourneyProgress
+import com.fviret.podometre.domain.model.Milestone
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -92,20 +93,21 @@ class JourneyProgressRepository @Inject constructor(
     /**
      * Met à jour la progression d'un trajet depuis une distance [newKm] lue depuis Health Connect.
      * Requête idempotente : si [newKm] ≤ ancienne distance, rien ne se passe.
-     * Détecte les jalons nouvellement débloqués et émet [milestoneUnlocked].
-     * Si le trajet est complété pour la première fois, émet [journeyCompleted].
+     * Détecte les jalons nouvellement débloqués, émet [milestoneUnlocked] et [journeyCompleted].
+     * Retourne un [JourneySyncResult] pour que l'appelant puisse envoyer des notifications.
      */
-    suspend fun syncJourney(journey: Journey, newKm: Double) {
+    suspend fun syncJourney(journey: Journey, newKm: Double): JourneySyncResult {
         val journeyId = journey.id.toString()
-        val progress = getProgress(journeyId) ?: return
-        if (newKm <= progress.totalKm) return
+        val progress = getProgress(journeyId)
+            ?: return JourneySyncResult(emptyList(), false)
+        if (newKm <= progress.totalKm) return JourneySyncResult(emptyList(), false)
 
         val previousUnlocked = progress.unlockedMilestoneIds
         val nowUnlocked = journey.milestones
             .filter { it.km <= newKm }
             .map { it.id.toString() }
             .toSet()
-        val newlyUnlocked = nowUnlocked - previousUnlocked
+        val newlyUnlockedIds = nowUnlocked - previousUnlocked
 
         saveProgress(
             progress.copy(
@@ -115,15 +117,22 @@ class JourneyProgressRepository @Inject constructor(
             )
         )
 
-        newlyUnlocked.forEach { milestoneId ->
+        newlyUnlockedIds.forEach { milestoneId ->
             _milestoneUnlocked.emit(journeyId to milestoneId)
         }
 
         val wasAlreadyComplete = journey.milestones.all { it.id.toString() in previousUnlocked }
         val isNowComplete = newKm >= journey.totalKm
-        if (isNowComplete && !wasAlreadyComplete) {
+        val isNewlyCompleted = isNowComplete && !wasAlreadyComplete
+        if (isNewlyCompleted) {
             _journeyCompleted.emit(journeyId)
         }
+
+        val newlyUnlockedMilestones = journey.milestones
+            .filter { it.id.toString() in newlyUnlockedIds }
+            .sortedBy { it.km }
+
+        return JourneySyncResult(newlyUnlockedMilestones, isNewlyCompleted)
     }
 
     /**
@@ -194,3 +203,12 @@ class JourneyProgressRepository @Inject constructor(
         private const val FILE_NAME = "journey_progress.json"
     }
 }
+
+/**
+ * Résultat d'une synchronisation de trajet.
+ * Permet à l'appelant ([SyncJourneyWorker]) d'envoyer les notifications appropriées.
+ */
+data class JourneySyncResult(
+    val newlyUnlockedMilestones: List<Milestone>,
+    val isNewlyCompleted: Boolean,
+)
