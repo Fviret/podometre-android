@@ -145,10 +145,12 @@ fun JourneyListScreen(
         if (showAbandonDialog && hasActiveOther) {
             AbandonJourneyDialog(
                 onConfirm = {
-                    viewModel.switchJourney(
-                        abandonId = activeJourneyId!!,
-                        newJourneyId = journey.id.toString()
-                    )
+                    activeJourneyId?.let { abandonId ->
+                        viewModel.switchJourney(
+                            abandonId = abandonId,
+                            newJourneyId = journey.id.toString()
+                        )
+                    }
                     showAbandonDialog = false
                     selectedJourney = null
                 },
@@ -264,7 +266,7 @@ private fun JourneyCard(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "${(progressPercent * 100).toInt()}% — ${formatKm(progress!!.totalKm)} parcourus",
+                    text = "${(progressPercent * 100).toInt()}% — ${formatKm(progress?.totalKm ?: 0.0)} parcourus",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
