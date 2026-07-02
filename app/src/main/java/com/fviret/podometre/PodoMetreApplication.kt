@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import androidx.work.WorkManager
+import com.fviret.podometre.worker.GoalNotificationService
 import com.fviret.podometre.worker.JourneyNotificationService
 import com.fviret.podometre.worker.SyncJourneyWorker
 import com.fviret.podometre.worker.SyncStepsWorker
@@ -27,6 +28,7 @@ class PodoMetreApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        GoalNotificationService.createNotificationChannel(this)
         JourneyNotificationService.createNotificationChannel(this)
         val workManager = WorkManager.getInstance(this)
         SyncStepsWorker.schedule(workManager)

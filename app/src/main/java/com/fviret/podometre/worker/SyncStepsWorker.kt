@@ -12,6 +12,7 @@ import com.fviret.podometre.data.preferences.UserPreferencesRepository
 import com.fviret.podometre.util.isEmulator
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.flow.first
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -30,6 +31,7 @@ class SyncStepsWorker @AssistedInject constructor(
     @Assisted workerParams: WorkerParameters,
     private val healthConnectRepository: HealthConnectRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
+    private val goalNotificationService: GoalNotificationService,
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -42,7 +44,33 @@ class SyncStepsWorker @AssistedInject constructor(
             healthConnectRepository.readSteps(from = startOfDay, to = Instant.now())
         }
         userPreferencesRepository.updateCachedSteps(steps, todayStr)
+        checkAndNotifyGoalReached(steps, today)
         return Result.success()
+    }
+
+    /**
+     * Envoie la notification "Objectif atteint !" si :
+     * - les notifications sont activées
+     * - le nombre de pas atteint l'objectif
+     * - la notification n'a pas encore été envoyée aujourd'hui
+     * Met à jour [goalNotifiedDate] dans DataStore après envoi.
+     */
+    private suspend fun checkAndNotifyGoalReached(steps: Long, today: LocalDate) {
+        val prefs = userPreferencesRepository.userPreferences.first()
+        if (!prefs.notificationsEnabled) return
+        if (steps < prefs.dailyStepGoal) return
+
+        val lastNotifiedMs = prefs.goalNotifiedDate
+        val lastNotifiedDay = if (lastNotifiedMs > 0L) {
+            Instant.ofEpochMilli(lastNotifiedMs)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
+        } else null
+
+        if (lastNotifiedDay == today) return
+
+        goalNotificationService.notifyGoalReached(steps)
+        userPreferencesRepository.setGoalNotifiedDate(System.currentTimeMillis())
     }
 
     companion object {
