@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -14,8 +15,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -283,9 +286,9 @@ private fun MetaBadge(text: String) {
 }
 
 /**
- * Feuille de prévisualisation d'un trajet (BottomSheet).
- * Affiche le header, les badges de métadonnées et le bouton de démarrage.
- * Sera enrichi dans KAN-29 avec la timeline complète des jalons.
+ * Feuille de prévisualisation complète d'un trajet (BottomSheet).
+ * Header + badges métadonnées + timeline verticale des jalons (scrollable) + bouton fixe en bas.
+ * Équivalent iOS : JourneyPreviewSheet.swift
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -298,103 +301,175 @@ private fun JourneyPreviewSheet(
     onStart: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState()
+    val scrollState = rememberScrollState()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        modifier = Modifier.fillMaxHeight(0.9f),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp)
-        ) {
-            // Header
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = journey.emoji, style = MaterialTheme.typography.displaySmall)
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = journey.name,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = journey.subtitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+        Column(modifier = Modifier.fillMaxSize()) {
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Badges métadonnées
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MetaBadge(text = formatKm(journey.totalKm))
-                MetaBadge(text = "${journey.milestones.size} étapes")
-                MetaBadge(text = journey.category.displayName)
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Jalons (liste simplifiée — timeline complète dans KAN-29)
-            journey.milestones.forEachIndexed { index, milestone ->
-                val isUnlocked = progress?.unlockedMilestoneIds?.contains(milestone.id.toString()) == true
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(vertical = 6.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (isUnlocked) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surfaceVariant
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (isUnlocked) "✓" else "${index + 1}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (isUnlocked) MaterialTheme.colorScheme.onPrimary
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+            // ── Contenu scrollable ───────────────────────────────────────────
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 24.dp)
+                    .padding(top = 8.dp, bottom = 16.dp)
+            ) {
+                // Header
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = journey.emoji, style = MaterialTheme.typography.displaySmall)
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = milestone.label,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
+                            text = journey.name,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "${formatKm(milestone.km)} depuis le départ",
-                            style = MaterialTheme.typography.bodySmall,
+                            text = journey.subtitle,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Badges métadonnées
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MetaBadge(text = formatKm(journey.totalKm))
+                    MetaBadge(text = "${journey.milestones.size} étapes")
+                    MetaBadge(text = journey.category.displayName)
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = "ÉTAPES DU TRAJET",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Timeline verticale des jalons
+                val sortedMilestones = journey.milestones.sortedBy { it.km }
+                sortedMilestones.forEachIndexed { index, milestone ->
+                    val isUnlocked = progress?.unlockedMilestoneIds
+                        ?.contains(milestone.id.toString()) == true
+                    val isLast = index == sortedMilestones.lastIndex
+
+                    MilestoneRow(
+                        number = index + 1,
+                        label = milestone.label,
+                        distanceKm = milestone.km,
+                        description = milestone.description,
+                        isUnlocked = isUnlocked,
+                        showConnector = !isLast,
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            // ── Bouton fixe en bas ───────────────────────────────────────────
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 16.dp)
+            ) {
+                Button(
+                    onClick = onStart,
+                    enabled = !isActive && !isCompleted,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = when {
+                            isCompleted -> "Trajet terminé ✓"
+                            isActive -> "Trajet en cours"
+                            else -> "Commencer le trajet"
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
 
-            // Bouton d'action
-            Button(
-                onClick = onStart,
-                enabled = !isActive && !isCompleted,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+/**
+ * Ligne de timeline pour un jalon :
+ * cercle numéroté (plein = débloqué, vide = verrouillé),
+ * connecteur vertical vers le jalon suivant si [showConnector],
+ * nom + distance depuis le départ + description complète.
+ */
+@Composable
+private fun MilestoneRow(
+    number: Int,
+    label: String,
+    distanceKm: Double,
+    description: String,
+    isUnlocked: Boolean,
+    showConnector: Boolean,
+) {
+    val circleColor = if (isUnlocked) MaterialTheme.colorScheme.primary
+    else MaterialTheme.colorScheme.surfaceVariant
+    val connectorColor = MaterialTheme.colorScheme.outlineVariant
+
+    Row(modifier = Modifier.fillMaxWidth()) {
+        // Colonne gauche : cercle + connecteur
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(circleColor),
+                contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = when {
-                        isCompleted -> "Trajet terminé ✓"
-                        isActive -> "Trajet en cours"
-                        else -> "Commencer le trajet"
-                    }
+                    text = if (isUnlocked) "✓" else "$number",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isUnlocked) MaterialTheme.colorScheme.onPrimary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            if (showConnector) {
+                Box(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .height(64.dp)
+                        .background(connectorColor)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        // Colonne droite : textes
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(bottom = if (showConnector) 0.dp else 0.dp)
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "${formatKm(distanceKm)} depuis le départ",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(if (showConnector) 32.dp else 8.dp))
         }
     }
 }
