@@ -14,18 +14,18 @@ import dagger.hilt.android.AndroidEntryPoint
 /**
  * Activité principale et unique de l'application.
  * Délègue tout le contenu à [PodoMetreApp] via Jetpack Compose.
- * Observe [MainViewModel.isDarkMode] pour appliquer le thème immédiatement.
+ * Observe [ThemeViewModel.isDarkMode] pour appliquer le thème immédiatement.
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    private val mainViewModel: MainViewModel by viewModels()
+    private val themeViewModel: ThemeViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val isDarkMode by mainViewModel.isDarkMode.collectAsStateWithLifecycle()
+            val isDarkMode by themeViewModel.isDarkMode.collectAsStateWithLifecycle()
             PodoMetreTheme(darkTheme = isDarkMode) {
                 PodoMetreApp()
             }

@@ -15,7 +15,7 @@ import javax.inject.Inject
  * Collecté dans [MainActivity] avant le premier recomposition du thème.
  */
 @HiltViewModel
-class MainViewModel @Inject constructor(
+class ThemeViewModel @Inject constructor(
     userPreferencesRepository: UserPreferencesRepository,
 ) : ViewModel() {
 

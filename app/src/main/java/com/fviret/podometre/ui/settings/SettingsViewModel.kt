@@ -109,7 +109,7 @@ class SettingsViewModel @Inject constructor(
 
     /**
      * Bascule le mode sombre / clair et le persiste dans DataStore.
-     * La valeur est propagée immédiatement via [MainViewModel] au thème racine.
+     * La valeur est propagée immédiatement via [com.fviret.podometre.ThemeViewModel] au thème racine.
      */
     fun updateDarkMode(enabled: Boolean) {
         viewModelScope.launch {
