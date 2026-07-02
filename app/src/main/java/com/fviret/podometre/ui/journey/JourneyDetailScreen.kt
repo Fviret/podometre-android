@@ -48,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fviret.podometre.domain.model.Journey
 import com.fviret.podometre.domain.model.JourneyProgress
 import com.fviret.podometre.domain.model.Milestone
+import com.fviret.podometre.domain.model.formatKm
 import com.fviret.podometre.domain.model.nextMilestone
 import com.fviret.podometre.domain.model.progressPercent
 
@@ -423,5 +424,3 @@ private fun MilestoneUnlockedSheet(
     }
 }
 
-private fun formatKm(km: Double): String =
-    if (km == km.toLong().toDouble()) "${km.toLong()} km" else "${"%.1f".format(km)} km"

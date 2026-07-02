@@ -52,6 +52,7 @@ import com.fviret.podometre.domain.JourneyData
 import com.fviret.podometre.domain.model.Journey
 import com.fviret.podometre.domain.model.JourneyCategory
 import com.fviret.podometre.domain.model.JourneyProgress
+import com.fviret.podometre.domain.model.formatKm
 import com.fviret.podometre.domain.model.progressPercent
 
 /**
@@ -520,6 +521,3 @@ private fun AbandonJourneyDialog(
 }
 
 /** Formate une distance en km avec 1 décimale si non entière, sinon sans. */
-private fun formatKm(km: Double): String {
-    return if (km == km.toLong().toDouble()) "${km.toLong()} km" else "${"%.1f".format(km)} km"
-}
