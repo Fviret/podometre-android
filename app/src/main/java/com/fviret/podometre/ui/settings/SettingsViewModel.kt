@@ -3,21 +3,29 @@ package com.fviret.podometre.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fviret.podometre.data.health.HealthConnectRepository
+import com.fviret.podometre.data.journey.JourneyProgressRepository
 import com.fviret.podometre.data.preferences.UserPreferences
 import com.fviret.podometre.data.preferences.UserPreferencesRepository
+import com.fviret.podometre.domain.JourneyData
 import com.fviret.podometre.ui.theme.AppColors
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /** Valeurs autorisées pour l'objectif quotidien de pas (5 000 à 20 000 par pas de 500). */
 val STEP_GOAL_OPTIONS: List<Int> = (5_000..20_000 step 500).toList()
+
+/** Seuils de pas pour les 6 badges de performance. */
+val STEP_BADGE_THRESHOLDS: List<Long> = listOf(5_000L, 10_000L, 20_000L, 30_000L, 50_000L, 100_000L)
 
 /**
  * ViewModel de l'écran Paramètres.
@@ -28,6 +36,7 @@ val STEP_GOAL_OPTIONS: List<Int> = (5_000..20_000 step 500).toList()
 class SettingsViewModel @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
     private val healthConnectRepository: HealthConnectRepository,
+    private val journeyProgressRepository: JourneyProgressRepository,
 ) : ViewModel() {
 
     /** Préférences utilisateur en lecture seule pour les Composables. */
@@ -39,10 +48,32 @@ class SettingsViewModel @Inject constructor(
         )
 
     /**
-     * Nombre de jours consécutifs où l'objectif a été atteint.
-     * Recalculé dès que l'objectif change. Vaut 0 tant que non calculé.
-     * Masqué dans l'UI si streak == 0.
+     * Nombre de jours par seuil de pas dans tout l'historique Health Connect.
+     * Chargé une seule fois au démarrage du ViewModel.
+     * Map seuil (Long) → nombre de jours (Int).
      */
+    val stepBadgeCounts: StateFlow<Map<Long, Int>> = MutableStateFlow<Map<Long, Int>>(emptyMap()).also { flow ->
+        viewModelScope.launch {
+            flow.value = healthConnectRepository.readStepBadgeCounts(STEP_BADGE_THRESHOLDS)
+        }
+    }.asStateFlow()
+
+    /**
+     * IDs des trajets entièrement complétés (totalKm >= Journey.totalKm).
+     * Déterminé en croisant [JourneyProgressRepository.progressMap] avec [JourneyData.all].
+     */
+    val completedJourneyIds: StateFlow<Set<String>> = journeyProgressRepository.progressMap
+        .map { map ->
+            map.entries
+                .filter { (journeyId, progress) ->
+                    val journey = JourneyData.findById(journeyId) ?: return@filter false
+                    progress.totalKm >= journey.totalKm
+                }
+                .map { it.key }
+                .toSet()
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val streak: StateFlow<Int> = userPreferences
         .flatMapLatest { prefs ->

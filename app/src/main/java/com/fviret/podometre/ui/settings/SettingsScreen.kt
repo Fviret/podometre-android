@@ -57,10 +57,20 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.fviret.podometre.domain.JourneyData
 import com.fviret.podometre.ui.theme.AppColors
-import androidx.compose.ui.text.style.TextAlign
 
 /**
  * Écran Paramètres — section US-5.1 : objectif quotidien de pas.
@@ -73,6 +83,8 @@ fun SettingsScreen(
 ) {
     val prefs by viewModel.userPreferences.collectAsStateWithLifecycle()
     val streak by viewModel.streak.collectAsStateWithLifecycle()
+    val stepBadgeCounts by viewModel.stepBadgeCounts.collectAsStateWithLifecycle()
+    val completedJourneyIds by viewModel.completedJourneyIds.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier
@@ -155,7 +167,10 @@ fun SettingsScreen(
             StreakBanner(streakDays = streak)
             Spacer(modifier = Modifier.height(8.dp))
         }
-        ComingSoonRow(label = "Badges", ticket = "KAN-38")
+        BadgesSection(
+            stepBadgeCounts = stepBadgeCounts,
+            completedJourneyIds = completedJourneyIds,
+        )
     }
 }
 
@@ -526,6 +541,210 @@ private fun ModuleToggleRow(
                 contentDescription = "$label : ${if (checked) "activé" else "désactivé"}"
             },
         )
+    }
+}
+
+/**
+ * Section "Badges" — grille 3 colonnes avec badges de seuils de pas et badges de trajets.
+ * Badges déverrouillés : fond coloré. Badges verrouillés : gris, opacité 35%.
+ * Équivalent iOS : BadgeGridView.swift
+ */
+@Composable
+private fun BadgesSection(
+    stepBadgeCounts: Map<Long, Int>,
+    completedJourneyIds: Set<String>,
+) {
+    var dialogBadge by remember { mutableStateOf<Pair<String, Int>?>(null) }
+
+    Column {
+        // ── Badges de seuils de pas ───────────────────────────────────────────
+        val columns = 3
+        val thresholds = STEP_BADGE_THRESHOLDS
+        val rows = (thresholds.size + columns - 1) / columns
+        for (row in 0 until rows) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                for (col in 0 until columns) {
+                    val index = row * columns + col
+                    if (index < thresholds.size) {
+                        val threshold = thresholds[index]
+                        val count = stepBadgeCounts[threshold] ?: 0
+                        StepBadgeCell(
+                            threshold = threshold,
+                            count = count,
+                            onClick = { if (count > 0) dialogBadge = formatThreshold(threshold) to count },
+                            modifier = Modifier.weight(1f),
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+            if (row < rows - 1) Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 16.dp),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+        )
+
+        // ── Badges de trajets ─────────────────────────────────────────────────
+        val journeys = JourneyData.all
+        val journeyRows = (journeys.size + columns - 1) / columns
+        for (row in 0 until journeyRows) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                for (col in 0 until columns) {
+                    val index = row * columns + col
+                    if (index < journeys.size) {
+                        val journey = journeys[index]
+                        val isUnlocked = journey.id.toString() in completedJourneyIds
+                        JourneyBadgeCell(
+                            emoji = journey.emoji,
+                            name = journey.name,
+                            isUnlocked = isUnlocked,
+                            modifier = Modifier.weight(1f),
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+            if (row < journeyRows - 1) Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+
+    dialogBadge?.let { (label, count) ->
+        AlertDialog(
+            onDismissRequest = { dialogBadge = null },
+            title = { Text("$label pas") },
+            text = { Text("Vous avez réussi ce défi $count fois !") },
+            confirmButton = {
+                TextButton(onClick = { dialogBadge = null }) { Text("Super !") }
+            },
+        )
+    }
+}
+
+/** Formate un seuil de pas en libellé lisible (ex. 5000 → "5 000", 10000 → "10 000"). */
+private fun formatThreshold(threshold: Long): String =
+    "%,d".format(threshold).replace(',', ' ')
+
+/**
+ * Cellule de badge pour un seuil de pas.
+ * Déverrouillé (count > 0) : fond coloré + chiffre accent.
+ * Verrouillé : fond gris, opacité 35%.
+ */
+@Composable
+private fun StepBadgeCell(
+    threshold: Long,
+    count: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val label = formatThreshold(threshold)
+    val isUnlocked = count > 0
+    val a11y = if (isUnlocked) "$label pas — débloqué ($count fois)" else "$label pas — verrouillé"
+
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isUnlocked)
+                MaterialTheme.colorScheme.primaryContainer
+            else
+                MaterialTheme.colorScheme.surfaceVariant,
+        ),
+        modifier = modifier
+            .aspectRatio(1f)
+            .alpha(if (isUnlocked) 1f else 0.35f)
+            .clickable(enabled = isUnlocked, onClickLabel = a11y, onClick = onClick)
+            .semantics { contentDescription = a11y },
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (isUnlocked)
+                    MaterialTheme.colorScheme.primary
+                else
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = "pas",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            if (isUnlocked) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "×$count",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Cellule de badge pour un trajet.
+ * Déverrouillé : couleurs normales. Verrouillé : filtre grayscale + opacité 35%.
+ */
+@Composable
+private fun JourneyBadgeCell(
+    emoji: String,
+    name: String,
+    isUnlocked: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val a11y = if (isUnlocked) "$name — débloqué" else "$name — verrouillé"
+
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isUnlocked)
+                MaterialTheme.colorScheme.secondaryContainer
+            else
+                MaterialTheme.colorScheme.surfaceVariant,
+        ),
+        modifier = modifier
+            .aspectRatio(1f)
+            .alpha(if (isUnlocked) 1f else 0.35f)
+            .semantics { contentDescription = a11y },
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                text = emoji,
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = name,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
+        }
     }
 }
 
