@@ -1,6 +1,7 @@
 package com.fviret.podometre.data.journey
 
 import android.content.Context
+import android.util.Log
 import com.fviret.podometre.domain.JourneyData
 import com.fviret.podometre.domain.model.Journey
 import com.fviret.podometre.domain.model.JourneyProgress
@@ -70,7 +71,7 @@ class JourneyProgressRepository @Inject constructor(
                     val map: Map<String, JourneyProgress> = json.decodeFromString(file.readText())
                     _progressMap.value = map
                 }
-            }
+            }.onFailure { Log.w(TAG, "Échec du chargement de $FILE_NAME, progression conservée en mémoire", it) }
         }
     }
 
@@ -200,6 +201,7 @@ class JourneyProgressRepository @Inject constructor(
     }
 
     companion object {
+        private const val TAG = "JourneyProgressRepository"
         private const val FILE_NAME = "journey_progress.json"
     }
 }
