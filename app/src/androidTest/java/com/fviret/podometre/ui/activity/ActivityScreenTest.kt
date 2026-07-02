@@ -97,14 +97,21 @@ class ActivityScreenTest {
         composeTestRule
             .onNodeWithContentDescription(context.getString(R.string.activity_chevron_prev_desc))
             .performClick()
-        composeTestRule.waitForIdle()
+        // waitForIdle() synchronise la recomposition/mesure/layout de Compose, mais pas
+        // nécessairement la fin de la coroutine viewModelScope.launch déclenchée par le clic
+        // (observé flaky sur émulateur CI, jamais en local) — on attend explicitement l'état
+        // applicatif réel plutôt que de supposer qu'il est déjà à jour après waitForIdle().
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            viewModel.uiState.value.selectedDayOffset == -1
+        }
 
         composeTestRule
             .onNodeWithContentDescription(context.getString(R.string.activity_chevron_next_desc))
             .performClick()
-        composeTestRule.waitForIdle()
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            viewModel.uiState.value.selectedDayOffset == 0
+        }
 
-        assertEquals(0, viewModel.uiState.value.selectedDayOffset)
         composeTestRule.onNodeWithText("Aujourd'hui").assertIsDisplayed()
     }
 }
