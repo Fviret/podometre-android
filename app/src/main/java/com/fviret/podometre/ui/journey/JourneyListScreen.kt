@@ -57,6 +57,7 @@ import com.fviret.podometre.domain.model.progressPercent
  */
 @Composable
 fun JourneyListScreen(
+    onNavigateToDetail: (String) -> Unit = {},
     viewModel: JourneyListViewModel = hiltViewModel()
 ) {
     val progressMap by viewModel.progressMap.collectAsStateWithLifecycle()
@@ -96,11 +97,15 @@ fun JourneyListScreen(
             items(journeys, key = { it.id.toString() }) { journey ->
                 val progress = progressMap[journey.id.toString()]
                 val isCompleted = journey.id.toString() in preferences.completedJourneyIds
+                val isInProgress = progress != null && !isCompleted
                 JourneyCard(
                     journey = journey,
                     progress = progress,
                     isCompleted = isCompleted,
                     onPreview = { selectedJourney = journey },
+                    onDetail = if (isInProgress) {
+                        { onNavigateToDetail(journey.id.toString()) }
+                    } else null,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                 )
             }
@@ -160,6 +165,7 @@ private fun JourneyCard(
     progress: JourneyProgress?,
     isCompleted: Boolean,
     onPreview: () -> Unit,
+    onDetail: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val progressPercent = if (progress != null) journey.progressPercent(progress).toFloat() else 0f
@@ -257,7 +263,7 @@ private fun JourneyCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             Button(
-                onClick = onPreview,
+                onClick = if (isInProgress && onDetail != null) onDetail else onPreview,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp)
             ) {
