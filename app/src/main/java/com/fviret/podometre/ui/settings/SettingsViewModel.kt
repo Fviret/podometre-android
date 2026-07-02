@@ -2,12 +2,16 @@ package com.fviret.podometre.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.fviret.podometre.data.health.HealthConnectRepository
 import com.fviret.podometre.data.preferences.UserPreferences
 import com.fviret.podometre.data.preferences.UserPreferencesRepository
 import com.fviret.podometre.ui.theme.AppColors
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -23,6 +27,7 @@ val STEP_GOAL_OPTIONS: List<Int> = (5_000..20_000 step 500).toList()
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
+    private val healthConnectRepository: HealthConnectRepository,
 ) : ViewModel() {
 
     /** Préférences utilisateur en lecture seule pour les Composables. */
@@ -31,6 +36,22 @@ class SettingsViewModel @Inject constructor(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = UserPreferences(),
+        )
+
+    /**
+     * Nombre de jours consécutifs où l'objectif a été atteint.
+     * Recalculé dès que l'objectif change. Vaut 0 tant que non calculé.
+     * Masqué dans l'UI si streak == 0.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val streak: StateFlow<Int> = userPreferences
+        .flatMapLatest { prefs ->
+            flow { emit(healthConnectRepository.computeStreak(prefs.dailyStepGoal.toLong())) }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = 0,
         )
 
     /**

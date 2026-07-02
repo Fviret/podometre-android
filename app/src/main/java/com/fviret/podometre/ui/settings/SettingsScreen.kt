@@ -60,6 +60,7 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fviret.podometre.ui.theme.AppColors
+import androidx.compose.ui.text.style.TextAlign
 
 /**
  * Écran Paramètres — section US-5.1 : objectif quotidien de pas.
@@ -71,6 +72,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val prefs by viewModel.userPreferences.collectAsStateWithLifecycle()
+    val streak by viewModel.streak.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier
@@ -149,7 +151,10 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         SectionHeader(title = "Progression")
-        ComingSoonRow(label = "Série de jours (streak)", ticket = "KAN-36")
+        if (streak > 0) {
+            StreakBanner(streakDays = streak)
+            Spacer(modifier = Modifier.height(8.dp))
+        }
         ComingSoonRow(label = "Badges", ticket = "KAN-38")
     }
 }
@@ -521,6 +526,51 @@ private fun ModuleToggleRow(
                 contentDescription = "$label : ${if (checked) "activé" else "désactivé"}"
             },
         )
+    }
+}
+
+/**
+ * Bannière streak — affiche 🔥 + nombre de jours consécutifs en grand.
+ * Masquée si streak == 0 (vérification côté appelant).
+ * Équivalent iOS : StreakBannerView.swift
+ */
+@Composable
+private fun StreakBanner(streakDays: Int) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = "Série de $streakDays jours consécutifs" },
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 20.dp, horizontal = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = "🔥",
+                style = MaterialTheme.typography.displayMedium,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "$streakDays",
+                style = MaterialTheme.typography.displayLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = if (streakDays == 1) "jour consécutif" else "jours consécutifs",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 
