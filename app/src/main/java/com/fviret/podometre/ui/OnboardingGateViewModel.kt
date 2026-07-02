@@ -14,7 +14,7 @@ import javax.inject.Inject
  * Détermine si l'onboarding doit être affiché au démarrage.
  */
 @HiltViewModel
-class MainViewModel @Inject constructor(
+class OnboardingGateViewModel @Inject constructor(
     userPreferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
