@@ -117,5 +117,9 @@ dependencies {
     // Tests UI
     androidTestImplementation(composeBom)
     androidTestImplementation(libs.compose.ui.test)
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.espresso.core)
     debugImplementation(libs.compose.ui.test.manifest)
 }

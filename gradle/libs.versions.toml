@@ -16,6 +16,9 @@ okhttp = "4.12.0"
 lifecycleRuntimeCompose = "2.8.6"
 activityCompose = "1.9.2"
 coreKtx = "1.13.1"
+androidxTestExtJunit = "1.2.1"
+androidxTestRunner = "1.6.2"
+espresso = "3.6.1"
 
 [libraries]
 # Compose BOM
@@ -76,6 +79,9 @@ mockk = { group = "io.mockk", name = "mockk", version = "1.13.12" }
 coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 compose-ui-test = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExtJunit" }
+androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
+espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
