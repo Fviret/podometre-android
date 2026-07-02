@@ -36,7 +36,7 @@ Projet personnel développé en public (*build in public*) à des fins de portfo
 | Réseau | OkHttp (Open-Meteo) |
 | Background | WorkManager |
 | Localisation | FusedLocationProviderClient |
-| Tests | JUnit 5 + MockK + Coroutines Test |
+| Tests | JUnit 5 + MockK + Coroutines Test (unitaires) · Compose Testing + Espresso (intégration UI) |
 
 **Minimum SDK :** Android 8.0 (API 26) — Health Connect requiert Android 9+ (API 28)  
 **Target SDK :** API 35
@@ -127,12 +127,18 @@ cd podometre-android
 
 GitHub Actions — `.github/workflows/ci.yml`
 
-Déclenché sur chaque push vers `main` / `dev` et chaque PR vers `dev` :
+Déclenché sur chaque push vers `main` / `dev` et chaque PR vers `dev`, en deux jobs :
 
+**`build`**
 1. **Lint** — `./gradlew lint`
 2. **Tests unitaires** — `./gradlew testDebugUnitTest`
 3. **Build** — `./gradlew assembleDebug`
 4. **Upload APK** — artifact `debug-apk`
+
+**`instrumented-tests`** (dépend de `build`)
+1. Émulateur headless (`reactivecircus/android-emulator-runner`, API 33, KVM activé sur `ubuntu-latest`)
+2. **Tests d'intégration UI** — `./gradlew connectedDebugAndroidTest`
+3. **Upload du rapport de test** — artifact `instrumented-test-report`
 
 ---
 
@@ -193,7 +199,7 @@ La progression est calculée depuis `DistanceRecord` Health Connect à partir de
 | 6 | Paramètres + Badges + Streak + Notifs | KAN-32 à KAN-39 | ✅ Terminé |
 | 7 | Catalogue 19 trajets (données complètes) | KAN-40 à KAN-43 | ✅ Terminé |
 | 8 | Accessibilité (TalkBack + Dynamic Type) | KAN-44, KAN-45 | ✅ Terminé |
-| 9 | Tests unitaires et d'intégration UI | KAN-46, KAN-47 | ⏳ À venir |
+| 9 | Tests unitaires et d'intégration UI + audit qualité | KAN-46, KAN-47, KAN-51 à KAN-58 | ✅ Terminé |
 
 Suivi des tickets : [floviret.atlassian.net/jira/software/projects/KAN](https://floviret.atlassian.net/jira/software/projects/KAN)
 
