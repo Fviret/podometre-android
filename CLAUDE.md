@@ -113,6 +113,9 @@ app/src/main/java/com/fviret/podometre/
 | `showWeatherForecast` | Boolean | true |
 | `showMonthCalendar` | Boolean | true |
 | `showWeeklyChart` | Boolean | true |
+| `cachedStepsToday` | Long | 0 |
+| `cachedStepsTodayDate` | String (date ISO yyyy-MM-dd) | "" (vide) |
+| `activeJourneyId` | String? (UUID) | null |
 
 Ne pas créer de nouvelles clés sans les ajouter ici.
 
