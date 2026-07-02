@@ -96,14 +96,34 @@ Colonnes : **Dev** = implémenté par IA | **Testé** = vérifié sur émulateur
 
 ---
 
+## Sprint 7 — Catalogue des 19 trajets (données complètes) (2026-07-02)
+
+| Ticket | US | Description | Dev | Testé |
+|--------|----|-------------|-----|-------|
+| KAN-40 | US-6.1 | 5 trajets Promenades avec jalons complets (2,5 km → 42 km) | ✅ | ⬜ |
+| KAN-41 | US-6.2 | 6 trajets Sentiers avec jalons complets (111 km → 1 000 km) | ✅ | ⬜ |
+| KAN-42 | US-6.3 | 5 trajets Histoire avec jalons complets (2 700 km → 35 000 km) | ✅ | ⬜ |
+| KAN-43 | US-6.4 | 3 trajets Mythes & Épopées avec jalons complets (400 km → 8 000 km) | ✅ | ⬜ |
+
+### Structure finale des 19 trajets
+
+| Catégorie | Nb | Amplitude | Stratégie UUID |
+|---|---|---|---|
+| 🚶 Promenades | 5 | 2,5 km → 42 km | `a0000000-...` / `b0000000-...` |
+| 🏔 Sentiers | 6 | 111 km → 1 000 km | `c0000000-...` / `d0000000-...` |
+| 🏛 Histoire | 5 | 2 700 km → 35 000 km | `e0000000-...` / `f0000000-...` |
+| ⚔️ Mythes & Épopées | 3 | 400 km → 8 000 km | `g0000000-...` / `h0000000-...` |
+
+### Décision technique — Namespaces UUID par catégorie
+
+Les 4 tickets du sprint 7 remplacent chacun une section de `JourneyData.kt`. Pour éviter tout conflit d'UUID pendant la transition (l'ancien TRAIL commençait à l'ID `00000000-...000005`, écrasé par le 5e WALK en KAN-40), chaque catégorie a reçu son propre préfixe UUID. Cette stratégie permet de merger les 4 PRs dans n'importe quel ordre sans jamais avoir de doublon dans la liste.
+
+---
+
 ## À venir
 
 | Ticket | US | Description |
 |--------|----|-------------|
-| KAN-40 | US-6.1 | Données trajets Promenades (5 trajets avec jalons complets) |
-| KAN-41 | US-6.2 | Données trajets Sentiers (6 trajets avec jalons complets) |
-| KAN-42 | US-6.3 | Données trajets Histoire (5 trajets avec jalons complets) |
-| KAN-43 | US-6.4 | Données trajets Mythes & Épopées (3 trajets avec jalons complets) |
 | KAN-10 | — | Accessibilité complète (TalkBack, contentDescription, roles) |
 | KAN-11 | — | Tests unitaires et instrumentés |
 
