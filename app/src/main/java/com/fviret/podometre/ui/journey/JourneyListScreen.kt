@@ -215,8 +215,6 @@ private fun JourneyCard(
                             text = journey.name,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f)
                         )
                         if (isCompleted) {

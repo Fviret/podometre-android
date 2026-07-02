@@ -32,7 +32,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -226,7 +225,7 @@ private fun CalendarDayCell(
         }
         Text(
             text = day.toString(),
-            fontSize = 10.sp,
+            style = MaterialTheme.typography.labelSmall,
             color = textColor,
             fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
             textAlign = TextAlign.Center,
