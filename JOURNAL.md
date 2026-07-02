@@ -82,6 +82,18 @@ Colonnes : **Dev** = implémenté par IA | **Testé** = vérifié sur émulateur
 | KAN-38 | US-5.7 | Grille de badges de pas (6 seuils) et de trajets (19) dans les Paramètres | ✅ | ⬜ |
 | KAN-39 | US-5.8 | Notification "Objectif atteint ! 🎉" (max 1/jour, via SyncStepsWorker) | ✅ | ⬜ |
 
+### Incidents & aller-retours sprint 6
+
+**KAN-31 — Notification des jalons :** premier jet avec `?attr/colorControlNormal` comme tint dans le drawable XML — AAPT a refusé (ressource d'attribut non résolue à la compilation). Corrigé en passant à `android:fillColor="#FFFFFF"` directement sur le path. Leçon : les attributs de thème ne sont pas résolubles dans les drawables vectoriels via AAPT, uniquement via le rendu Compose/View.
+
+**KAN-29 — ModalBottomSheet :** `rememberModalBottomSheetState(skipPartialExpansion = true)` ne compile pas dans la version Material3 utilisée (paramètre inexistant). Corrigé en appelant `rememberModalBottomSheetState()` sans argument.
+
+**KAN-37 — Streak :** `flatMapLatest` est annoté `@ExperimentalCoroutinesApi` — warning à la compilation. Résolu avec `@OptIn(ExperimentalCoroutinesApi::class)` sur la propriété. Import `asStateFlow` également oublié au premier jet pour les badges (KAN-38), corrigé immédiatement.
+
+**KAN-38 — Ordre des tickets :** le ticket KAN-38 a été sauté lors d'une invocation `/feature` parce que la requête Jira traitait `priority ASC, created ASC` et KAN-38 avait été touché manuellement, décalant sa date de mise à jour. Détecté et corrigé par le développeur. La requête utilisera désormais `created ASC` uniquement pour respecter l'ordre du backlog.
+
+**KAN-49 (ce ticket) :** pas de description dans Jira à la création. La description réelle ("journal narratif, aller-retours, succès et échecs") n'est apparue qu'à la transition vers "Revue en cours". Premier jet du journal trop tabulaire → enrichissement narratif a posteriori dans le même commit.
+
 ---
 
 ## À venir
