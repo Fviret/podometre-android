@@ -7,6 +7,7 @@ import androidx.core.app.NotificationCompat
 import com.fviret.podometre.R
 import com.fviret.podometre.domain.model.Journey
 import com.fviret.podometre.domain.model.Milestone
+import com.fviret.podometre.domain.model.formatKm
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -58,9 +59,6 @@ class JourneyNotificationService @Inject constructor(
             .build()
         notificationManager.notify(journey.id.hashCode(), notification)
     }
-
-    private fun formatKm(km: Double): String =
-        if (km == km.toLong().toDouble()) "${km.toLong()} km" else "${"%.1f".format(km)} km"
 
     companion object {
         const val CHANNEL_JOURNEY = "journey_progress"
