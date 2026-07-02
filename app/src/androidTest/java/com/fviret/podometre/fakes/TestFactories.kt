@@ -24,7 +24,7 @@ object TestFactories {
 
     /** [HealthConnectRepository] réel adossé à un [FakeHealthConnectClient] (non sollicité en mode émulateur). */
     fun healthConnectRepository(context: Context): HealthConnectRepository =
-        HealthConnectRepository(FakeHealthConnectClient(), context)
+        HealthConnectRepository(dagger.Lazy { FakeHealthConnectClient() }, context)
 
     /** [WeatherRepository] réel — jamais appelé en mode émulateur, un vrai OkHttpClient suffit. */
     fun weatherRepository(): WeatherRepository = WeatherRepository(OkHttpClient())
