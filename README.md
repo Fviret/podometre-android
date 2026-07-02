@@ -19,6 +19,7 @@ Projet personnel développé en public (*build in public*) à des fins de portfo
 - **Badges** — grille 3 colonnes : 6 badges de seuils de pas + 19 badges de trajets complétés
 - **Notification objectif** — alerte locale « Objectif atteint ! 🎉 » (max 1 par jour)
 - **Paramètres** — objectif de pas (5 000–20 000), couleur de l'anneau (6 presets), mode sombre, modules de l'écran principal, notifications
+- **Accessibilité** — compatibilité TalkBack (nœuds sémantiques fusionnés, éléments décoratifs masqués) et support du Dynamic Type (tailles de police système, `TextStyle` Material 3)
 
 ---
 
@@ -191,7 +192,8 @@ La progression est calculée depuis `DistanceRecord` Health Connect à partir de
 | 5 | Système de Trajets (UI + notifs) | KAN-29 à KAN-31 | ✅ Terminé |
 | 6 | Paramètres + Badges + Streak + Notifs | KAN-32 à KAN-39 | ✅ Terminé |
 | 7 | Catalogue 19 trajets (données complètes) | KAN-40 à KAN-43 | ✅ Terminé |
-| 8 | Accessibilité + Tests | KAN-10, KAN-11 | ⏳ À venir |
+| 8 | Accessibilité (TalkBack + Dynamic Type) | KAN-44, KAN-45 | ✅ Terminé |
+| 9 | Tests unitaires et d'intégration UI | KAN-46, KAN-47 | ⏳ À venir |
 
 Suivi des tickets : [floviret.atlassian.net/jira/software/projects/KAN](https://floviret.atlassian.net/jira/software/projects/KAN)
 

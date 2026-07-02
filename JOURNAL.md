@@ -112,7 +112,7 @@ Colonnes : **Dev** = implémenté par IA | **Testé** = vérifié sur émulateur
 | 🚶 Promenades | 5 | 2,5 km → 42 km | `a0000000-...` / `b0000000-...` |
 | 🏔 Sentiers | 6 | 111 km → 1 000 km | `c0000000-...` / `d0000000-...` |
 | 🏛 Histoire | 5 | 2 700 km → 35 000 km | `e0000000-...` / `f0000000-...` |
-| ⚔️ Mythes & Épopées | 3 | 400 km → 8 000 km | `g0000000-...` / `h0000000-...` |
+| ⚔️ Mythes & Épopées | 3 | 400 km → 8 000 km | `10000000-...` / `11000000-...` (corrigé sprint 8, voir plus bas) |
 
 ### Décision technique — Namespaces UUID par catégorie
 
@@ -120,12 +120,35 @@ Les 4 tickets du sprint 7 remplacent chacun une section de `JourneyData.kt`. Pou
 
 ---
 
+## Sprint 8 — Accessibilité (2026-07-02)
+
+| Ticket | US | Description | Dev | Testé |
+|--------|----|-------------|-----|-------|
+| KAN-44 | US-7.1 | Compatibilité TalkBack — `clearAndSetSemantics` (badges, streak) et `invisibleToUser()` (emojis, numéros de jalons décoratifs) | ✅ | ✅ |
+| KAN-45 | US-7.2 | Support du Dynamic Type — `TextStyle` Material 3 partout, retrait de la troncature sur le nom des trajets en header | ✅ | ⬜ |
+
+Les deux stories de l'épic 7 — Accessibilité (KAN-10) sont livrées : `KAN-10` n'a pas de reste de scope propre au-delà de ses deux enfants.
+
+### Incidents & aller-retours sprint 8
+
+**KAN-44 — Vérification manuelle, pas seulement `/feature` :** contrairement aux sprints précédents, KAN-44 avait été codé en amont de cette session ; le travail du jour a consisté à le **vérifier** sur émulateur (`/verify`) plutôt qu'à l'implémenter. Premier réflexe : dumper l'arbre d'accessibilité `uiautomator` sur l'écran Trajets — l'app a crashé instantanément (`NumberFormatException: "g0000000"`).
+
+**Bug bloquant découvert — UUID invalides dans `JourneyData.kt` (régression KAN-43, sprint 7) :** les trajets Mythes & Épopées utilisaient des préfixes UUID `g0000000-...` et `h0000000-...`. `g` et `h` ne sont pas des chiffres hexadécimaux valides — `UUID.fromString()` plante dès que `JourneyData.all` est évalué, ce qui casse **à la fois** l'onglet Trajets et l'onglet Paramètres (ce dernier lit aussi `JourneyData.all` pour la grille de badges de trajets). Le bug était donc en production sur `dev`/`main` depuis le merge de KAN-43, invisible car aucun test manuel n'avait rouvert ces deux onglets après ce commit précis.
+
+Décision prise avec l'humain (`AskUserQuestion`) : corriger avant de continuer plutôt que de rapporter un simple blocage. Préfixes remplacés par `10000000-...` / `11000000-...` (hors de l'alphabet déjà utilisé par les autres catégories), rebuild, réinstallation, et la vérification a pu reprendre. Correctif commité séparément (`fix(KAN-43): UUID invalides dans JourneyData`) avec le trailer `Co-Authored-By: Claude`, en aparté du commit de vérification, puis poussé directement sur la branche `feature/KAN-44-talkback-compatibility` — hors du flux `/feature` normal, à la demande explicite de l'humain.
+
+**KAN-44 — Résultat de la vérification :** une fois le blocage levé, les 4 mécanismes d'accessibilité du commit ont été confirmés directement dans l'arbre `uiautomator` (source de vérité de TalkBack) : emojis et numéros de jalons absents de l'arbre (`invisibleToUser()` fonctionne), barre de progression exposant `content-desc="Progression : X %"`, cellules de badges et bannière streak fusionnées en un seul nœud sémantique (`clearAndSetSemantics`) sans fuite de texte enfant. Probe supplémentaire : les badges de pas verrouillés restent `clickable=true`/`enabled=false` alors que les badges de trajets verrouillés sont `clickable=false` — différence cohérente avec le code (pas de modifier `.clickable()` sur `JourneyBadgeCell`), non bloquante.
+
+**KAN-45 — Implémentation directe, sans blocage :** audit `grep` sur tout `ui/` pour `fontSize`/`.sp` en dehors de `ui/theme/Type.kt` (définition légitime des styles) et de `WeeklyChartView.kt` (texte dessiné sur `Canvas` natif, déjà dépendant de `fontScale` via `sp.toPx()`, conforme à la convention Canvas-only pour les graphes). Deux vraies violations trouvées (`WeeklyForecastBanner.kt`, `MonthCalendarView.kt`) + un risque de troncature du nom de trajet en header de `JourneyCard` (`maxLines = 1` + ellipsis). Les trois corrigés en un seul commit. Pas de vérification manuelle sur émulateur avec les tailles Large/Largest dans cette itération — à faire en review.
+
+---
+
 ## À venir
 
 | Ticket | US | Description |
 |--------|----|-------------|
-| KAN-10 | — | Accessibilité complète (TalkBack, contentDescription, roles) |
-| KAN-11 | — | Tests unitaires et instrumentés |
+| KAN-46 | US-8.1 | Tests unitaires ViewModels et repositories (JUnit5 + MockK, couverture ≥ 70% domain/data) |
+| KAN-47 | US-8.2 | Tests d'intégration UI (Compose Testing + Espresso, parcours onboarding/activité/trajets) |
 
 ---
 
