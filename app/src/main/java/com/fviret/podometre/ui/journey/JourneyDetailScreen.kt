@@ -138,7 +138,8 @@ fun JourneyDetailScreen(
 
             // ── Prochaine étape / Trajet achevé ──────────────────────────────
             item {
-                if (isCompleted || (progress != null && journey.progressPercent(progress!!) >= 1.0)) {
+                val currentProgress = progress
+                if (isCompleted || (currentProgress != null && journey.progressPercent(currentProgress) >= 1.0)) {
                     CompletedCard()
                 } else {
                     progress?.let { p ->
