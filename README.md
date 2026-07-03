@@ -155,20 +155,58 @@ Les PRs sont ouvertes vers `dev`. `main` n'est mis à jour que depuis `dev` avec
 
 ### Skill `/feature` — automatisation bout-en-bout
 
-Ce projet utilise un **skill Claude Code personnalisé** défini dans `.claude/commands/feature.md`.
+Ce projet utilise un **skill Claude Code personnalisé** défini dans [`.claude/commands/feature.md`](.claude/commands/feature.md).
 
-Taper `/feature` (ou `/feature KAN-XX`) déclenche automatiquement la séquence complète :
+#### Usage
 
-1. Fetch du ticket Jira (ou sélection automatique du premier "À faire")
-2. Analyse du codebase concerné
-3. Création de la branche `feature/<ticket>-<slug>` depuis `dev`
-4. Implémentation selon les conventions du `CLAUDE.md`
-5. Compilation (`assembleDebug`) + tests unitaires
-6. Commit signé `Co-Authored-By: Claude`
-7. Push + création de la PR GitHub vers `dev`
-8. Transition Jira → "Revue en cours" + commentaire avec lien PR
+```
+/feature            → sélectionne automatiquement le ticket "À faire" le plus ancien
+/feature KAN-59     → traite ce ticket précis
+```
 
-**Résultat :** un ticket Jira complet en une seule commande, de la lecture des specs jusqu'à la PR ouverte. L'humain garde la main sur la review et le merge.
+#### Ce que fait le skill en une seule commande
+
+```
+Ticket Jira "À faire"
+        ↓
+   Fetch + lecture des specs (description, critères d'acceptation)
+        ↓
+   Exploration du codebase concerné (Grep, Glob)
+        ↓
+   git checkout -b feature/<ticket>-<slug>  (depuis dev)
+        ↓
+   Implémentation Kotlin/Compose — conventions CLAUDE.md
+        ↓
+   ./gradlew assembleDebug  +  testDebugUnitTest
+        ↓
+   git commit  Co-Authored-By: Claude
+        ↓
+   git push  +  gh pr create --base dev
+        ↓
+   Jira → "Revue en cours"  +  commentaire lien PR
+        ↓
+   ✅ Rapport final  (PR prête, humain review & merge)
+```
+
+#### Résultats observés
+
+Sur les sprints 4 à 9 (plus de 30 tickets), le skill a été invoqué sans aucune intervention manuelle entre la demande et la PR ouverte. L'humain garde la main sur la review et le merge — l'IA ne merge jamais elle-même.
+
+| Métrique | Valeur |
+|---|---|
+| Tickets livrés via `/feature` | 30+ |
+| Oublis de PR ou transition Jira | 0 |
+| Interventions manuelles entre `/feature` et PR | 0 |
+
+#### Réutiliser ce skill dans ton projet
+
+Le fichier source est disponible ici : [`.claude/skills/feature.md`](.claude/skills/feature.md)
+
+Pour l'adapter à ton projet :
+1. Copier `.claude/skills/feature.md` dans `.claude/commands/feature.md`
+2. Remplacer `KAN` par ton projet Jira
+3. Adapter les conventions de l'étape 4 à ton stack
+4. Connecter le MCP Atlassian dans Claude Code (`/mcp`)
 
 > Ce skill illustre l'approche *build in public* du projet : l'IA code, l'humain valide.
 
