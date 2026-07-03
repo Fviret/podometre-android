@@ -53,6 +53,7 @@ fun MonthCalendarView(
     stepsPerDay: Map<LocalDate, Long>,
     goal: Int,
     total: Long,
+    accentColor: Color,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit,
     onDayTap: (LocalDate) -> Unit,
@@ -136,6 +137,7 @@ fun MonthCalendarView(
                             date = date,
                             steps = steps,
                             goal = goal,
+                            accentColor = accentColor,
                             isFuture = isFuture,
                             isToday = isToday,
                             onTap = if (!isFuture) onDayTap else null,
@@ -166,12 +168,13 @@ private fun CalendarDayCell(
     date: LocalDate,
     steps: Long,
     goal: Int,
+    accentColor: Color,
     isFuture: Boolean,
     isToday: Boolean,
     onTap: ((LocalDate) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    val ringColor = MaterialTheme.colorScheme.primary
+    val ringColor = accentColor
     val a11yLabel = buildA11yLabel(date, steps, goal, isFuture)
 
     Box(
