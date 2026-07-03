@@ -138,6 +138,7 @@ fun ActivityScreen(
                 stepsPerDay = uiState.calendarSteps,
                 goal = uiState.stepGoal,
                 total = uiState.calendarTotal,
+                accentColor = AppColors.colorForId(prefs.ringColorId),
                 onPreviousMonth = { viewModel.navigateCalendarPrevious() },
                 onNextMonth = { viewModel.navigateCalendarNext() },
                 onDayTap = { date -> viewModel.onCalendarDayTap(date) },
