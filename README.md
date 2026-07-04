@@ -188,8 +188,9 @@ La progression est calculée depuis `DistanceRecord` Health Connect à partir de
 | 4 | Système de Trajets (modèle + sync) | KAN-26 à KAN-28 | ✅ Terminé |
 | 5 | Système de Trajets (UI + notifs) | KAN-29 à KAN-31 | ✅ Terminé |
 | 6 | Paramètres + Badges + Streak + Notifs | KAN-32 à KAN-39 | ✅ Terminé |
-| 7 | Catalogue 19 trajets (données complètes) | KAN-40 à KAN-43 | 🔄 En cours |
-| 8 | Accessibilité + Tests | KAN-10, KAN-11 | ⏳ À venir |
+| 7 | Catalogue 19 trajets (données complètes) | KAN-40 à KAN-43 |✅ Terminé  |
+| 8 | Accessibilité + Tests | KAN-10, KAN-11 | ✅ Terminé |
+| 9 | Test sur Device Physique | KAN-50 | ⏳ À faire |
 
 Suivi des tickets : [floviret.atlassian.net/jira/software/projects/KAN](https://floviret.atlassian.net/jira/software/projects/KAN)
 
