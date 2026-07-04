@@ -185,9 +185,36 @@ L'épic 8 — Tests & Qualité (KAN-11) est livré.
 
 ---
 
+## Post-sprint 9 — Bugfixes & documentation (2026-07-04)
+
+### KAN-59 — Couleur du calendrier ignorait les préférences
+
+| Ticket | Type | Description | Dev | Testé |
+|--------|------|-------------|-----|-------|
+| KAN-59 | Bug | Le calendrier mensuel affichait toujours vert même après changement de couleur dans les Paramètres | ✅ | ⬜ |
+
+**Cause racine :** `CalendarDayCell` dans `MonthCalendarView.kt` utilisait `MaterialTheme.colorScheme.primary` hardcodé au lieu de la couleur choisie par l'utilisateur. `WeeklyChartView` recevait déjà `accentColor` correctement depuis le début — le calendrier avait été oublié lors de l'implémentation initiale (sprint 3).
+
+**Fix :** ajout du paramètre `accentColor: Color` sur `MonthCalendarView` et `CalendarDayCell`, passé depuis `ActivityScreen` via `AppColors.colorForId(prefs.ringColorId)` — même pattern que le graphe hebdomadaire. Deux lignes de code, zéro régression.
+
+**Détection :** signalée par l'humain en test manuel sur émulateur. Le bug était présent depuis le sprint 3 mais n'avait pas été repéré lors des validations, car l'anneau changeait bien de couleur (lui était correct), ce qui donnait l'illusion d'un comportement global correct.
+
+### Accessibilité TalkBack — complément KAN-44
+
+Suite à la vérification de KAN-44 (sprint 8), correction de trois composants qui utilisaient `semantics {}` sans `clearAndSetSemantics {}` :
+- `StepBadgeCell`, `JourneyBadgeCell`, `StreakBanner` dans `SettingsScreen.kt` — TalkBack traversait les textes enfants en doublon
+- Emojis décoratifs dans `JourneyListScreen.kt` marqués `invisibleToUser()`
+- `LinearProgressIndicator` annoté avec `contentDescription = "Progression : X %"`
+
+### Mise en avant du skill `/feature`
+
+Copie du skill dans `.claude/skills/feature.md` pour faciliter la réutilisation dans d'autres projets. Section README enrichie avec flowchart du cycle complet, tableau de métriques (30+ tickets, 0 oubli) et guide d'adaptation en 4 étapes. Roadmap README mise à jour avec la ligne de bugfixes post-sprint-9.
+
+---
+
 ## À venir
 
-Épics KAN-4 à KAN-11 tous livrés. Backlog Jira vide au-delà de la review humaine des PRs ouvertes (notamment #54 / KAN-58). Prochaine étape naturelle : merger les PRs restantes, puis décider d'un nouveau cycle de features ou d'un nouvel audit.
+Épics KAN-4 à KAN-11 tous livrés. Backlog Jira : seules les PRs en "Revue en cours" restent à merger. Prochaine étape naturelle : merger les PRs restantes, puis décider d'un nouveau cycle de features ou d'un nouvel audit.
 
 ---
 

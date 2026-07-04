@@ -238,6 +238,7 @@ La progression est calculée depuis `DistanceRecord` Health Connect à partir de
 | 7 | Catalogue 19 trajets (données complètes) | KAN-40 à KAN-43 | ✅ Terminé |
 | 8 | Accessibilité (TalkBack + Dynamic Type) | KAN-44, KAN-45 | ✅ Terminé |
 | 9 | Tests unitaires et d'intégration UI + audit qualité | KAN-46, KAN-47, KAN-51 à KAN-58 | ✅ Terminé |
+| — | Bugfixes & maintenance | KAN-59 (couleur calendrier) | ✅ Terminé |
 
 Suivi des tickets : [floviret.atlassian.net/jira/software/projects/KAN](https://floviret.atlassian.net/jira/software/projects/KAN)
 
