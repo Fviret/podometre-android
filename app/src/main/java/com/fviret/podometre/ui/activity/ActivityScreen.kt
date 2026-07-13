@@ -45,7 +45,15 @@ fun ActivityScreen(
 ) {
     val prefs by viewModel.userPreferences.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val showAphorism by viewModel.showAphorismDialog.collectAsStateWithLifecycle()
     val haptic = LocalHapticFeedback.current
+
+    if (showAphorism) {
+        com.fviret.podometre.ui.aphorism.AphorismDialog(
+            aphorism = viewModel.todayAphorism,
+            onDismiss = viewModel::dismissAphorism,
+        )
+    }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.refreshSteps()

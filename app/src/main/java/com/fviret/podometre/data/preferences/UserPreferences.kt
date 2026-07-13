@@ -23,4 +23,8 @@ data class UserPreferences(
     val cachedStepsTodayDate: String = "",
     /** UUID du trajet actuellement actif, null si aucun trajet en cours. */
     val activeJourneyId: String? = null,
+    /** Afficher ou non la popup "Pensée du jour" à la première ouverture de la journée. */
+    val aphorismEnabled: Boolean = true,
+    /** Date ISO (yyyy-MM-dd) de la dernière fois où la popup a été affichée. */
+    val lastAphorismDate: String = "",
 )

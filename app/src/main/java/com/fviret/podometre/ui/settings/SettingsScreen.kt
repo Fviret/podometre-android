@@ -148,6 +148,12 @@ fun SettingsScreen(
                 checked = prefs.showWeeklyChart,
                 onToggle = { viewModel.updateShowWeeklyChart(it) },
             )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            ModuleToggleRow(
+                label = "Pensée du jour",
+                checked = prefs.aphorismEnabled,
+                onToggle = { viewModel.updateAphorismEnabled(it) },
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
