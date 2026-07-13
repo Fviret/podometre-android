@@ -2,6 +2,8 @@ package com.fviret.podometre.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.fviret.podometre.data.aphorism.Aphorism
+import com.fviret.podometre.data.aphorism.AphorismRepository
 import com.fviret.podometre.data.health.HealthConnectRepository
 import com.fviret.podometre.data.journey.JourneyProgressRepository
 import com.fviret.podometre.data.preferences.UserPreferences
@@ -37,6 +39,7 @@ class SettingsViewModel @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
     private val healthConnectRepository: HealthConnectRepository,
     private val journeyProgressRepository: JourneyProgressRepository,
+    private val aphorismRepository: AphorismRepository,
 ) : ViewModel() {
 
     /** Préférences utilisateur en lecture seule pour les Composables. */
@@ -152,4 +155,7 @@ class SettingsViewModel @Inject constructor(
     fun updateAphorismEnabled(enabled: Boolean) {
         viewModelScope.launch { userPreferencesRepository.setAphorismEnabled(enabled) }
     }
+
+    /** L'aphorisme du jour, chargé une seule fois au démarrage. */
+    val todayAphorism: Aphorism = aphorismRepository.todayAphorism()
 }
