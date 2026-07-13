@@ -148,12 +148,6 @@ fun SettingsScreen(
                 checked = prefs.showWeeklyChart,
                 onToggle = { viewModel.updateShowWeeklyChart(it) },
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-            ModuleToggleRow(
-                label = "Pensée du jour",
-                checked = prefs.aphorismEnabled,
-                onToggle = { viewModel.updateAphorismEnabled(it) },
-            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -165,6 +159,25 @@ fun SettingsScreen(
             journeyNotificationsEnabled = prefs.journeyNotificationsEnabled,
             onToggleGoal = { viewModel.onToggleGoalNotifications(it) },
             onToggleJourney = { viewModel.onToggleJourneyNotifications(it) },
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // ── Section : Pensée du jour ──────────────────────────────────────────
+        SectionHeader(title = "Pensée du jour")
+
+        ModuleToggleCard {
+            ModuleToggleRow(
+                label = "Afficher la pensée du jour",
+                checked = prefs.aphorismEnabled,
+                onToggle = { viewModel.updateAphorismEnabled(it) },
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        com.fviret.podometre.ui.aphorism.AphorismCard(
+            aphorism = viewModel.todayAphorism,
         )
 
         Spacer(modifier = Modifier.height(16.dp))
