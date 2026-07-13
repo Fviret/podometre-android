@@ -16,6 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -28,9 +30,13 @@ import com.fviret.podometre.data.aphorism.Aphorism
  * Affiche le texte de l'aphorisme, son auteur, sa catégorie (si renseignée), et un bouton
  * de fermeture "Make my day".
  *
- * Le tap en dehors de la carte (onDismissRequest) ou le bouton ferment la popup.
- * Respecte les animations réduites via le système (Dialog utilise AnimatedVisibility en interne,
- * qui honore la durée nulle si le scale d'animation système est 0).
+ * Accessibilité (TalkBack) :
+ * - Dialog Compose piège le focus (comportement modal natif)
+ * - Titre "Pensée du jour" marqué `heading()` pour navigation par en-têtes
+ * - Bloc citation/auteur/catégorie fusionné en un seul nœud via [clearAndSetSemantics]
+ * - Bouton libellé "Fermer la pensée du jour" (contentDescription explicite)
+ * - Emoji décoratif masqué (clearAndSetSemantics vide)
+ * - Animations réduites : [Dialog] Compose honore `ANIMATOR_DURATION_SCALE = 0`
  *
  * @param aphorism L'aphorisme sélectionné pour aujourd'hui.
  * @param onDismiss Appelé quand l'utilisateur ferme la popup (bouton ou tap extérieur).
@@ -69,11 +75,11 @@ fun AphorismPopup(
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
+                    modifier = Modifier.semantics { heading() },
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Citation + auteur fusionnés en un seul nœud TalkBack
                 val a11yText = buildString {
                     append(aphorism.text)
                     append(", ")
@@ -88,7 +94,7 @@ fun AphorismPopup(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
-                        text = "“${aphorism.text}”",
+                        text = "\u201C${aphorism.text}\u201D",
                         style = MaterialTheme.typography.bodyLarge,
                         fontStyle = FontStyle.Italic,
                         textAlign = TextAlign.Center,
@@ -120,7 +126,9 @@ fun AphorismPopup(
 
                 Button(
                     onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "Fermer la pensée du jour" },
                     shape = RoundedCornerShape(12.dp),
                 ) {
                     Text(text = "Make my day ✊")
