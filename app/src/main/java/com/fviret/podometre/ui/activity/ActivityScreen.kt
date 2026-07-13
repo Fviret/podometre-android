@@ -62,6 +62,8 @@ fun ActivityScreen(
         viewModel.refreshSteps()
         viewModel.refreshWeather()
         viewModel.refreshCalendar()
+        // Retente l'affichage à chaque retour en premier plan (garde 1×/jour conservée).
+        viewModel.checkAphorismVisibility()
     }
 
     Column(

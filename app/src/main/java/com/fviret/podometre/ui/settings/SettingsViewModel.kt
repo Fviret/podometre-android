@@ -151,9 +151,16 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { userPreferencesRepository.setShowWeeklyChart(show) }
     }
 
-    /** Active ou désactive la popup "Pensée du jour". */
+    /**
+     * Active ou désactive la popup "Pensée du jour".
+     * Si réactivée, remet à zéro la garde "1×/jour" afin que la popup se ré-affiche
+     * le jour même au retour sur l'écran principal (sans réinstall ni redémarrage).
+     */
     fun updateAphorismEnabled(enabled: Boolean) {
-        viewModelScope.launch { userPreferencesRepository.setAphorismEnabled(enabled) }
+        viewModelScope.launch {
+            userPreferencesRepository.setAphorismEnabled(enabled)
+            if (enabled) userPreferencesRepository.setLastAphorismDate("")
+        }
     }
 
     /** L'aphorisme du jour, chargé une seule fois au démarrage. */

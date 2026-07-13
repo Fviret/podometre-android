@@ -212,6 +212,21 @@ Pour l'adapter à ton projet :
 
 ---
 
+## Pensée du jour
+
+L'application affiche chaque matin une citation motivante issue d'un recueil de 400 aphorismes CC0.
+
+### Comportement
+- **Popup matinale** : s'affiche à la première ouverture de la journée **et** à chaque retour en premier plan (garde 1×/jour dans DataStore).
+- **Sélection déterministe** : l'aphorisme du jour est toujours `recueil[(quantième - 1) % 400]` — stable sur 24h, différent chaque jour, sans réseau.
+- **Carte dans les Paramètres** : l'aphorisme du jour est visible en permanence, appui = copie dans le presse-papiers.
+- **Toggle** : désactiver la feature masque la popup. La réactiver réinitialise la garde et ré-affiche la popup au prochain retour sur l'écran principal.
+
+### Sources
+Recueil embarqué (`assets/aphorisms_humor_400.json`) — 400 citations CC0, chargé hors ligne, aucune dépendance réseau.
+
+---
+
 ## Trajets disponibles (19)
 
 | Catégorie | Trajets |
@@ -239,6 +254,7 @@ La progression est calculée depuis `DistanceRecord` Health Connect à partir de
 | 8 | Accessibilité (TalkBack + Dynamic Type) | KAN-44, KAN-45 | ✅ Terminé |
 | 9 | Tests unitaires et d'intégration UI + audit qualité | KAN-46, KAN-47, KAN-51 à KAN-58 | ✅ Terminé |
 | — | Bugfixes & maintenance | KAN-59 (couleur calendrier) | ✅ Terminé |
+| 10 | Pensée du jour (400 citations CC0, popup 1×/jour, réarmement) | KAN-60 à KAN-68 | 🔄 In Review |
 
 Suivi des tickets : [floviret.atlassian.net/jira/software/projects/KAN](https://floviret.atlassian.net/jira/software/projects/KAN)
 
