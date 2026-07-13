@@ -50,6 +50,7 @@ class ActivityScreenTest {
             healthConnectRepository = TestFactories.healthConnectRepository(context),
             weatherRepository = TestFactories.weatherRepository(),
             userPreferencesRepository = TestFactories.userPreferencesRepository(),
+            aphorismRepository = com.fviret.podometre.data.aphorism.AphorismRepository(context),
             context = context,
         )
         composeTestRule.setContent {
