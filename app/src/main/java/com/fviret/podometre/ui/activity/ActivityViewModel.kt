@@ -27,6 +27,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -166,14 +169,21 @@ class ActivityViewModel @Inject constructor(
         loadWeeklyData()
         SyncStepsWorker.schedule(WorkManager.getInstance(context))
         checkAphorismVisibility()
+        // Ré-affiche la popup quand l'utilisateur réactive la feature depuis les Paramètres.
+        viewModelScope.launch {
+            userPreferences
+                .map { it.aphorismEnabled }
+                .distinctUntilChanged()
+                .drop(1) // valeur initiale déjà traitée par checkAphorismVisibility() ci-dessus
+                .collect { enabled -> if (enabled) checkAphorismVisibility() }
+        }
     }
 
     /**
      * Détermine si la popup "Pensée du jour" doit être affichée.
-     * Condition : feature activée ET popup non encore montrée aujourd'hui.
+     * Rendue [internal] pour être appelée depuis [ActivityScreen] lors du retour en premier plan.
      */
-    /** Délègue la décision d'affichage à [AphorismRepository.shouldShowPopup]. */
-    private fun checkAphorismVisibility() {
+    internal fun checkAphorismVisibility() {
         viewModelScope.launch {
             _showAphorismDialog.value = aphorismRepository.shouldShowPopup()
         }

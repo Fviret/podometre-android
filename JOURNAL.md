@@ -212,9 +212,39 @@ Copie du skill dans `.claude/skills/feature.md` pour faciliter la réutilisation
 
 ---
 
+## Sprint 10 — Pensée du jour (2026-07-13)
+
+Epic KAN-60. 400 aphorismes CC0 embarqués dans les assets, popup matinale 1×/jour, carte dans les Paramètres avec copie presse-papiers, accessibilité TalkBack complète, tests unitaires et UI Compose.
+
+| Ticket | Type | Description | Dev | Testé |
+|--------|------|-------------|-----|-------|
+| KAN-60 | Feature | Pensée du jour — popup matinale + DataStore + ViewModel | ✅ | ⬜ |
+| KAN-61 | Feature | Recueil JSON 400 aphorismes CC0 + migration kotlinx.serialization | ✅ | ⬜ |
+| KAN-62 | Feature | `AphorismRepository` — chargement assets, sélection déterministe, garde 1×/jour | ✅ | ⬜ |
+| KAN-63 | Feature | `AphorismPopup` — Dialog Compose Material 3, "Make my day" | ✅ | ⬜ |
+| KAN-64 | Feature | `AphorismCard` — carte Paramètres, copie presse-papiers, "Copié !" animé | ✅ | ⬜ |
+| KAN-65 | Feature | Accessibilité TalkBack — `clearAndSetSemantics`, `heading()`, `announceForAccessibility` | ✅ | ⬜ |
+| KAN-66 | Test | Tests unitaires : `parseAphorismsJson`, `selectAphorismForDay`, `shouldShowPopup`, `markDisplayed` | ✅ | ⬜ |
+| KAN-67 | Test | Tests UI Compose : popup, carte, section Paramètres (5 tests instrumentés, `testTag`) | ✅ | ⬜ |
+| KAN-68 | Audit | Déclenchement au retour foreground (ON_RESUME), réarmement toggle, README + journal | ✅ | ⬜ |
+
+### Points techniques notables
+
+**Sélection déterministe** : `index = (dayOfYear - 1) % 400` — même citation toute la journée, aucun appel réseau.
+
+**Déclenchement foreground** : `LifecycleEventEffect(ON_RESUME)` dans `ActivityScreen` appelle `checkAphorismVisibility()`. La garde `lastAphorismDate` empêche un double affichage le même jour.
+
+**Réarmement toggle** : `SettingsViewModel.updateAphorismEnabled(true)` remet `lastAphorismDate = ""` en DataStore. `ActivityViewModel` observe `aphorismEnabled` avec `distinctUntilChanged().drop(1)` et appelle `checkAphorismVisibility()` au changement — la popup re-paraît au retour sur l'écran principal sans réinstall.
+
+**Bug curly quotes** : les caractères `"` / `"` (U+201C/D) dans les string literals Kotlin causaient des erreurs de lexer (`Expecting ')'`). Fixé en utilisant `“` et `”` systématiquement.
+
+**`Log.w` retiré de `parseAphorismsJson`** : `android.util.Log` lève `RuntimeException` en JVM pur (sans Robolectric). La fonction est désormais pure, sans effets de bord.
+
+---
+
 ## À venir
 
-Épics KAN-4 à KAN-11 tous livrés. Backlog Jira : seules les PRs en "Revue en cours" restent à merger. Prochaine étape naturelle : merger les PRs restantes, puis décider d'un nouveau cycle de features ou d'un nouvel audit.
+Toutes les PRs du sprint 10 (KAN-60 à KAN-68) sont en "Revue en cours". Prochaine étape : merger les PRs dans l'ordre KAN-60 → KAN-68, puis décider d'un nouveau cycle.
 
 ---
 
