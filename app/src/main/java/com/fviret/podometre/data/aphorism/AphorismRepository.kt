@@ -1,25 +1,43 @@
 package com.fviret.podometre.data.aphorism
 
 import android.content.Context
+import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
-import org.json.JSONArray
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Modèle d'un aphorisme issu du recueil CC0. */
-data class Aphorism(val id: Int, val text: String, val author: String)
+/**
+ * Modèle d'un aphorisme issu du recueil CC0.
+ * [category] est optionnel pour la compatibilité avec les anciens formats JSON
+ * qui ne contiennent pas ce champ.
+ */
+@Serializable
+data class Aphorism(
+    val id: Int,
+    val text: String,
+    val author: String,
+    val category: String = "",
+)
 
 /**
- * Charge les 400 aphorismes depuis [assets/aphorisms.json] et sélectionne
+ * Charge les aphorismes depuis [assets/aphorisms_humor_400.json] et sélectionne
  * l'aphorisme du jour de façon déterministe via le quantième de l'année.
  * La sélection est stable sur toute la journée : changer de session en cours
  * de journée ne change pas l'aphorisme affiché.
+ *
+ * Utilise [kotlinx.serialization] avec [ignoreUnknownKeys] = true pour ignorer
+ * silencieusement les champs legacy (tone, year, source) éventuellement présents.
  */
 @Singleton
 class AphorismRepository @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
+
+    private val json = Json { ignoreUnknownKeys = true }
 
     private val aphorisms: List<Aphorism> by lazy { loadFromAssets() }
 
@@ -31,18 +49,10 @@ class AphorismRepository @Inject constructor(
     }
 
     private fun loadFromAssets(): List<Aphorism> = runCatching {
-        val json = context.assets.open("aphorisms.json").bufferedReader().readText()
-        val array = JSONArray(json)
-        List(array.length()) { i ->
-            val obj = array.getJSONObject(i)
-            Aphorism(
-                id = obj.getInt("id"),
-                text = obj.getString("text"),
-                author = obj.getString("author"),
-            )
-        }
+        val jsonText = context.assets.open("aphorisms_humor_400.json").bufferedReader().readText()
+        json.decodeFromString<List<Aphorism>>(jsonText)
     }.getOrElse {
-        android.util.Log.w("AphorismRepository", "Échec du chargement des aphorismes", it)
+        Log.w("AphorismRepository", "Échec du chargement des aphorismes", it)
         emptyList()
     }
 
@@ -50,5 +60,6 @@ class AphorismRepository @Inject constructor(
         id = 0,
         text = "Chaque matin, nous renaissons. Ce que nous faisons aujourd'hui compte le plus.",
         author = "Bouddha",
+        category = "philosophie",
     )
 }
