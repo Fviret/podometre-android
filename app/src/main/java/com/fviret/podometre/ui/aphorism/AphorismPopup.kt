@@ -14,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -53,6 +54,7 @@ fun AphorismPopup(
                 containerColor = MaterialTheme.colorScheme.surface,
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            modifier = Modifier.testTag("aphorism_popup"),
         ) {
             Column(
                 modifier = Modifier
@@ -128,6 +130,7 @@ fun AphorismPopup(
                     onClick = onDismiss,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .testTag("aphorism_dismiss_button")
                         .semantics { contentDescription = "Fermer la pensée du jour" },
                     shape = RoundedCornerShape(12.dp),
                 ) {
