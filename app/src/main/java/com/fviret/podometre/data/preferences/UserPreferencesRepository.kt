@@ -40,6 +40,8 @@ class UserPreferencesRepository @Inject constructor(
         val CACHED_STEPS_TODAY = longPreferencesKey("cachedStepsToday")
         val CACHED_STEPS_TODAY_DATE = stringPreferencesKey("cachedStepsTodayDate")
         val ACTIVE_JOURNEY_ID = stringPreferencesKey("activeJourneyId")
+        val APHORISM_ENABLED = booleanPreferencesKey("aphorismEnabled")
+        val LAST_APHORISM_DATE = stringPreferencesKey("lastAphorismDate")
     }
 
     // ── Lecture ─────────────────────────────────────────────────────────────
@@ -64,6 +66,8 @@ class UserPreferencesRepository @Inject constructor(
             cachedStepsToday = prefs[Keys.CACHED_STEPS_TODAY] ?: 0L,
             cachedStepsTodayDate = prefs[Keys.CACHED_STEPS_TODAY_DATE] ?: "",
             activeJourneyId = prefs[Keys.ACTIVE_JOURNEY_ID],
+            aphorismEnabled = prefs[Keys.APHORISM_ENABLED] ?: true,
+            lastAphorismDate = prefs[Keys.LAST_APHORISM_DATE] ?: "",
         )
     }
 
@@ -136,6 +140,16 @@ class UserPreferencesRepository @Inject constructor(
             prefs[Keys.CACHED_STEPS_TODAY] = steps
             prefs[Keys.CACHED_STEPS_TODAY_DATE] = date
         }
+    }
+
+    /** Active ou désactive la popup "Pensée du jour". */
+    suspend fun setAphorismEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.APHORISM_ENABLED] = enabled }
+    }
+
+    /** Enregistre la date ISO du dernier affichage de la popup "Pensée du jour". */
+    suspend fun setLastAphorismDate(date: String) {
+        dataStore.edit { it[Keys.LAST_APHORISM_DATE] = date }
     }
 
     /**

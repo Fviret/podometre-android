@@ -147,4 +147,9 @@ class SettingsViewModel @Inject constructor(
     fun updateShowWeeklyChart(show: Boolean) {
         viewModelScope.launch { userPreferencesRepository.setShowWeeklyChart(show) }
     }
+
+    /** Active ou désactive la popup "Pensée du jour". */
+    fun updateAphorismEnabled(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.setAphorismEnabled(enabled) }
+    }
 }

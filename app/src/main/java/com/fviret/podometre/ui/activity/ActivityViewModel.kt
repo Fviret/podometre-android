@@ -9,6 +9,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
+import com.fviret.podometre.data.aphorism.Aphorism
+import com.fviret.podometre.data.aphorism.AphorismRepository
 import com.fviret.podometre.data.health.HealthConnectRepository
 import com.fviret.podometre.data.preferences.UserPreferences
 import com.fviret.podometre.data.preferences.UserPreferencesRepository
@@ -25,6 +27,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -102,6 +105,7 @@ class ActivityViewModel @Inject constructor(
     private val healthConnectRepository: HealthConnectRepository,
     private val weatherRepository: WeatherRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
+    private val aphorismRepository: AphorismRepository,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -120,6 +124,28 @@ class ActivityViewModel @Inject constructor(
     /** État complet de l'écran. */
     val uiState: StateFlow<ActivityUiState> = _uiState.asStateFlow()
 
+    /** L'aphorisme du jour, chargé une seule fois au démarrage. */
+    val todayAphorism: Aphorism = aphorismRepository.todayAphorism()
+
+    /**
+     * Vrai si la popup "Pensée du jour" doit être affichée.
+     * Se réinitialise à false quand l'utilisateur ferme la popup.
+     */
+    private val _showAphorismDialog = MutableStateFlow(false)
+    val showAphorismDialog: StateFlow<Boolean> = _showAphorismDialog.asStateFlow()
+
+    /**
+     * Marque la popup comme fermée et enregistre la date du jour pour éviter
+     * qu'elle ne réapparaisse lors des prochaines ouvertures de la journée.
+     */
+    fun dismissAphorism() {
+        _showAphorismDialog.value = false
+        viewModelScope.launch {
+            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            userPreferencesRepository.setLastAphorismDate(today)
+        }
+    }
+
     init {
         viewModelScope.launch {
             userPreferences.collect { prefs ->
@@ -136,6 +162,19 @@ class ActivityViewModel @Inject constructor(
         loadCalendarMonth(YearMonth.now())
         loadWeeklyData()
         SyncStepsWorker.schedule(WorkManager.getInstance(context))
+        checkAphorismVisibility()
+    }
+
+    /**
+     * Détermine si la popup "Pensée du jour" doit être affichée.
+     * Condition : feature activée ET popup non encore montrée aujourd'hui.
+     */
+    private fun checkAphorismVisibility() {
+        viewModelScope.launch {
+            val prefs = userPreferencesRepository.userPreferences.first()
+            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            _showAphorismDialog.value = prefs.aphorismEnabled && prefs.lastAphorismDate != today
+        }
     }
 
     /** Rafraîchit les pas au retour en foreground (ON_RESUME). */
