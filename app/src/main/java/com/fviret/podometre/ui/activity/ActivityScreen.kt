@@ -19,6 +19,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,7 +50,9 @@ fun ActivityScreen(
     val haptic = LocalHapticFeedback.current
 
     if (showAphorism) {
-        com.fviret.podometre.ui.aphorism.AphorismDialog(
+        // markDisplayed() appelé à l'affichage (pas à la fermeture) pour robustesse
+        LaunchedEffect(Unit) { viewModel.onAphorismShown() }
+        com.fviret.podometre.ui.aphorism.AphorismPopup(
             aphorism = viewModel.todayAphorism,
             onDismiss = viewModel::dismissAphorism,
         )

@@ -134,14 +134,19 @@ class ActivityViewModel @Inject constructor(
     val showAphorismDialog: StateFlow<Boolean> = _showAphorismDialog.asStateFlow()
 
     /**
-     * Marque la popup comme fermée et délègue l'enregistrement de la date à
-     * [AphorismRepository.markDisplayed] pour éviter un second affichage aujourd'hui.
+     * Appelé à l'affichage de la popup (via LaunchedEffect dans ActivityScreen).
+     * Délègue [AphorismRepository.markDisplayed] pour éviter un second affichage
+     * même si l'utilisateur force-close l'app sans taper "Make my day".
      */
-    fun dismissAphorism() {
-        _showAphorismDialog.value = false
+    fun onAphorismShown() {
         viewModelScope.launch {
             aphorismRepository.markDisplayed()
         }
+    }
+
+    /** Ferme la popup (bouton "Make my day" ou tap extérieur). */
+    fun dismissAphorism() {
+        _showAphorismDialog.value = false
     }
 
     init {
