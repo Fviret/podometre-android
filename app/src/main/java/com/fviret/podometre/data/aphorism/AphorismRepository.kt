@@ -26,11 +26,30 @@ data class Aphorism(
 )
 
 /**
+ * Sélectionne l'aphorisme pour un quantième donné (1-based).
+ * Retourne null si la liste est vide.
+ * La formule `(dayOfYear - 1) % size` garantit un index positif et un wrap-around propre.
+ */
+internal fun selectAphorismForDay(aphorisms: List<Aphorism>, dayOfYear: Int): Aphorism? {
+    if (aphorisms.isEmpty()) return null
+    return aphorisms[(dayOfYear - 1) % aphorisms.size]
+}
+
+/**
+ * Décode une chaîne JSON en liste d'[Aphorism].
+ * Les champs inconnus (tone, year, source…) sont ignorés silencieusement.
+ * Retourne une liste vide en cas d'erreur de parsing.
+ */
+internal fun parseAphorismsJson(json: String): List<Aphorism> =
+    runCatching {
+        Json { ignoreUnknownKeys = true }.decodeFromString<List<Aphorism>>(json)
+    }.getOrDefault(emptyList())
+
+/**
  * Charge les aphorismes depuis [assets/aphorisms_humor_400.json], expose l'aphorisme
  * du jour et gère la garde "afficher une seule fois par jour" via DataStore.
  *
- * Utilise [kotlinx.serialization] avec [ignoreUnknownKeys] = true pour ignorer
- * silencieusement les champs legacy (tone, year, source) éventuellement présents.
+ * [todayProvider] est injectable pour les tests (date fixe sans dépendance à l'horloge système).
  *
  * @param context Contexte applicatif pour accéder aux assets.
  * @param preferencesRepository Accès DataStore pour la garde 1×/jour et l'activation.
@@ -41,16 +60,14 @@ class AphorismRepository @Inject constructor(
     private val preferencesRepository: UserPreferencesRepository,
 ) {
 
-    private val json = Json { ignoreUnknownKeys = true }
+    /** Fournisseur de date injectable — remplacé par une date fixe dans les tests. */
+    internal var todayProvider: () -> LocalDate = LocalDate::now
 
     private val aphorisms: List<Aphorism> by lazy { loadFromAssets() }
 
     /** Retourne l'aphorisme du jour (index = (quantième - 1) % taille du recueil). */
-    fun todayAphorism(): Aphorism {
-        val list = aphorisms.ifEmpty { return fallback }
-        val index = (LocalDate.now().dayOfYear - 1) % list.size
-        return list[index]
-    }
+    fun todayAphorism(): Aphorism =
+        selectAphorismForDay(aphorisms, todayProvider().dayOfYear) ?: fallback
 
     /**
      * Retourne true si la popup "Pensée du jour" doit être affichée.
@@ -60,7 +77,7 @@ class AphorismRepository @Inject constructor(
         if (aphorisms.isEmpty()) return false
         val prefs = preferencesRepository.userPreferences.first()
         if (!prefs.aphorismEnabled) return false
-        val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+        val today = todayProvider().format(DateTimeFormatter.ISO_LOCAL_DATE)
         return prefs.lastAphorismDate != today
     }
 
@@ -69,13 +86,13 @@ class AphorismRepository @Inject constructor(
      * Empêche un second affichage lors des ouvertures suivantes de la journée.
      */
     suspend fun markDisplayed() {
-        val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+        val today = todayProvider().format(DateTimeFormatter.ISO_LOCAL_DATE)
         preferencesRepository.setLastAphorismDate(today)
     }
 
     private fun loadFromAssets(): List<Aphorism> = runCatching {
-        val jsonText = context.assets.open("aphorisms_humor_400.json").bufferedReader().readText()
-        json.decodeFromString<List<Aphorism>>(jsonText)
+        val json = context.assets.open("aphorisms_humor_400.json").bufferedReader().readText()
+        parseAphorismsJson(json)
     }.getOrElse {
         Log.w("AphorismRepository", "Échec du chargement des aphorismes", it)
         emptyList()
