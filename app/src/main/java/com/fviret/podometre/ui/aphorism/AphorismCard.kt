@@ -98,7 +98,7 @@ fun AphorismCard(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "“${aphorism.text}”",
+                text = "\u201C${aphorism.text}\u201D",
                 style = MaterialTheme.typography.bodyMedium,
                 fontStyle = FontStyle.Italic,
                 textAlign = TextAlign.Center,
