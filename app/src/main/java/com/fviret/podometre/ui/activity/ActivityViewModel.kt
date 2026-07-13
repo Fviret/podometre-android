@@ -27,7 +27,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -135,14 +134,13 @@ class ActivityViewModel @Inject constructor(
     val showAphorismDialog: StateFlow<Boolean> = _showAphorismDialog.asStateFlow()
 
     /**
-     * Marque la popup comme fermée et enregistre la date du jour pour éviter
-     * qu'elle ne réapparaisse lors des prochaines ouvertures de la journée.
+     * Marque la popup comme fermée et délègue l'enregistrement de la date à
+     * [AphorismRepository.markDisplayed] pour éviter un second affichage aujourd'hui.
      */
     fun dismissAphorism() {
         _showAphorismDialog.value = false
         viewModelScope.launch {
-            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
-            userPreferencesRepository.setLastAphorismDate(today)
+            aphorismRepository.markDisplayed()
         }
     }
 
@@ -169,11 +167,10 @@ class ActivityViewModel @Inject constructor(
      * Détermine si la popup "Pensée du jour" doit être affichée.
      * Condition : feature activée ET popup non encore montrée aujourd'hui.
      */
+    /** Délègue la décision d'affichage à [AphorismRepository.shouldShowPopup]. */
     private fun checkAphorismVisibility() {
         viewModelScope.launch {
-            val prefs = userPreferencesRepository.userPreferences.first()
-            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
-            _showAphorismDialog.value = prefs.aphorismEnabled && prefs.lastAphorismDate != today
+            _showAphorismDialog.value = aphorismRepository.shouldShowPopup()
         }
     }
 
