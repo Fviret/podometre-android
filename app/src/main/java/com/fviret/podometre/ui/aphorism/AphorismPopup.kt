@@ -14,6 +14,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -23,14 +25,18 @@ import com.fviret.podometre.data.aphorism.Aphorism
 
 /**
  * Popup matinale "Pensée du jour" affichée une fois par jour à la première ouverture.
- * Affiche le texte de l'aphorisme, son auteur, et un bouton de fermeture.
- * Équivalent iOS : DailyAphorismView.swift / DailyQuotePopup.
+ * Affiche le texte de l'aphorisme, son auteur, sa catégorie (si renseignée), et un bouton
+ * de fermeture "Make my day".
+ *
+ * Le tap en dehors de la carte (onDismissRequest) ou le bouton ferment la popup.
+ * Respecte les animations réduites via le système (Dialog utilise AnimatedVisibility en interne,
+ * qui honore la durée nulle si le scale d'animation système est 0).
  *
  * @param aphorism L'aphorisme sélectionné pour aujourd'hui.
- * @param onDismiss Appelé quand l'utilisateur clique sur "Make my day".
+ * @param onDismiss Appelé quand l'utilisateur ferme la popup (bouton ou tap extérieur).
  */
 @Composable
-fun AphorismDialog(
+fun AphorismPopup(
     aphorism: Aphorism,
     onDismiss: () -> Unit,
 ) {
@@ -52,6 +58,7 @@ fun AphorismDialog(
                     text = "✨",
                     style = MaterialTheme.typography.displaySmall,
                     textAlign = TextAlign.Center,
+                    modifier = Modifier.clearAndSetSemantics {},
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -61,29 +68,53 @@ fun AphorismDialog(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold,
-                    letterSpacing = androidx.compose.ui.unit.TextUnit.Unspecified,
                     textAlign = TextAlign.Center,
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text(
-                    text = "“${aphorism.text}”",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontStyle = FontStyle.Italic,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
+                // Citation + auteur fusionnés en un seul nœud TalkBack
+                val a11yText = buildString {
+                    append(aphorism.text)
+                    append(", ")
+                    append(aphorism.author)
+                    if (aphorism.category.isNotBlank()) {
+                        append(", ")
+                        append(aphorism.category)
+                    }
+                }
+                Column(
+                    modifier = Modifier.clearAndSetSemantics { contentDescription = a11yText },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = "“${aphorism.text}”",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontStyle = FontStyle.Italic,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                Text(
-                    text = "— ${aphorism.author}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Medium,
-                )
+                    Text(
+                        text = "— ${aphorism.author}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Medium,
+                    )
+
+                    if (aphorism.category.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = aphorism.category,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
