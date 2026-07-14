@@ -14,6 +14,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -47,6 +49,7 @@ fun AphorismPopup(
     aphorism: Aphorism,
     onDismiss: () -> Unit,
 ) {
+    val haptic = LocalHapticFeedback.current
     Dialog(onDismissRequest = onDismiss) {
         Card(
             shape = RoundedCornerShape(20.dp),
@@ -127,7 +130,11 @@ fun AphorismPopup(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
-                    onClick = onDismiss,
+                    onClick = {
+                        // Retour haptique de confirmation avant fermeture (cohérent avec navigation/copie).
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onDismiss()
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("aphorism_dismiss_button")
