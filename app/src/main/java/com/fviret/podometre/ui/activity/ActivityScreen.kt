@@ -18,13 +18,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import android.os.Build
+import android.view.HapticFeedbackConstants
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -48,6 +53,24 @@ fun ActivityScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val showAphorism by viewModel.showAphorismDialog.collectAsStateWithLifecycle()
     val haptic = LocalHapticFeedback.current
+    val view = LocalView.current
+
+    // Détecte le franchissement de l'objectif (< 100 % → ≥ 100 %), aujourd'hui uniquement.
+    // -1L = sentinelle : on ne tire pas de haptic lors de la première composition.
+    val prevStepsRef = remember { mutableLongStateOf(-1L) }
+    LaunchedEffect(uiState.stepsToday, uiState.stepGoal) {
+        val prev = prevStepsRef.longValue
+        val current = uiState.stepsToday
+        val goal = uiState.stepGoal.toLong()
+        if (uiState.selectedDayOffset == 0 && prev >= 0L && prev < goal && current >= goal) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+            } else {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            }
+        }
+        prevStepsRef.longValue = current
+    }
 
     if (showAphorism) {
         // markDisplayed() appelé à l'affichage (pas à la fermeture) pour robustesse
