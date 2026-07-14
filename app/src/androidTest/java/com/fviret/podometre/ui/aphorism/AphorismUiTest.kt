@@ -9,6 +9,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -133,10 +134,14 @@ class AphorismUiTest {
         composeTestRule.waitForIdle()
 
         // Toggle "Pensée du jour" présent dans la section dédiée
-        composeTestRule.onNodeWithText("Afficher la pensée du jour").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Afficher la pensée du jour")
+            .performScrollTo()
+            .assertIsDisplayed()
 
-        // Carte de l'aphorisme du jour présente
-        composeTestRule.onNodeWithTag("aphorism_card").assertIsDisplayed()
+        // Carte de l'aphorisme du jour présente (scroll nécessaire — SettingsScreen est scrollable)
+        composeTestRule.onNodeWithTag("aphorism_card")
+            .performScrollTo()
+            .assertIsDisplayed()
     }
 
     // ────────────────────────────────────────────────────────────────────────
