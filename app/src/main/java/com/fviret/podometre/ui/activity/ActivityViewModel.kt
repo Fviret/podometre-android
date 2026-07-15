@@ -3,6 +3,10 @@ package com.fviret.podometre.ui.activity
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.location.Geocoder
 import android.util.Log
 import androidx.core.content.ContextCompat
@@ -45,6 +49,20 @@ import kotlin.coroutines.resume
 
 /** Nombre de mois en arrière maximum pour la navigation calendrier. */
 private const val MAX_CALENDAR_MONTHS_BACK = 12
+
+/**
+ * Calcule le nombre de pas live en combinant la référence Health Connect et le delta capteur.
+ *
+ * @param hcBaseline Nombre de pas HC au démarrage du capteur (source de vérité).
+ * @param sensorStart Valeur cumulative du capteur au démarrage (-1 si pas encore initialisé).
+ * @param sensorCurrent Valeur cumulative courante du capteur.
+ * @return Pas estimés depuis minuit : [hcBaseline] + delta capteur, jamais négatif.
+ */
+internal fun computeLiveSteps(hcBaseline: Long, sensorStart: Long, sensorCurrent: Long): Long {
+    if (sensorStart < 0L) return hcBaseline
+    val delta = (sensorCurrent - sensorStart).coerceAtLeast(0L)
+    return hcBaseline + delta
+}
 
 /** Pas mockés par décalage en jours (0 = aujourd'hui) pour l'émulateur. */
 private val EMULATOR_STEPS_BY_OFFSET = mapOf(
@@ -135,6 +153,54 @@ class ActivityViewModel @Inject constructor(
      */
     private val _showAphorismDialog = MutableStateFlow(false)
     val showAphorismDialog: StateFlow<Boolean> = _showAphorismDialog.asStateFlow()
+
+    // ── Capteur de pas live ───────────────────────────────────────────────────
+
+    private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+
+    /** Référence HC au moment du démarrage du capteur — ne recule jamais. */
+    @Volatile private var hcStepsRef: Long = 0L
+
+    /** Valeur cumulative du capteur TYPE_STEP_COUNTER au démarrage de la session. -1 = non initialisé. */
+    @Volatile private var sensorStart: Long = -1L
+
+    private val stepListener = object : SensorEventListener {
+        override fun onSensorChanged(event: SensorEvent) {
+            if (_uiState.value.selectedDayOffset != 0) return
+            val raw = event.values[0].toLong()
+            if (sensorStart < 0L) sensorStart = raw
+            val live = computeLiveSteps(hcStepsRef, sensorStart, raw)
+            _uiState.value = _uiState.value.copy(stepsToday = maxOf(_uiState.value.stepsToday, live))
+        }
+        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+    }
+
+    /**
+     * Démarre l'écoute du capteur TYPE_STEP_COUNTER.
+     * Sans effet sur émulateur ou si l'utilisateur est sur un jour passé.
+     * Appelé depuis [ActivityScreen] sur ON_RESUME (permission déjà vérifiée côté UI).
+     */
+    fun startLiveSensor() {
+        if (_uiState.value.selectedDayOffset != 0) return
+        if (isEmulator()) return
+        val stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER) ?: return
+        sensorStart = -1L
+        sensorManager.registerListener(stepListener, stepSensor, SensorManager.SENSOR_DELAY_NORMAL)
+    }
+
+    /**
+     * Arrête l'écoute du capteur (arrière-plan, jour passé, destruction du ViewModel).
+     * Réinitialise [sensorStart] pour forcer un re-calibrage au prochain démarrage.
+     */
+    fun stopLiveSensor() {
+        sensorManager.unregisterListener(stepListener)
+        sensorStart = -1L
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        stopLiveSensor()
+    }
 
     /**
      * Appelé à l'affichage de la popup (via LaunchedEffect dans ActivityScreen).
@@ -277,7 +343,9 @@ class ActivityViewModel @Inject constructor(
                 else targetDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
                 healthConnectRepository.readSteps(from = from, to = to)
             }
-            _uiState.value = _uiState.value.copy(stepsToday = steps)
+            // Pour aujourd'hui : mémorise la référence HC pour le calcul live et ne recule jamais.
+            if (offset == 0) hcStepsRef = maxOf(hcStepsRef, steps)
+            _uiState.value = _uiState.value.copy(stepsToday = maxOf(_uiState.value.stepsToday, steps))
         }
     }
 

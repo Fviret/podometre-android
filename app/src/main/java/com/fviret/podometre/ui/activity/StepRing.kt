@@ -31,6 +31,7 @@ import kotlin.math.roundToInt
 
 private const val RING_STROKE_WIDTH_DP = 20
 private const val RING_ANIMATION_DURATION_MS = 600
+private const val COUNTER_ANIMATION_DURATION_MS = 300
 
 /**
  * Anneau circulaire de progression des pas, avec compteur centré et objectif en dessous.
@@ -46,6 +47,12 @@ fun StepRing(
 ) {
     val rawProgress = if (goal > 0) steps.toFloat() / goal.toFloat() else 0f
     val progress = rawProgress.coerceIn(0f, 1f)
+    // Compteur animé : "roule" en douceur lors des incréments live du capteur.
+    val animatedSteps by animateFloatAsState(
+        targetValue = steps.toFloat(),
+        animationSpec = tween(durationMillis = COUNTER_ANIMATION_DURATION_MS, easing = FastOutSlowInEasing),
+        label = "step_counter"
+    )
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
         animationSpec = tween(durationMillis = RING_ANIMATION_DURATION_MS, easing = FastOutSlowInEasing),
@@ -105,7 +112,7 @@ fun StepRing(
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = "%,d".format(steps).replace(',', ' '),
+                    text = "%,d".format(animatedSteps.toLong()).replace(',', ' '),
                     style = MaterialTheme.typography.displaySmall,
                     textAlign = TextAlign.Center
                 )
