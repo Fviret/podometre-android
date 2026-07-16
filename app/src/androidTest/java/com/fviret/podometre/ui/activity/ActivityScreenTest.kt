@@ -1,5 +1,6 @@
 package com.fviret.podometre.ui.activity
 
+import android.Manifest
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -7,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.rule.GrantPermissionRule
 import com.fviret.podometre.R
 import com.fviret.podometre.fakes.TestFactories
 import org.junit.Assert.assertEquals
@@ -14,6 +16,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.junit.rules.RuleChain
 import kotlin.math.roundToInt
 
 /**
@@ -31,8 +34,14 @@ import kotlin.math.roundToInt
 @RunWith(AndroidJUnit4::class)
 class ActivityScreenTest {
 
+    // ACTIVITY_RECOGNITION est requis sur Android 10+ pour le capteur live (KAN-72).
+    // Sans ce grant, le launcher ouvre une dialog système qui détruit le compose hierarchy du test.
+    private val composeTestRule = createComposeRule()
+
     @get:Rule
-    val composeTestRule = createComposeRule()
+    val ruleChain: RuleChain = RuleChain
+        .outerRule(GrantPermissionRule.grant(Manifest.permission.ACTIVITY_RECOGNITION))
+        .around(composeTestRule)
 
     private lateinit var viewModel: ActivityViewModel
 
