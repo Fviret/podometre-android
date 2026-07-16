@@ -1,6 +1,7 @@
 package com.fviret.podometre.ui.activity
 
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -31,7 +32,13 @@ import kotlin.math.roundToInt
 
 private const val RING_STROKE_WIDTH_DP = 20
 private const val RING_ANIMATION_DURATION_MS = 600
-private const val COUNTER_ANIMATION_DURATION_MS = 300
+
+/**
+ * Durée de l'animation du compteur de pas.
+ * Compose honore automatiquement le réglage système "Réduire les animations"
+ * (ANIMATOR_DURATION_SCALE = 0 → rendu instantané sans code supplémentaire).
+ */
+private const val COUNTER_ANIMATION_DURATION_MS = 600
 
 /**
  * Anneau circulaire de progression des pas, avec compteur centré et objectif en dessous.
@@ -47,10 +54,15 @@ fun StepRing(
 ) {
     val rawProgress = if (goal > 0) steps.toFloat() / goal.toFloat() else 0f
     val progress = rawProgress.coerceIn(0f, 1f)
-    // Compteur animé : "roule" en douceur lors des incréments live du capteur.
+    /**
+     * Compteur animé : monte progressivement vers la nouvelle valeur (ease-out, 0,6 s).
+     * L'affichage des intermédiaires (ex. 5 423,7 → 5 423) crée l'effet "rouleau".
+     * Compose respecte ANIMATOR_DURATION_SCALE : si "Réduire les animations" est actif,
+     * la durée passe à 0 et le chiffre s'affiche directement.
+     */
     val animatedSteps by animateFloatAsState(
         targetValue = steps.toFloat(),
-        animationSpec = tween(durationMillis = COUNTER_ANIMATION_DURATION_MS, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = COUNTER_ANIMATION_DURATION_MS, easing = LinearOutSlowInEasing),
         label = "step_counter"
     )
     val animatedProgress by animateFloatAsState(
@@ -113,8 +125,9 @@ fun StepRing(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "%,d".format(animatedSteps.toLong()).replace(',', ' '),
-                    style = MaterialTheme.typography.displaySmall,
-                    textAlign = TextAlign.Center
+                    // "tnum" = chiffres tabulaires (largeur fixe) → pas de jitter pendant l'animation.
+                    style = MaterialTheme.typography.displaySmall.copy(fontFeatureSettings = "tnum"),
+                    textAlign = TextAlign.Center,
                 )
                 Text(
                     text = stringResource(R.string.activity_ring_steps_label),
