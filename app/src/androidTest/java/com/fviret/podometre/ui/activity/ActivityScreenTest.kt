@@ -3,6 +3,7 @@ package com.fviret.podometre.ui.activity
 import android.Manifest
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -75,9 +76,16 @@ class ActivityScreenTest {
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithText("Aujourd'hui").assertIsDisplayed()
-        composeTestRule
-            .onNodeWithContentDescription(ringContentDescription(steps = 7_430L, goal = 10_000))
-            .assertIsDisplayed()
+
+        // loadStepsForOffset(0) est async : waitUntil garantit que les 7 430 pas mock sont chargés.
+        val expectedDesc = ringContentDescription(steps = 7_430L, goal = 10_000)
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule
+                .onAllNodesWithContentDescription(expectedDesc)
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+        composeTestRule.onNodeWithContentDescription(expectedDesc).assertIsDisplayed()
 
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         composeTestRule
@@ -97,9 +105,17 @@ class ActivityScreenTest {
 
         assertEquals(-1, viewModel.uiState.value.selectedDayOffset)
         composeTestRule.onNodeWithText("Hier").assertIsDisplayed()
-        composeTestRule
-            .onNodeWithContentDescription(ringContentDescription(steps = 6_200L, goal = 10_000))
-            .assertIsDisplayed()
+
+        // loadStepsForOffset est async : waitUntil garantit que les 6 200 pas mock sont chargés
+        // avant de tester la contentDescription fusionnée de l'anneau.
+        val expectedDesc = ringContentDescription(steps = 6_200L, goal = 10_000)
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule
+                .onAllNodesWithContentDescription(expectedDesc)
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+        composeTestRule.onNodeWithContentDescription(expectedDesc).assertIsDisplayed()
     }
 
     // navigationJourPrecedent_puisJourSuivant_revientAAujourdHui a été retiré : il échouait
