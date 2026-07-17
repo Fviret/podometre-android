@@ -3,11 +3,18 @@ package com.fviret.podometre.ui.activity
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.location.Geocoder
+import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
+import com.fviret.podometre.data.aphorism.Aphorism
+import com.fviret.podometre.data.aphorism.AphorismRepository
 import com.fviret.podometre.data.health.HealthConnectRepository
 import com.fviret.podometre.data.preferences.UserPreferences
 import com.fviret.podometre.data.preferences.UserPreferencesRepository
@@ -24,6 +31,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -39,6 +49,20 @@ import kotlin.coroutines.resume
 
 /** Nombre de mois en arrière maximum pour la navigation calendrier. */
 private const val MAX_CALENDAR_MONTHS_BACK = 12
+
+/**
+ * Calcule le nombre de pas live en combinant la référence Health Connect et le delta capteur.
+ *
+ * @param hcBaseline Nombre de pas HC au démarrage du capteur (source de vérité).
+ * @param sensorStart Valeur cumulative du capteur au démarrage (-1 si pas encore initialisé).
+ * @param sensorCurrent Valeur cumulative courante du capteur.
+ * @return Pas estimés depuis minuit : [hcBaseline] + delta capteur, jamais négatif.
+ */
+internal fun computeLiveSteps(hcBaseline: Long, sensorStart: Long, sensorCurrent: Long): Long {
+    if (sensorStart < 0L) return hcBaseline
+    val delta = (sensorCurrent - sensorStart).coerceAtLeast(0L)
+    return hcBaseline + delta
+}
 
 /** Pas mockés par décalage en jours (0 = aujourd'hui) pour l'émulateur. */
 private val EMULATOR_STEPS_BY_OFFSET = mapOf(
@@ -101,6 +125,7 @@ class ActivityViewModel @Inject constructor(
     private val healthConnectRepository: HealthConnectRepository,
     private val weatherRepository: WeatherRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
+    private val aphorismRepository: AphorismRepository,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -119,6 +144,80 @@ class ActivityViewModel @Inject constructor(
     /** État complet de l'écran. */
     val uiState: StateFlow<ActivityUiState> = _uiState.asStateFlow()
 
+    /** L'aphorisme du jour, chargé une seule fois au démarrage. */
+    val todayAphorism: Aphorism = aphorismRepository.todayAphorism()
+
+    /**
+     * Vrai si la popup "Pensée du jour" doit être affichée.
+     * Se réinitialise à false quand l'utilisateur ferme la popup.
+     */
+    private val _showAphorismDialog = MutableStateFlow(false)
+    val showAphorismDialog: StateFlow<Boolean> = _showAphorismDialog.asStateFlow()
+
+    // ── Capteur de pas live ───────────────────────────────────────────────────
+
+    private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+
+    /** Référence HC au moment du démarrage du capteur — ne recule jamais. */
+    @Volatile private var hcStepsRef: Long = 0L
+
+    /** Valeur cumulative du capteur TYPE_STEP_COUNTER au démarrage de la session. -1 = non initialisé. */
+    @Volatile private var sensorStart: Long = -1L
+
+    private val stepListener = object : SensorEventListener {
+        override fun onSensorChanged(event: SensorEvent) {
+            if (_uiState.value.selectedDayOffset != 0) return
+            val raw = event.values[0].toLong()
+            if (sensorStart < 0L) sensorStart = raw
+            val live = computeLiveSteps(hcStepsRef, sensorStart, raw)
+            _uiState.value = _uiState.value.copy(stepsToday = maxOf(_uiState.value.stepsToday, live))
+        }
+        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+    }
+
+    /**
+     * Démarre l'écoute du capteur TYPE_STEP_COUNTER.
+     * Sans effet sur émulateur ou si l'utilisateur est sur un jour passé.
+     * Appelé depuis [ActivityScreen] sur ON_RESUME (permission déjà vérifiée côté UI).
+     */
+    fun startLiveSensor() {
+        if (_uiState.value.selectedDayOffset != 0) return
+        if (isEmulator()) return
+        val stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER) ?: return
+        sensorStart = -1L
+        sensorManager.registerListener(stepListener, stepSensor, SensorManager.SENSOR_DELAY_NORMAL)
+    }
+
+    /**
+     * Arrête l'écoute du capteur (arrière-plan, jour passé, destruction du ViewModel).
+     * Réinitialise [sensorStart] pour forcer un re-calibrage au prochain démarrage.
+     */
+    fun stopLiveSensor() {
+        sensorManager.unregisterListener(stepListener)
+        sensorStart = -1L
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        stopLiveSensor()
+    }
+
+    /**
+     * Appelé à l'affichage de la popup (via LaunchedEffect dans ActivityScreen).
+     * Délègue [AphorismRepository.markDisplayed] pour éviter un second affichage
+     * même si l'utilisateur force-close l'app sans taper "Make my day".
+     */
+    fun onAphorismShown() {
+        viewModelScope.launch {
+            aphorismRepository.markDisplayed()
+        }
+    }
+
+    /** Ferme la popup (bouton "Make my day" ou tap extérieur). */
+    fun dismissAphorism() {
+        _showAphorismDialog.value = false
+    }
+
     init {
         viewModelScope.launch {
             userPreferences.collect { prefs ->
@@ -135,6 +234,25 @@ class ActivityViewModel @Inject constructor(
         loadCalendarMonth(YearMonth.now())
         loadWeeklyData()
         SyncStepsWorker.schedule(WorkManager.getInstance(context))
+        checkAphorismVisibility()
+        // Ré-affiche la popup quand l'utilisateur réactive la feature depuis les Paramètres.
+        viewModelScope.launch {
+            userPreferences
+                .map { it.aphorismEnabled }
+                .distinctUntilChanged()
+                .drop(1) // valeur initiale déjà traitée par checkAphorismVisibility() ci-dessus
+                .collect { enabled -> if (enabled) checkAphorismVisibility() }
+        }
+    }
+
+    /**
+     * Détermine si la popup "Pensée du jour" doit être affichée.
+     * Rendue [internal] pour être appelée depuis [ActivityScreen] lors du retour en premier plan.
+     */
+    internal fun checkAphorismVisibility() {
+        viewModelScope.launch {
+            _showAphorismDialog.value = aphorismRepository.shouldShowPopup()
+        }
     }
 
     /** Rafraîchit les pas au retour en foreground (ON_RESUME). */
@@ -225,7 +343,15 @@ class ActivityViewModel @Inject constructor(
                 else targetDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
                 healthConnectRepository.readSteps(from = from, to = to)
             }
-            _uiState.value = _uiState.value.copy(stepsToday = steps)
+            // Pour aujourd'hui : mémorise la référence HC pour le calcul live et ne recule jamais.
+            // Pour aujourd'hui : max pour ne jamais reculer en dessous du live/cache.
+            // Pour les jours passés : valeur brute (pas de max — chaque jour a ses propres pas).
+            if (offset == 0) {
+                hcStepsRef = maxOf(hcStepsRef, steps)
+                _uiState.value = _uiState.value.copy(stepsToday = maxOf(_uiState.value.stepsToday, steps))
+            } else {
+                _uiState.value = _uiState.value.copy(stepsToday = steps)
+            }
         }
     }
 
@@ -398,10 +524,13 @@ class ActivityViewModel @Inject constructor(
                 val addresses = geocoder.getFromLocation(lat, lon, 1)
                 addresses?.firstOrNull()?.locality
                     ?: addresses?.firstOrNull()?.subAdminArea
-            }.getOrNull()
+            }.onFailure { Log.w(TAG, "getCityName a échoué pour ($lat, $lon)", it) }
+                .getOrNull()
         }
 
     companion object {
+        private const val TAG = "ActivityViewModel"
+
         /**
          * Construit le label de date affiché au-dessus de l'anneau selon le décalage en jours.
          * Exemples : 0 → "Aujourd'hui", -1 → "Hier", -5 → "Lun. 23 juin".

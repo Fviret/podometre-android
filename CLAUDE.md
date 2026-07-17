@@ -113,6 +113,9 @@ app/src/main/java/com/fviret/podometre/
 | `showWeatherForecast` | Boolean | true |
 | `showMonthCalendar` | Boolean | true |
 | `showWeeklyChart` | Boolean | true |
+| `cachedStepsToday` | Long | 0 |
+| `cachedStepsTodayDate` | String (date ISO yyyy-MM-dd) | "" (vide) |
+| `activeJourneyId` | String? (UUID) | null |
 
 Ne pas créer de nouvelles clés sans les ajouter ici.
 
@@ -260,7 +263,6 @@ git push origin main
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 <!-- Health Connect -->
 <uses-permission android:name="android.permission.health.READ_STEPS" />
 <uses-permission android:name="android.permission.health.READ_DISTANCE" />

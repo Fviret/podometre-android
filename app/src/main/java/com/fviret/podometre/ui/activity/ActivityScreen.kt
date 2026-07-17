@@ -18,12 +18,24 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import android.Manifest
+import android.os.Build
+import android.view.HapticFeedbackConstants
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
+import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -45,12 +57,65 @@ fun ActivityScreen(
 ) {
     val prefs by viewModel.userPreferences.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val showAphorism by viewModel.showAphorismDialog.collectAsStateWithLifecycle()
     val haptic = LocalHapticFeedback.current
+    val view = LocalView.current
+    val context = LocalContext.current
+
+    // Demande ACTIVITY_RECOGNITION (nécessaire sur Android 10+) puis démarre le capteur.
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> if (granted) viewModel.startLiveSensor() }
+
+    fun startSensorIfAllowed() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val granted = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACTIVITY_RECOGNITION
+            ) == PackageManager.PERMISSION_GRANTED
+            if (granted) viewModel.startLiveSensor() else permissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
+        } else {
+            viewModel.startLiveSensor()
+        }
+    }
+
+    // Détecte le franchissement de l'objectif (< 100 % → ≥ 100 %), aujourd'hui uniquement.
+    // -1L = sentinelle : on ne tire pas de haptic lors de la première composition.
+    val prevStepsRef = remember { mutableLongStateOf(-1L) }
+    LaunchedEffect(uiState.stepsToday, uiState.stepGoal) {
+        val prev = prevStepsRef.longValue
+        val current = uiState.stepsToday
+        val goal = uiState.stepGoal.toLong()
+        if (uiState.selectedDayOffset == 0 && prev >= 0L && prev < goal && current >= goal) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+            } else {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            }
+        }
+        prevStepsRef.longValue = current
+    }
+
+    if (showAphorism) {
+        // markDisplayed() appelé à l'affichage (pas à la fermeture) pour robustesse
+        LaunchedEffect(Unit) { viewModel.onAphorismShown() }
+        com.fviret.podometre.ui.aphorism.AphorismPopup(
+            aphorism = viewModel.todayAphorism,
+            onDismiss = viewModel::dismissAphorism,
+        )
+    }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.refreshSteps()
         viewModel.refreshWeather()
         viewModel.refreshCalendar()
+        // Retente l'affichage à chaque retour en premier plan (garde 1×/jour conservée).
+        viewModel.checkAphorismVisibility()
+        // Démarre le capteur live pour aujourd'hui (permission vérifiée avant).
+        startSensorIfAllowed()
+    }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        viewModel.stopLiveSensor()
     }
 
     Column(
@@ -138,6 +203,7 @@ fun ActivityScreen(
                 stepsPerDay = uiState.calendarSteps,
                 goal = uiState.stepGoal,
                 total = uiState.calendarTotal,
+                accentColor = AppColors.colorForId(prefs.ringColorId),
                 onPreviousMonth = { viewModel.navigateCalendarPrevious() },
                 onNextMonth = { viewModel.navigateCalendarNext() },
                 onDayTap = { date -> viewModel.onCalendarDayTap(date) },

@@ -17,6 +17,7 @@ Portage Android de l'application iOS Podomètre — suivi de pas quotidiens avec
 - **Badges** — grille 3 colonnes : 6 badges de seuils de pas + 19 badges de trajets complétés
 - **Notification objectif** — alerte locale « Objectif atteint ! 🎉 » (max 1 par jour)
 - **Paramètres** — objectif de pas (5 000–20 000), couleur de l'anneau (6 presets), mode sombre, modules de l'écran principal, notifications
+- **Accessibilité** — compatibilité TalkBack (nœuds sémantiques fusionnés, éléments décoratifs masqués) et support du Dynamic Type (tailles de police système, `TextStyle` Material 3)
 
 ---
 
@@ -33,7 +34,7 @@ Portage Android de l'application iOS Podomètre — suivi de pas quotidiens avec
 | Réseau | OkHttp (Open-Meteo) |
 | Background | WorkManager |
 | Localisation | FusedLocationProviderClient |
-| Tests | JUnit 5 + MockK + Coroutines Test |
+| Tests | JUnit 5 + MockK + Coroutines Test (unitaires) · Compose Testing + Espresso (intégration UI) |
 
 **Minimum SDK :** Android 8.0 (API 26) — Health Connect requiert Android 9+ (API 28)  
 **Target SDK :** API 35
@@ -124,12 +125,18 @@ cd podometre-android
 
 GitHub Actions — `.github/workflows/ci.yml`
 
-Déclenché sur chaque push vers `main` / `dev` et chaque PR vers `dev` :
+Déclenché sur chaque push vers `main` / `dev` et chaque PR vers `dev`, en deux jobs :
 
+**`build`**
 1. **Lint** — `./gradlew lint`
 2. **Tests unitaires** — `./gradlew testDebugUnitTest`
 3. **Build** — `./gradlew assembleDebug`
 4. **Upload APK** — artifact `debug-apk`
+
+**`instrumented-tests`** (dépend de `build`)
+1. Émulateur headless (`reactivecircus/android-emulator-runner`, API 33, KVM activé sur `ubuntu-latest`)
+2. **Tests d'intégration UI** — `./gradlew connectedDebugAndroidTest`
+3. **Upload du rapport de test** — artifact `instrumented-test-report`
 
 ---
 
@@ -146,22 +153,75 @@ Les PRs sont ouvertes vers `dev`. `main` n'est mis à jour que depuis `dev` avec
 
 ### Skill `/feature` — automatisation bout-en-bout
 
-Ce projet utilise un **skill Claude Code personnalisé** défini dans `.claude/commands/feature.md`.
+Ce projet utilise un **skill Claude Code personnalisé** défini dans [`.claude/commands/feature.md`](.claude/commands/feature.md).
 
-Taper `/feature` (ou `/feature KAN-XX`) déclenche automatiquement la séquence complète :
+#### Usage
 
-1. Fetch du ticket Jira (ou sélection automatique du premier "À faire")
-2. Analyse du codebase concerné
-3. Création de la branche `feature/<ticket>-<slug>` depuis `dev`
-4. Implémentation selon les conventions du `CLAUDE.md`
-5. Compilation (`assembleDebug`) + tests unitaires
-6. Commit signé `Co-Authored-By: Claude`
-7. Push + création de la PR GitHub vers `dev`
-8. Transition Jira → "Revue en cours" + commentaire avec lien PR
+```
+/feature            → sélectionne automatiquement le ticket "À faire" le plus ancien
+/feature KAN-59     → traite ce ticket précis
+```
 
-**Résultat :** un ticket Jira complet en une seule commande, de la lecture des specs jusqu'à la PR ouverte. L'humain garde la main sur la review et le merge.
+#### Ce que fait le skill en une seule commande
+
+```
+Ticket Jira "À faire"
+        ↓
+   Fetch + lecture des specs (description, critères d'acceptation)
+        ↓
+   Exploration du codebase concerné (Grep, Glob)
+        ↓
+   git checkout -b feature/<ticket>-<slug>  (depuis dev)
+        ↓
+   Implémentation Kotlin/Compose — conventions CLAUDE.md
+        ↓
+   ./gradlew assembleDebug  +  testDebugUnitTest
+        ↓
+   git commit  Co-Authored-By: Claude
+        ↓
+   git push  +  gh pr create --base dev
+        ↓
+   Jira → "Revue en cours"  +  commentaire lien PR
+        ↓
+   ✅ Rapport final  (PR prête, humain review & merge)
+```
+
+#### Résultats observés
+
+Sur les sprints 4 à 9 (plus de 30 tickets), le skill a été invoqué sans aucune intervention manuelle entre la demande et la PR ouverte. L'humain garde la main sur la review et le merge — l'IA ne merge jamais elle-même.
+
+| Métrique | Valeur |
+|---|---|
+| Tickets livrés via `/feature` | 30+ |
+| Oublis de PR ou transition Jira | 0 |
+| Interventions manuelles entre `/feature` et PR | 0 |
+
+#### Réutiliser ce skill dans ton projet
+
+Le fichier source est disponible ici : [`.claude/skills/feature.md`](.claude/skills/feature.md)
+
+Pour l'adapter à ton projet :
+1. Copier `.claude/skills/feature.md` dans `.claude/commands/feature.md`
+2. Remplacer `KAN` par ton projet Jira
+3. Adapter les conventions de l'étape 4 à ton stack
+4. Connecter le MCP Atlassian dans Claude Code (`/mcp`)
 
 > Ce skill illustre l'approche *build in public* du projet : l'IA code, l'humain valide.
+
+---
+
+## Pensée du jour
+
+L'application affiche chaque matin une citation motivante issue d'un recueil de 400 aphorismes CC0.
+
+### Comportement
+- **Popup matinale** : s'affiche à la première ouverture de la journée **et** à chaque retour en premier plan (garde 1×/jour dans DataStore).
+- **Sélection déterministe** : l'aphorisme du jour est toujours `recueil[(quantième - 1) % 400]` — stable sur 24h, différent chaque jour, sans réseau.
+- **Carte dans les Paramètres** : l'aphorisme du jour est visible en permanence, appui = copie dans le presse-papiers.
+- **Toggle** : désactiver la feature masque la popup. La réactiver réinitialise la garde et ré-affiche la popup au prochain retour sur l'écran principal.
+
+### Sources
+Recueil embarqué (`assets/aphorisms_humor_400.json`) — 400 citations CC0, chargé hors ligne, aucune dépendance réseau.
 
 ---
 
@@ -169,10 +229,10 @@ Taper `/feature` (ou `/feature KAN-XX`) déclenche automatiquement la séquence 
 
 | Catégorie | Trajets |
 |---|---|
-| 🚶 Promenades | Tour des Jardins de Paris (12 km), Bords de Seine (8 km), Promenade des Anglais (7 km), Chemin des Lavandes (15 km) |
-| 🏔 Sentiers | Tour du Mont-Blanc (170 km), GR20 Corse (180 km), Sentier des Douaniers (45 km), Gorges du Verdon (25 km) |
-| 🏛 Histoire | Route des Cathédrales (280 km), Châteaux de la Loire (120 km), Sur les Pas de Napoléon (320 km), Route des Vins d'Alsace (70 km) |
-| ⚔️ Mythes & Épopées | Chemin de Saint-Jacques (750 km), Odyssée d'Ulysse (3 000 km), Quête du Graal (500 km), Travaux d'Hercule (1 200 km), Tour du Monde en 80 Jours (40 000 km), Route de la Soie (8 000 km), Expédition Shackleton (1 300 km) |
+| 🚶 Promenades | Tour des Tuileries (2,5 km), Berges de la Seine (5 km), Boucle de Central Park (10 km), Semi-marathon de Paris (21 km), Marathon de Paris (42 km) |
+| 🏔 Sentiers | GR20 Complet (180 km), Camino Francés tronçon final (111 km), Camino Francés complet (780 km), Via de la Plata (1 000 km), Tour du Mont Blanc (170 km), Via Francigena tronçon final (420 km) |
+| 🏛 Histoire | Route Royale Perse (2 700 km), Alexandre — Campagne Perse (5 000 km), Alexandre — Épopée Complète (35 000 km), Route de la Soie (6 400 km), Marco Polo (12 000 km) |
+| ⚔️ Mythes & Épopées | L'Odyssée — Trajet Réel (900 km), L'Odyssée — Voyage Complet (8 000 km), L'Iliade — Siège de Troie (400 km) |
 
 La progression est calculée depuis `DistanceRecord` Health Connect à partir de la date de démarrage du trajet — toujours recalculée, jamais incrémentée.
 
@@ -188,9 +248,11 @@ La progression est calculée depuis `DistanceRecord` Health Connect à partir de
 | 4 | Système de Trajets (modèle + sync) | KAN-26 à KAN-28 | ✅ Terminé |
 | 5 | Système de Trajets (UI + notifs) | KAN-29 à KAN-31 | ✅ Terminé |
 | 6 | Paramètres + Badges + Streak + Notifs | KAN-32 à KAN-39 | ✅ Terminé |
-| 7 | Catalogue 19 trajets (données complètes) | KAN-40 à KAN-43 |✅ Terminé  |
-| 8 | Accessibilité + Tests | KAN-10, KAN-11 | ✅ Terminé |
-| 9 | Test sur Device Physique | KAN-50 | ⏳ À faire |
+| 7 | Catalogue 19 trajets (données complètes) | KAN-40 à KAN-43 | ✅ Terminé |
+| 8 | Accessibilité (TalkBack + Dynamic Type) | KAN-44, KAN-45 | ✅ Terminé |
+| 9 | Tests unitaires et d'intégration UI + audit qualité | KAN-46, KAN-47, KAN-51 à KAN-58 | ✅ Terminé |
+| — | Bugfixes & maintenance | KAN-59 (couleur calendrier) | ✅ Terminé |
+| 10 | Pensée du jour (400 citations CC0, popup 1×/jour, réarmement) | KAN-60 à KAN-68 | 🔄 In Review |
 
 Suivi des tickets : [floviret.atlassian.net/jira/software/projects/KAN](https://floviret.atlassian.net/jira/software/projects/KAN)
 

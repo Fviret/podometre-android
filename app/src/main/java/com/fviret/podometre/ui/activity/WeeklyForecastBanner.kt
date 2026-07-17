@@ -23,7 +23,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.fviret.podometre.data.weather.DailyForecast
 import com.fviret.podometre.data.weather.emojiForWeatherCode
 import java.time.LocalDate
@@ -105,7 +104,7 @@ private fun DayCell(
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = emojiForWeatherCode(forecast.weatherCode),
-            fontSize = 20.sp,
+            style = MaterialTheme.typography.titleLarge,
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(4.dp))

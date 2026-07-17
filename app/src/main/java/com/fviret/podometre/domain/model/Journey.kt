@@ -5,6 +5,16 @@ import java.util.UUID
 /** Constante de conversion : 1 pas = 0,8 m = 0,0008 km */
 const val KM_PER_STEP = 0.0008
 
+/** Convertit un nombre de pas en distance parcourue, en kilomètres. */
+fun stepsToKm(steps: Long): Double = steps * KM_PER_STEP
+
+/**
+ * Formate une distance en kilomètres pour l'affichage : entier si la valeur est ronde
+ * (ex. "5 km"), une décimale sinon (ex. "2.5 km").
+ */
+fun formatKm(km: Double): String =
+    if (km == km.toLong().toDouble()) "${km.toLong()} km" else "${"%.1f".format(km)} km"
+
 /**
  * Représente un trajet virtuel avec ses jalons kilométriques.
  * Équivalent iOS : struct Journey dans JourneyModels.swift

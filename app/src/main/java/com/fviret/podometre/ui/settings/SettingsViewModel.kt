@@ -2,6 +2,8 @@ package com.fviret.podometre.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.fviret.podometre.data.aphorism.Aphorism
+import com.fviret.podometre.data.aphorism.AphorismRepository
 import com.fviret.podometre.data.health.HealthConnectRepository
 import com.fviret.podometre.data.journey.JourneyProgressRepository
 import com.fviret.podometre.data.preferences.UserPreferences
@@ -37,6 +39,7 @@ class SettingsViewModel @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
     private val healthConnectRepository: HealthConnectRepository,
     private val journeyProgressRepository: JourneyProgressRepository,
+    private val aphorismRepository: AphorismRepository,
 ) : ViewModel() {
 
     /** Préférences utilisateur en lecture seule pour les Composables. */
@@ -109,7 +112,7 @@ class SettingsViewModel @Inject constructor(
 
     /**
      * Bascule le mode sombre / clair et le persiste dans DataStore.
-     * La valeur est propagée immédiatement via [MainViewModel] au thème racine.
+     * La valeur est propagée immédiatement via [com.fviret.podometre.ThemeViewModel] au thème racine.
      */
     fun updateDarkMode(enabled: Boolean) {
         viewModelScope.launch {
@@ -147,4 +150,19 @@ class SettingsViewModel @Inject constructor(
     fun updateShowWeeklyChart(show: Boolean) {
         viewModelScope.launch { userPreferencesRepository.setShowWeeklyChart(show) }
     }
+
+    /**
+     * Active ou désactive la popup "Pensée du jour".
+     * Si réactivée, remet à zéro la garde "1×/jour" afin que la popup se ré-affiche
+     * le jour même au retour sur l'écran principal (sans réinstall ni redémarrage).
+     */
+    fun updateAphorismEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setAphorismEnabled(enabled)
+            if (enabled) userPreferencesRepository.setLastAphorismDate("")
+        }
+    }
+
+    /** L'aphorisme du jour, chargé une seule fois au démarrage. */
+    val todayAphorism: Aphorism = aphorismRepository.todayAphorism()
 }

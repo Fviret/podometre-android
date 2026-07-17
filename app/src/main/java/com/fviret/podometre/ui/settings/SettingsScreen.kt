@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -158,6 +159,25 @@ fun SettingsScreen(
             journeyNotificationsEnabled = prefs.journeyNotificationsEnabled,
             onToggleGoal = { viewModel.onToggleGoalNotifications(it) },
             onToggleJourney = { viewModel.onToggleJourneyNotifications(it) },
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // ── Section : Pensée du jour ──────────────────────────────────────────
+        SectionHeader(title = "Pensée du jour")
+
+        ModuleToggleCard {
+            ModuleToggleRow(
+                label = "Afficher la pensée du jour",
+                checked = prefs.aphorismEnabled,
+                onToggle = { viewModel.updateAphorismEnabled(it) },
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        com.fviret.podometre.ui.aphorism.AphorismCard(
+            aphorism = viewModel.todayAphorism,
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -662,7 +682,7 @@ private fun StepBadgeCell(
             .aspectRatio(1f)
             .alpha(if (isUnlocked) 1f else 0.35f)
             .clickable(enabled = isUnlocked, onClickLabel = a11y, onClick = onClick)
-            .semantics { contentDescription = a11y },
+            .clearAndSetSemantics { contentDescription = a11y },
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -722,7 +742,7 @@ private fun JourneyBadgeCell(
         modifier = modifier
             .aspectRatio(1f)
             .alpha(if (isUnlocked) 1f else 0.35f)
-            .semantics { contentDescription = a11y },
+            .clearAndSetSemantics { contentDescription = a11y },
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -762,7 +782,7 @@ private fun StreakBanner(streakDays: Int) {
         ),
         modifier = Modifier
             .fillMaxWidth()
-            .semantics { contentDescription = "Série de $streakDays jours consécutifs" },
+            .clearAndSetSemantics { contentDescription = "Série de $streakDays jours consécutifs" },
     ) {
         Column(
             modifier = Modifier

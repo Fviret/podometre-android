@@ -1,6 +1,7 @@
 package com.fviret.podometre.data.health
 
 import android.content.Context
+import android.util.Log
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
@@ -9,6 +10,7 @@ import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import com.fviret.podometre.util.isEmulator
+import dagger.Lazy
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Instant
 import java.time.LocalDate
@@ -20,11 +22,16 @@ import javax.inject.Singleton
 /**
  * Accès aux données de santé via Health Connect.
  * Ne stocke jamais les données localement — toujours lu depuis la source.
+ * [client] est injecté en [Lazy] : sa construction réelle (`HealthConnectClient.getOrCreate`,
+ * qui lève `IllegalStateException` si Health Connect n'est pas disponible sur l'appareil)
+ * n'est déclenchée qu'au premier appel effectif, jamais à l'injection — sinon n'importe quel
+ * composant dépendant de ce repository (y compris indirectement, via WorkManager/Hilt)
+ * crasherait au démarrage sur un appareil sans Health Connect, même s'il ne l'utilise jamais.
  * Équivalent iOS : StepCountViewModel / HealthKit queries.
  */
 @Singleton
 class HealthConnectRepository @Inject constructor(
-    private val client: HealthConnectClient,
+    private val client: Lazy<HealthConnectClient>,
     @ApplicationContext private val context: Context
 ) {
 
@@ -38,8 +45,9 @@ class HealthConnectRepository @Inject constructor(
             timeRangeFilter = TimeRangeFilter.between(from, to)
         )
         return runCatching {
-            client.readRecords(request).records.sumOf { it.count }
-        }.getOrDefault(0L)
+            client.get().readRecords(request).records.sumOf { it.count }
+        }.onFailure { Log.w(TAG, "readSteps a échoué, retour à 0", it) }
+            .getOrDefault(0L)
     }
 
     /**
@@ -53,10 +61,11 @@ class HealthConnectRepository @Inject constructor(
             timeRangeFilter = TimeRangeFilter.between(from, to)
         )
         return runCatching {
-            client.readRecords(request).records
+            client.get().readRecords(request).records
                 .groupBy { it.startTime.atZone(ZoneId.systemDefault()).toLocalDate() }
                 .mapValues { (_, records) -> records.sumOf { it.count } }
-        }.getOrDefault(emptyMap())
+        }.onFailure { Log.w(TAG, "readStepsByDay a échoué, retour à une map vide", it) }
+            .getOrDefault(emptyMap())
     }
 
     /**
@@ -69,8 +78,9 @@ class HealthConnectRepository @Inject constructor(
             timeRangeFilter = TimeRangeFilter.between(from, to)
         )
         return runCatching {
-            client.readRecords(request).records.sumOf { it.distance.inKilometers }
-        }.getOrDefault(0.0)
+            client.get().readRecords(request).records.sumOf { it.distance.inKilometers }
+        }.onFailure { Log.w(TAG, "readDistance a échoué, retour à 0.0", it) }
+            .getOrDefault(0.0)
     }
 
     /**
@@ -135,10 +145,12 @@ class HealthConnectRepository @Inject constructor(
      */
     suspend fun hasAllPermissions(): Boolean =
         runCatching {
-            client.permissionController.getGrantedPermissions().containsAll(PERMISSIONS)
-        }.getOrDefault(false)
+            client.get().permissionController.getGrantedPermissions().containsAll(PERMISSIONS)
+        }.onFailure { Log.w(TAG, "hasAllPermissions a échoué, retour à false", it) }
+            .getOrDefault(false)
 
     companion object {
+        private const val TAG = "HealthConnectRepository"
         /** Permissions de lecture demandées à l'onboarding (KAN-18). */
         val PERMISSIONS: Set<String> = setOf(
             HealthPermission.getReadPermission(StepsRecord::class),

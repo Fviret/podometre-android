@@ -41,7 +41,7 @@ import com.fviret.podometre.ui.settings.SettingsScreen
  */
 @Composable
 fun PodoMetreApp(
-    viewModel: MainViewModel = hiltViewModel()
+    viewModel: OnboardingGateViewModel = hiltViewModel()
 ) {
     val showOnboarding by viewModel.showOnboarding.collectAsStateWithLifecycle()
 

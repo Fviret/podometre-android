@@ -23,5 +23,7 @@ object AppColors {
 
     /** Retourne la Color correspondant à l'ID, ou la couleur verte par défaut */
     fun colorForId(id: String): Color =
-        ringColorOptions[id] ?: ringColorOptions[defaultRingColorId]!!
+        ringColorOptions[id] ?: checkNotNull(ringColorOptions[defaultRingColorId]) {
+            "defaultRingColorId (\"$defaultRingColorId\") absent de ringColorOptions"
+        }
 }
