@@ -2,8 +2,6 @@
 
 Portage Android de l'application iOS Podomètre — suivi de pas quotidiens avec système de trajets virtuels.
 
-Projet personnel développé en public (*build in public*) à des fins de portfolio.
-
 ---
 
 ## Fonctionnalités

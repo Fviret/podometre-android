@@ -53,9 +53,9 @@ Colonnes : **Dev** = implémenté par IA | **Testé** = vérifié sur émulateur
 
 | Ticket | US | Description | Dev | Testé |
 |--------|----|-------------|-----|-------|
-| KAN-26 | US-4.1 | Modéliser les 19 trajets (JourneyData.kt, Journey, Milestone, JourneyCategory) | ✅ | ⬜ |
-| KAN-27 | US-4.2 | Persister et synchroniser la progression des trajets (JourneyProgressRepository, SyncJourneyWorker) | ✅ | ⬜ |
-| KAN-28 | US-4.3 | Catalogue des trajets par catégorie (LazyColumn, JourneyCard, prévisualisation) | ✅ | ⬜ |
+| KAN-26 | US-4.1 | Modéliser les 19 trajets (JourneyData.kt, Journey, Milestone, JourneyCategory) | ✅ | ✅ |
+| KAN-27 | US-4.2 | Persister et synchroniser la progression des trajets (JourneyProgressRepository, SyncJourneyWorker) | ✅ | ✅ |
+| KAN-28 | US-4.3 | Catalogue des trajets par catégorie (LazyColumn, JourneyCard, prévisualisation) | ✅ | ✅ |
 
 ---
 
@@ -63,9 +63,9 @@ Colonnes : **Dev** = implémenté par IA | **Testé** = vérifié sur émulateur
 
 | Ticket | US | Description | Dev | Testé |
 |--------|----|-------------|-----|-------|
-| KAN-29 | US-4.4 | Feuille de prévisualisation trajet (ModalBottomSheet scrollable + bouton fixe) | ✅ | ⬜ |
-| KAN-30 | US-4.5 | Écran détail progression trajet (timeline, auto-scroll, sheet jalon débloqué) | ✅ | ⬜ |
-| KAN-31 | US-4.6 | Notifications locales jalons et complétion de trajet (JourneyNotificationService) | ✅ | ⬜ |
+| KAN-29 | US-4.4 | Feuille de prévisualisation trajet (ModalBottomSheet scrollable + bouton fixe) | ✅ | ✅ |
+| KAN-30 | US-4.5 | Écran détail progression trajet (timeline, auto-scroll, sheet jalon débloqué) | ✅ | ✅ |
+| KAN-31 | US-4.6 | Notifications locales jalons et complétion de trajet (JourneyNotificationService) | ✅ | ✅ |
 
 ---
 
@@ -73,14 +73,14 @@ Colonnes : **Dev** = implémenté par IA | **Testé** = vérifié sur émulateur
 
 | Ticket | US | Description | Dev | Testé |
 |--------|----|-------------|-----|-------|
-| KAN-32 | US-5.1 | Picker objectif quotidien de pas dans les Paramètres (grille 3 colonnes, 5 000–20 000) | ✅ | ⬜ |
-| KAN-33 | US-5.2 | Sélecteur de couleur de l'anneau (6 presets, cercles interactifs) | ✅ | ⬜ |
-| KAN-34 | US-5.3 | Toggle mode sombre avec propagation immédiate au thème racine | ✅ | ⬜ |
-| KAN-35 | US-5.4 | Toggles modules écran principal (météo, calendrier, graphe) | ✅ | ⬜ |
-| KAN-36 | US-5.5 | Toggles notifications avec gestion permission POST_NOTIFICATIONS | ✅ | ⬜ |
-| KAN-37 | US-5.6 | Calculer et afficher le streak de jours consécutifs (bannière 🔥 dans Paramètres) | ✅ | ⬜ |
-| KAN-38 | US-5.7 | Grille de badges de pas (6 seuils) et de trajets (19) dans les Paramètres | ✅ | ⬜ |
-| KAN-39 | US-5.8 | Notification "Objectif atteint ! 🎉" (max 1/jour, via SyncStepsWorker) | ✅ | ⬜ |
+| KAN-32 | US-5.1 | Picker objectif quotidien de pas dans les Paramètres (grille 3 colonnes, 5 000–20 000) | ✅ | ✅ |
+| KAN-33 | US-5.2 | Sélecteur de couleur de l'anneau (6 presets, cercles interactifs) | ✅ | ✅ |
+| KAN-34 | US-5.3 | Toggle mode sombre avec propagation immédiate au thème racine | ✅ | ✅ |
+| KAN-35 | US-5.4 | Toggles modules écran principal (météo, calendrier, graphe) | ✅ | ✅ |
+| KAN-36 | US-5.5 | Toggles notifications avec gestion permission POST_NOTIFICATIONS | ✅ | ✅ |
+| KAN-37 | US-5.6 | Calculer et afficher le streak de jours consécutifs (bannière 🔥 dans Paramètres) | ✅ | ✅ |
+| KAN-38 | US-5.7 | Grille de badges de pas (6 seuils) et de trajets (19) dans les Paramètres | ✅ | ✅ |
+| KAN-39 | US-5.8 | Notification "Objectif atteint ! 🎉" (max 1/jour, via SyncStepsWorker) | ✅ | ✅ |
 
 ### Incidents & aller-retours sprint 6
 
