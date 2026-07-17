@@ -344,8 +344,14 @@ class ActivityViewModel @Inject constructor(
                 healthConnectRepository.readSteps(from = from, to = to)
             }
             // Pour aujourd'hui : mémorise la référence HC pour le calcul live et ne recule jamais.
-            if (offset == 0) hcStepsRef = maxOf(hcStepsRef, steps)
-            _uiState.value = _uiState.value.copy(stepsToday = maxOf(_uiState.value.stepsToday, steps))
+            // Pour aujourd'hui : max pour ne jamais reculer en dessous du live/cache.
+            // Pour les jours passés : valeur brute (pas de max — chaque jour a ses propres pas).
+            if (offset == 0) {
+                hcStepsRef = maxOf(hcStepsRef, steps)
+                _uiState.value = _uiState.value.copy(stepsToday = maxOf(_uiState.value.stepsToday, steps))
+            } else {
+                _uiState.value = _uiState.value.copy(stepsToday = steps)
+            }
         }
     }
 
