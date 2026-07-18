@@ -1,9 +1,12 @@
 package com.fviret.podometre.ui.activity
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,12 +48,21 @@ private const val COUNTER_ANIMATION_DURATION_MS = 600
  * Le remplissage est animé (600ms, easeInOut) et plafonné à 100% même si [steps] dépasse [goal].
  * Équivalent iOS : StepRingView.swift (partie anneau).
  */
+/**
+ * Anneau circulaire de progression des pas, avec compteur centré, objectif en dessous,
+ * et — quand l'objectif du jour est atteint — la série 🔥 en fade-in.
+ *
+ * @param streak Nombre de jours consécutifs avec l'objectif atteint (0 = pas de série).
+ * @param isToday Vrai uniquement si le jour affiché est aujourd'hui (offset == 0).
+ */
 @Composable
 fun StepRing(
     steps: Long,
     goal: Int,
     ringColor: Color,
     modifier: Modifier = Modifier,
+    streak: Int = 0,
+    isToday: Boolean = true,
 ) {
     val rawProgress = if (goal > 0) steps.toFloat() / goal.toFloat() else 0f
     val progress = rawProgress.coerceIn(0f, 1f)
@@ -71,12 +83,15 @@ fun StepRing(
         label = "step_ring_progress"
     )
     val percent = (progress * 100).roundToInt()
-    val accessibilityLabel = stringResource(
-        R.string.activity_ring_accessibility_label,
-        steps,
-        goal,
-        percent
-    )
+    val showStreak = isToday && steps >= goal && streak > 0
+    val streakA11y = if (showStreak) {
+        if (streak <= 1) stringResource(R.string.activity_ring_streak_accessibility, streak)
+        else stringResource(R.string.activity_ring_streak_accessibility_plural, streak)
+    } else ""
+    val accessibilityLabel = buildString {
+        append(stringResource(R.string.activity_ring_accessibility_label, steps, goal, percent))
+        if (streakA11y.isNotEmpty()) append(". $streakA11y")
+    }
 
     Column(
         modifier = modifier,
@@ -134,6 +149,21 @@ fun StepRing(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                AnimatedVisibility(
+                    visible = showStreak,
+                    enter = fadeIn(tween(400)) + scaleIn(tween(400), initialScale = 0.85f),
+                ) {
+                    val streakLabel = if (streak <= 1)
+                        stringResource(R.string.activity_ring_streak_label, streak)
+                    else
+                        stringResource(R.string.activity_ring_streak_label_plural, streak)
+                    Text(
+                        text = streakLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
         }
 

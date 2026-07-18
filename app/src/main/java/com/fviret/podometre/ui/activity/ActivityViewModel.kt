@@ -113,6 +113,8 @@ data class ActivityUiState(
     val previousWeekSteps: List<Long> = List(7) { 0L },
     /** Labels abrégés des 7 derniers jours (ex. ["Me", "Je", …, "Me"]). */
     val weekDayLabels: List<String> = List(7) { "" },
+    /** Nombre de jours consécutifs avec l'objectif atteint (streak courant). 0 si aucun. */
+    val streak: Int = 0,
 )
 
 /**
@@ -233,6 +235,7 @@ class ActivityViewModel @Inject constructor(
         loadWeather()
         loadCalendarMonth(YearMonth.now())
         loadWeeklyData()
+        loadStreak()
         SyncStepsWorker.schedule(WorkManager.getInstance(context))
         checkAphorismVisibility()
         // Ré-affiche la popup quand l'utilisateur réactive la feature depuis les Paramètres.
@@ -252,6 +255,18 @@ class ActivityViewModel @Inject constructor(
     internal fun checkAphorismVisibility() {
         viewModelScope.launch {
             _showAphorismDialog.value = aphorismRepository.shouldShowPopup()
+        }
+    }
+
+    /**
+     * Charge le streak de jours consécutifs depuis Health Connect.
+     * Affiché dans l'anneau uniquement si aujourd'hui est sélectionné et l'objectif est atteint.
+     */
+    private fun loadStreak() {
+        viewModelScope.launch {
+            val goal = userPreferences.value.dailyStepGoal.toLong()
+            val streak = healthConnectRepository.computeStreak(goal)
+            _uiState.value = _uiState.value.copy(streak = streak)
         }
     }
 
