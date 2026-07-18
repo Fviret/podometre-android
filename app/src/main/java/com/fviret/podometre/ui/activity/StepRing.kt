@@ -33,6 +33,9 @@ import androidx.compose.ui.unit.dp
 import com.fviret.podometre.R
 import kotlin.math.roundToInt
 
+/** Alpha de l'ombre interne de la piste (effet creusé). */
+private const val TRACK_INNER_SHADOW_ALPHA = 0.12f
+
 private const val RING_STROKE_WIDTH_DP = 20
 private const val RING_ANIMATION_DURATION_MS = 600
 
@@ -82,6 +85,10 @@ fun StepRing(
         animationSpec = tween(durationMillis = RING_ANIMATION_DURATION_MS, easing = FastOutSlowInEasing),
         label = "step_ring_progress"
     )
+
+    // Couleurs de la piste calculées ici (pas dans Canvas) pour accéder à MaterialTheme.
+    val trackColorTop = MaterialTheme.colorScheme.surfaceVariant
+    val trackColorBottom = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
     val percent = (progress * 100).roundToInt()
     val showStreak = isToday && steps >= goal && streak > 0
     val streakA11y = if (showStreak) {
@@ -108,9 +115,30 @@ fun StepRing(
                 val arcSize = Size(size.width - strokeWidthPx, size.height - strokeWidthPx)
                 val topLeft = Offset(strokeWidthPx / 2, strokeWidthPx / 2)
 
-                // Piste de fond
+                // Piste de fond — dégradé vertical (haut clair → bas légèrement plus foncé)
                 drawArc(
-                    color = ringColor.copy(alpha = 0.15f),
+                    brush = Brush.verticalGradient(
+                        colors = listOf(trackColorTop, trackColorBottom),
+                        startY = topLeft.y,
+                        endY = topLeft.y + arcSize.height,
+                    ),
+                    startAngle = -90f,
+                    sweepAngle = 360f,
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = arcSize,
+                    style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
+                )
+                // Ombre interne — couche sombre translucide en bas pour l'effet creusé
+                drawArc(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.Black.copy(alpha = TRACK_INNER_SHADOW_ALPHA),
+                        ),
+                        startY = topLeft.y,
+                        endY = topLeft.y + arcSize.height,
+                    ),
                     startAngle = -90f,
                     sweepAngle = 360f,
                     useCenter = false,
