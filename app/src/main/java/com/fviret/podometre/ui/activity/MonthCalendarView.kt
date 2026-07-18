@@ -153,7 +153,7 @@ fun MonthCalendarView(
         // Total mensuel
         Text(
             text = "Total : ${"%,d".format(total).replace(',', ' ')} pas",
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
