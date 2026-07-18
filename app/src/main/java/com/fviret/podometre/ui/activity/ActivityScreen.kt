@@ -155,7 +155,9 @@ fun ActivityScreen(
             StepRing(
                 steps = uiState.stepsToday,
                 goal = uiState.stepGoal,
-                ringColor = AppColors.colorForId(prefs.ringColorId)
+                ringColor = AppColors.colorForId(prefs.ringColorId),
+                streak = uiState.streak,
+                isToday = uiState.selectedDayOffset == 0,
             )
 
             if (uiState.selectedDayOffset < 0) {
