@@ -87,6 +87,14 @@ fun ActivityScreen(
     // Détecte le franchissement de l'objectif (< 100 % → ≥ 100 %), aujourd'hui uniquement.
     // -1L = sentinelle : on ne tire pas de haptic lors de la première composition.
     val prevStepsRef = remember { mutableLongStateOf(-1L) }
+
+    // Réinitialise la référence à chaque changement de jour pour éviter un haptic fantôme
+    // au retour sur aujourd'hui : sans reset, les pas du jour passé (< objectif) ferait
+    // croire que l'objectif vient d'être franchi alors qu'il l'était déjà.
+    LaunchedEffect(uiState.selectedDayOffset) {
+        prevStepsRef.longValue = -1L
+    }
+
     LaunchedEffect(uiState.stepsToday, uiState.stepGoal) {
         val prev = prevStepsRef.longValue
         val current = uiState.stepsToday

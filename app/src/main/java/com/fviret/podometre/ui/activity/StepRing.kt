@@ -68,6 +68,7 @@ private const val COUNTER_ANIMATION_DURATION_MS = 600
  *
  * @param streak Nombre de jours consécutifs avec l'objectif atteint (0 = pas de série).
  * @param isToday Vrai uniquement si le jour affiché est aujourd'hui (offset == 0).
+ *               Par défaut à false pour éviter un affichage fantôme si le paramètre est omis.
  */
 @Composable
 fun StepRing(
@@ -76,7 +77,7 @@ fun StepRing(
     ringColor: Color,
     modifier: Modifier = Modifier,
     streak: Int = 0,
-    isToday: Boolean = true,
+    isToday: Boolean = false,
 ) {
     val rawProgress = if (goal > 0) steps.toFloat() / goal.toFloat() else 0f
     val progress = rawProgress.coerceIn(0f, 1f)
