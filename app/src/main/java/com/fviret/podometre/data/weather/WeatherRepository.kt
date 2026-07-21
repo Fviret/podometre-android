@@ -11,6 +11,7 @@ import okhttp3.Request
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -46,6 +47,8 @@ private data class CurrentWeather(
 private data class HourlyWeather(
     val time: List<String>,
     @SerialName("weather_code") val weatherCode: List<Int>,
+    @SerialName("temperature_2m") val temperature: List<Double> = emptyList(),
+    @SerialName("precipitation_probability") val precipProbability: List<Int> = emptyList(),
 )
 
 @Serializable
@@ -132,6 +135,22 @@ class WeatherRepository @Inject constructor(
 
             cachedData = WeatherData(temperatureCelsius = 0.0, weatherCode = current.weatherCode)
 
+            // Indexer les créneaux horaires par date
+            val hourlyFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")
+            val hourlyByDate = mutableMapOf<LocalDate, MutableList<HourlyForecast>>()
+            hourly.time.forEachIndexed { i, timeStr ->
+                val dt = runCatching { LocalDateTime.parse(timeStr, hourlyFormatter) }.getOrNull()
+                    ?: return@forEachIndexed
+                val date = dt.toLocalDate()
+                val entry = HourlyForecast(
+                    hour = dt.hour,
+                    tempCelsius = hourly.temperature.getOrElse(i) { 0.0 },
+                    weatherCode = hourly.weatherCode.getOrElse(i) { 0 },
+                    precipProbability = hourly.precipProbability.getOrElse(i) { 0 },
+                )
+                hourlyByDate.getOrPut(date) { mutableListOf() }.add(entry)
+            }
+
             cachedForecasts = daily.time.mapIndexedNotNull { i, dateStr ->
                 val date = runCatching { LocalDate.parse(dateStr) }
                     .onFailure { Log.w(TAG, "Date de prévision invalide : $dateStr", it) }
@@ -142,6 +161,7 @@ class WeatherRepository @Inject constructor(
                     tempMaxCelsius = daily.tempMax.getOrElse(i) { 0.0 },
                     tempMinCelsius = daily.tempMin.getOrElse(i) { 0.0 },
                     precipitationMm = daily.precipitationSum.getOrElse(i) { 0.0 },
+                    hourlyForecasts = hourlyByDate[date] ?: emptyList(),
                 )
             }
 
@@ -167,7 +187,7 @@ class WeatherRepository @Inject constructor(
         "https://api.open-meteo.com/v1/forecast" +
             "?latitude=$lat&longitude=$lon" +
             "&current=weather_code,precipitation" +
-            "&hourly=weather_code" +
+            "&hourly=weather_code,temperature_2m,precipitation_probability" +
             "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum" +
             "&forecast_days=7" +
             "&timezone=auto"

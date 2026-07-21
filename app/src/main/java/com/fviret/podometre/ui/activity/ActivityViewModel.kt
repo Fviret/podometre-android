@@ -19,6 +19,7 @@ import com.fviret.podometre.data.health.HealthConnectRepository
 import com.fviret.podometre.data.preferences.UserPreferences
 import com.fviret.podometre.data.preferences.UserPreferencesRepository
 import com.fviret.podometre.data.weather.DailyForecast
+import com.fviret.podometre.data.weather.HourlyForecast
 import com.fviret.podometre.data.weather.WeatherRepository
 import com.fviret.podometre.data.weather.WeatherState
 import com.fviret.podometre.util.isEmulator
@@ -526,8 +527,29 @@ class ActivityViewModel @Inject constructor(
                 tempMaxCelsius = maxT[i],
                 tempMinCelsius = minT[i],
                 precipitationMm = precip[i],
+                hourlyForecasts = emulatorHourlyForecasts(codes[i], minT[i], maxT[i]),
             )
         }
+    }
+
+    /**
+     * Génère des créneaux horaires mock (0h–23h) pour l'émulateur.
+     * La température évolue entre [minT] et [maxT] selon une courbe sinusoïdale simplifiée.
+     */
+    private fun emulatorHourlyForecasts(
+        dayCode: Int,
+        minT: Double,
+        maxT: Double,
+    ): List<HourlyForecast> = List(24) { h ->
+        val ratio = ((h - 6).coerceIn(0, 12) / 12.0)
+        val temp = minT + (maxT - minT) * ratio
+        val precip = if (dayCode in 51..99) (20 + h % 3 * 10).coerceAtMost(80) else 0
+        HourlyForecast(
+            hour = h,
+            tempCelsius = temp,
+            weatherCode = dayCode,
+            precipProbability = precip,
+        )
     }
 
     /**
