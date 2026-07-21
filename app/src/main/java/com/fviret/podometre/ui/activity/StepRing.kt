@@ -105,7 +105,7 @@ fun StepRing(
     // Couleurs de la piste calculées ici (pas dans Canvas) pour accéder à MaterialTheme.
     val trackColorTop = MaterialTheme.colorScheme.surfaceVariant
     val trackColorBottom = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-    val percent = (progress * 100).roundToInt()
+    val percent = (rawProgress * 100).roundToInt()
 
     // ── Halo de célébration ──────────────────────────────────────────────────
     // Visible uniquement aujourd'hui, quand les pas atteignent l'objectif.
@@ -259,6 +259,17 @@ fun StepRing(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface,
                         textAlign = TextAlign.Center,
+                    )
+                }
+                // Pourcentage d'objectif — masqué si anneau vide, exclu de l'A11y car
+                // déjà présent dans le contentDescription du Box parent.
+                if (percent > 0) {
+                    Text(
+                        text = stringResource(R.string.activity_ring_percent_label, percent),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.clearAndSetSemantics { },
                     )
                 }
             }
