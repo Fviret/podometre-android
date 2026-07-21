@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -32,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -79,6 +81,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.fviret.podometre.BuildConfig
 import com.fviret.podometre.domain.JourneyData
 import com.fviret.podometre.ui.theme.AppColors
 
@@ -208,6 +211,15 @@ fun SettingsScreen(
             stepBadgeFirstDates = stepBadgeFirstDates,
             completedJourneyIds = completedJourneyIds,
         )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // ── Section : À propos ────────────────────────────────────────────────
+        SectionHeader(title = "À propos")
+
+        AboutSection()
+
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
@@ -1074,6 +1086,96 @@ private fun StreakBanner(streakDays: Int) {
                 textAlign = TextAlign.Center,
             )
         }
+    }
+}
+
+/**
+ * Section "À propos" — nom de l'app, version, lien politique de confidentialité et crédits.
+ * La version est lue depuis [BuildConfig.VERSION_NAME].
+ * Tap sur "Politique de confidentialité" → AlertDialog informatif.
+ */
+@Composable
+private fun AboutSection() {
+    var showPrivacyDialog by remember { mutableStateOf(false) }
+
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column {
+            // Nom + version
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Podomètre",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = "Version ${BuildConfig.VERSION_NAME}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+            // Politique de confidentialité
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        onClickLabel = "Afficher la politique de confidentialité",
+                    ) { showPrivacyDialog = true }
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
+                    .semantics { role = Role.Button },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Politique de confidentialité",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+            // Crédits
+            Text(
+                text = "Développé par Fviret • Citations CC0",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            )
+        }
+    }
+
+    // Dialog politique de confidentialité
+    if (showPrivacyDialog) {
+        AlertDialog(
+            onDismissRequest = { showPrivacyDialog = false },
+            title = {
+                Text(text = "Politique de confidentialité")
+            },
+            text = {
+                Text(
+                    text = "Aucune donnée n'est collectée. Toutes les données restent sur votre appareil.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showPrivacyDialog = false }) {
+                    Text("Fermer")
+                }
+            },
+        )
     }
 }
 
