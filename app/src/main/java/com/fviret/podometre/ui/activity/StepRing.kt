@@ -63,11 +63,6 @@ private const val HALO_SCALE_END = 1.05f
 private const val COUNTER_ANIMATION_DURATION_MS = 600
 
 /**
- * Anneau circulaire de progression des pas, avec compteur centré et objectif en dessous.
- * Le remplissage est animé (600ms, easeInOut) et plafonné à 100% même si [steps] dépasse [goal].
- * Équivalent iOS : StepRingView.swift (partie anneau).
- */
-/**
  * Anneau circulaire de progression des pas, avec compteur centré, objectif en dessous,
  * et — quand l'objectif du jour est atteint — la série 🔥 en fade-in.
  *

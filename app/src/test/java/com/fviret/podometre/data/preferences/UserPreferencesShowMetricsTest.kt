@@ -2,7 +2,6 @@ package com.fviret.podometre.data.preferences
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import io.mockk.every
 import io.mockk.mockk
@@ -39,7 +38,7 @@ class UserPreferencesShowMetricsTest {
     @Test
     fun `showTodayMetrics est false quand DataStore contient false`() = runTest {
         prefsFlow.value = mutablePreferencesOf(
-            booleanPreferencesKey("showTodayMetrics") to false
+            PreferenceKeys.SHOW_TODAY_METRICS to false
         )
         val prefs = repository.userPreferences.first()
         assertFalse(prefs.showTodayMetrics)
@@ -48,7 +47,7 @@ class UserPreferencesShowMetricsTest {
     @Test
     fun `showTodayMetrics est true quand DataStore contient true explicitement`() = runTest {
         prefsFlow.value = mutablePreferencesOf(
-            booleanPreferencesKey("showTodayMetrics") to true
+            PreferenceKeys.SHOW_TODAY_METRICS to true
         )
         val prefs = repository.userPreferences.first()
         assertTrue(prefs.showTodayMetrics)

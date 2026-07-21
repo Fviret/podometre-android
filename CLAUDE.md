@@ -13,7 +13,7 @@ Développement incrémental solo, sans dépendances tierces inutiles.
 
 - **Langage** : Kotlin 2.0+
 - **UI** : Jetpack Compose + Material 3
-- **Données santé** : Health Connect API (`androidx.health.connect`) — `StepsRecord`, `DistanceRecord`
+- **Données santé** : Health Connect API (`androidx.health.connect`) — `StepsRecord`, `DistanceRecord`, `ExerciseSessionRecord`
 - **Capteur live** : `SensorManager` + `TYPE_STEP_COUNTER` (pas en temps réel, aujourd'hui uniquement)
 - **Notifications** : NotificationManager + WorkManager
 - **Localisation** : FusedLocationProviderClient (Google Play Services)
@@ -40,7 +40,7 @@ Développement incrémental solo, sans dépendances tierces inutiles.
 ```
 app/src/main/java/com/fviret/podometre/
 ├── ui/
-│   ├── activity/          ← Écran Activité (anneau, météo, calendrier, graphe)
+│   ├── activity/          ← Écran Activité (anneau, météo, calendrier, graphe, métriques, détail météo)
 │   ├── aphorism/          ← AphorismCard, AphorismPopup
 │   ├── journey/           ← Catalogue trajets, preview, détail
 │   ├── settings/          ← Paramètres, badges, streak
@@ -82,13 +82,17 @@ app/src/main/java/com/fviret/podometre/
 ### Écran Activité
 - Anneau circulaire Canvas Compose (épaisseur 20dp, dégradé + effet creusé sur la piste)
 - Compteur animé (ease-out, 600ms, chiffres tabulaires `tnum`)
+- Pourcentage d'objectif sous le compteur (non plafonné — peut dépasser 100 %)
+- Halo de célébration (dégradé radial + spring animation) quand objectif atteint
 - Série 🔥 sous le compteur quand objectif atteint aujourd'hui (fade-in + scale)
 - Haptic feedback au franchissement de l'objectif
 - Capteur live `TYPE_STEP_COUNTER` (baseline HK + delta capteur, today only)
 - Navigation par chevrons (ghost slot pattern pour maintenir le centrage)
-- Bannière météo + prévisions 7 jours (Open-Meteo)
+- Bannière météo + prévisions 7 jours (Open-Meteo) avec en-tête de section
+- Tap sur un jour → bottom sheet détail météo (`WeatherDetailBottomSheet`) : héros, tranches 3h (00h–02h … 21h–23h), filtre tranches passées pour aujourd'hui
 - Calendrier mensuel (grille L-D, lundi en premier)
 - Graphe comparaison semaines (Canvas Compose, sans bibliothèque externe)
+- Rangée métriques du jour (`TodayMetricsView`) : Distance, Temps actif (ExerciseSessionRecord + fallback), Calories — masquable via toggle Paramètres
 - Popup pensée du jour (1×/jour, réarmable)
 
 ### Système de Trajets
@@ -104,6 +108,7 @@ app/src/main/java/com/fviret/podometre/
 - Streak : calculé Health Connect, 365 jours max
 - Badges de pas : 5k, 10k, 20k, 30k, 50k, 100k
 - Badges de trajets : 19 badges (un par trajet complété)
+- Toggle affichage rangée métriques du jour (`showTodayMetrics`)
 
 ### Pensée du jour
 - Popup matinale à la première ouverture (garde 1×/jour dans DataStore, réarmable)
@@ -326,6 +331,7 @@ git push origin main
 <!-- Health Connect -->
 <uses-permission android:name="android.permission.health.READ_STEPS" />
 <uses-permission android:name="android.permission.health.READ_DISTANCE" />
+<uses-permission android:name="android.permission.health.READ_EXERCISE" />
 ```
 
 ---
@@ -359,7 +365,8 @@ Projet Jira : **KAN** (Podomètre Android) — floviret.atlassian.net
 | Sprint 7 | KAN-9 Catalogue 19 trajets | ✅ Terminé |
 | Sprint 8 | KAN-10 Accessibilité + KAN-11 Tests | ✅ Terminé |
 | Sprint 9 | KAN-60–68 Pensée du jour (aphorismes) | ✅ Terminé |
-| Sprint 10 | KAN-71–78 Polish UI (haptic, live sensor, typo, anneau) | 🔄 En cours |
+| Sprint 10 | KAN-71–78 Polish UI (haptic, live sensor, typo, anneau) | ✅ Terminé |
+| Sprint 11 | KAN-79–86 Polish UI II (halo, métriques, détail météo, tests) | ✅ Terminé |
 
 ---
 

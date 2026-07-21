@@ -158,7 +158,7 @@ private fun WeatherHeroSection(forecast: DailyForecast) {
  * Modèle d'une tranche horaire groupée (3 heures).
  * Ex. tranche 06h–08h : température moyenne + weatherCode représentatif.
  */
-private data class HourlyBand(
+internal data class HourlyBand(
     /** Heure de début de la tranche (ex. 6 pour 06h–08h). */
     val startHour: Int,
     /** Heure de fin de la tranche (ex. 8 pour 06h–08h). */
@@ -233,7 +233,7 @@ private fun HourlyBandRow(band: HourlyBand) {
  */
 private val HOURLY_BANDS = listOf(0, 3, 6, 9, 12, 15, 18, 21)
 
-private fun hourlyBands(
+internal fun hourlyBands(
     hourly: List<HourlyForecast>,
     filterPast: Boolean,
 ): List<HourlyBand> {
