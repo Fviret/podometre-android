@@ -193,6 +193,38 @@ class HealthConnectRepository @Inject constructor(
     }
 
     /**
+     * Retourne la première date à laquelle chaque seuil de pas a été atteint.
+     * Parcourt toutes les journées depuis le 1er janvier 2020.
+     * Retourne null pour les seuils jamais atteints.
+     * Sur émulateur, retourne des dates mock réalistes.
+     */
+    suspend fun readStepBadgeFirstEarnedDates(thresholds: List<Long>): Map<Long, LocalDate?> {
+        if (isEmulator()) {
+            val today = LocalDate.now()
+            return mapOf(
+                5_000L  to today.minusDays(90),
+                10_000L to today.minusDays(60),
+                20_000L to today.minusDays(30),
+                30_000L to null,
+                50_000L to null,
+                100_000L to null,
+            )
+        }
+
+        val zone = ZoneId.systemDefault()
+        val from = LocalDate.of(2020, 1, 1).atStartOfDay(zone).toInstant()
+        val to = ZonedDateTime.now(zone).toInstant()
+
+        val stepsByDay = readStepsByDay(from, to)
+        return thresholds.associateWith { threshold ->
+            stepsByDay.entries
+                .filter { it.value >= threshold }
+                .minByOrNull { it.key }
+                ?.key
+        }
+    }
+
+    /**
      * Calcule le streak de jours consécutifs où le nombre de pas >= [goalSteps].
      * Remonte depuis aujourd'hui jusqu'à 365 jours en arrière.
      * Aujourd'hui est inclus uniquement si ses pas atteignent l'objectif.

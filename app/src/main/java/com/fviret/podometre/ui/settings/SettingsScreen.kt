@@ -88,6 +88,7 @@ fun SettingsScreen(
     val prefs by viewModel.userPreferences.collectAsStateWithLifecycle()
     val streak by viewModel.streak.collectAsStateWithLifecycle()
     val stepBadgeCounts by viewModel.stepBadgeCounts.collectAsStateWithLifecycle()
+    val stepBadgeFirstDates by viewModel.stepBadgeFirstDates.collectAsStateWithLifecycle()
     val completedJourneyIds by viewModel.completedJourneyIds.collectAsStateWithLifecycle()
 
     Column(
@@ -198,6 +199,7 @@ fun SettingsScreen(
         }
         BadgesSection(
             stepBadgeCounts = stepBadgeCounts,
+            stepBadgeFirstDates = stepBadgeFirstDates,
             completedJourneyIds = completedJourneyIds,
         )
     }
@@ -646,9 +648,10 @@ private val STEP_BADGES: List<BadgeData> = listOf(
 @Composable
 private fun BadgesSection(
     stepBadgeCounts: Map<Long, Int>,
+    stepBadgeFirstDates: Map<Long, java.time.LocalDate?>,
     completedJourneyIds: Set<String>,
 ) {
-    var selectedBadge by remember { mutableStateOf<Pair<BadgeData, Int>?>(null) }
+    var selectedBadge by remember { mutableStateOf<Triple<BadgeData, Int, java.time.LocalDate?>?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
     Column {
@@ -665,10 +668,11 @@ private fun BadgesSection(
                     if (index < STEP_BADGES.size) {
                         val badge = STEP_BADGES[index]
                         val count = stepBadgeCounts[badge.threshold] ?: 0
+                        val firstDate = stepBadgeFirstDates[badge.threshold]
                         StepBadgeCell(
                             badge = badge,
                             count = count,
-                            onClick = { selectedBadge = badge to count },
+                            onClick = { selectedBadge = Triple(badge, count, firstDate) },
                             modifier = Modifier.weight(1f),
                         )
                     } else {
@@ -713,12 +717,12 @@ private fun BadgesSection(
     }
 
     // ── Modale de détail (ModalBottomSheet) ───────────────────────────────────
-    selectedBadge?.let { (badge, count) ->
+    selectedBadge?.let { (badge, count, firstDate) ->
         ModalBottomSheet(
             onDismissRequest = { selectedBadge = null },
             sheetState = sheetState,
         ) {
-            BadgeDetailContent(badge = badge, count = count)
+            BadgeDetailContent(badge = badge, count = count, firstEarnedDate = firstDate)
         }
     }
 }
@@ -732,7 +736,7 @@ private fun formatThreshold(threshold: Long): String =
  * Affiche l'illustration agrandie, le titre centré, la pastille compteur et une phrase de contexte.
  */
 @Composable
-private fun BadgeDetailContent(badge: BadgeData, count: Int) {
+private fun BadgeDetailContent(badge: BadgeData, count: Int, firstEarnedDate: java.time.LocalDate?) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -778,6 +782,18 @@ private fun BadgeDetailContent(badge: BadgeData, count: Int) {
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        // Date du premier déblocage (si disponible)
+        if (firstEarnedDate != null) {
+            val formatted = firstEarnedDate.format(
+                java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", java.util.Locale.FRENCH)
+            )
+            Text(
+                text = "Débloqué le $formatted",
+                style = MaterialTheme.typography.labelMedium,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            )
+        }
     }
 }
 

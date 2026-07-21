@@ -62,6 +62,18 @@ class SettingsViewModel @Inject constructor(
     }.asStateFlow()
 
     /**
+     * Première date à laquelle chaque seuil de pas a été atteint.
+     * Null pour les seuils jamais atteints.
+     * Chargé une seule fois au démarrage.
+     */
+    val stepBadgeFirstDates: StateFlow<Map<Long, java.time.LocalDate?>> =
+        MutableStateFlow<Map<Long, java.time.LocalDate?>>(emptyMap()).also { flow ->
+            viewModelScope.launch {
+                flow.value = healthConnectRepository.readStepBadgeFirstEarnedDates(STEP_BADGE_THRESHOLDS)
+            }
+        }.asStateFlow()
+
+    /**
      * IDs des trajets entièrement complétés (totalKm >= Journey.totalKm).
      * Déterminé en croisant [JourneyProgressRepository.progressMap] avec [JourneyData.all].
      */
