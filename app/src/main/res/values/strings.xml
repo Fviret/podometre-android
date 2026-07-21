@@ -38,6 +38,7 @@
     <string name="activity_ring_streak_accessibility_plural">Série de %1$d jours consécutifs</string>
 
     <!-- Écran Activité — bannière météo (KAN-22) -->
+    <string name="weather_forecast_section_title">Météo · 7 jours</string>
     <string name="weather_rain_now">Pluie en cours</string>
     <string name="weather_rain_soon">Pluie dans moins d\'une heure</string>
     <string name="weather_no_rain">Pas de pluie prévue</string>
