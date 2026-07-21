@@ -128,8 +128,18 @@ class HealthConnectRepository @Inject constructor(
 
     /**
      * Calcule le temps actif (en minutes) pour un [date] précis.
-     * Tente d'abord [ExerciseSessionRecord] ; si aucune session, estime via les pas (pas × 0.01 min).
+     *
+     * Stratégie :
+     * 1. Tente de lire [ExerciseSessionRecord] (marche, course, cyclisme, fitness…) depuis Health Connect.
+     *    Somme les durées de toutes les sessions du jour.
+     * 2. Si la lecture échoue (permission refusée, HK indisponible), retourne -1 → fallback.
+     * 3. Si la lecture réussit mais retourne 0 sessions (pas de wearable ni d'app fitness),
+     *    applique l'estimation via les pas : [stepsFallback] × 0.01 min/pas.
+     *    (Exemple : 7 000 pas → ~70 min d'activité légère.)
+     *
      * Sur émulateur, retourne une valeur mock réaliste selon le jour.
+     *
+     * Équivalent iOS : CMMotionActivityManager / HKWorkoutType.
      */
     suspend fun readActiveMinutesForDay(date: java.time.LocalDate, stepsFallback: Long = 0L): Int {
         if (isEmulator()) {
@@ -151,9 +161,13 @@ class HealthConnectRepository @Inject constructor(
             }.toInt()
         }.onFailure { Log.w(TAG, "readActiveMinutesForDay (ExerciseSession) a échoué", it) }
             .getOrDefault(-1)
-        // Fallback : estimation via les pas (1 pas ≈ 0.01 min d'activité)
-        return if (exerciseMinutes >= 0) exerciseMinutes
-        else (stepsFallback * 0.01).toInt()
+
+        return when {
+            // Lecture réussie avec au moins une session : donnée réelle
+            exerciseMinutes > 0 -> exerciseMinutes
+            // Lecture réussie mais 0 session OU lecture échouée : estimation par les pas
+            else -> (stepsFallback * 0.01).toInt()
+        }
     }
 
     /**
@@ -224,10 +238,14 @@ class HealthConnectRepository @Inject constructor(
 
     companion object {
         private const val TAG = "HealthConnectRepository"
-        /** Permissions de lecture demandées à l'onboarding (KAN-18). */
+        /**
+         * Permissions de lecture demandées à l'onboarding.
+         * Inclut READ_EXERCISE (KAN-82) pour les sessions d'exercice (temps actif).
+         */
         val PERMISSIONS: Set<String> = setOf(
             HealthPermission.getReadPermission(StepsRecord::class),
             HealthPermission.getReadPermission(DistanceRecord::class),
+            HealthPermission.getReadPermission(ExerciseSessionRecord::class),
         )
 
         /** Contrat système pour la demande de permissions Health Connect. */
