@@ -5,7 +5,9 @@ import android.util.Log
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
 import androidx.health.connect.client.records.DistanceRecord
+import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
@@ -81,6 +83,77 @@ class HealthConnectRepository @Inject constructor(
             client.get().readRecords(request).records.sumOf { it.distance.inKilometers }
         }.onFailure { Log.w(TAG, "readDistance a échoué, retour à 0.0", it) }
             .getOrDefault(0.0)
+    }
+
+    /**
+     * Lit la distance totale parcourue (en km) pour un [date] précis.
+     * Sur émulateur, retourne une valeur mock réaliste selon le jour.
+     */
+    suspend fun readDistanceForDay(date: java.time.LocalDate): Double {
+        if (isEmulator()) {
+            val seed = date.dayOfMonth + date.monthValue * 31
+            val mocks = doubleArrayOf(3.2, 6.8, 5.1, 8.4, 2.7, 7.3, 4.5, 9.1, 1.9, 6.0)
+            return mocks[seed % mocks.size]
+        }
+        val zone = ZoneId.systemDefault()
+        val from = date.atStartOfDay(zone).toInstant()
+        val to = date.plusDays(1).atStartOfDay(zone).toInstant()
+        return readDistance(from = from, to = to)
+    }
+
+    /**
+     * Lit les calories actives brûlées (en kcal, arrondi) pour un [date] précis.
+     * Sur émulateur, retourne une valeur mock réaliste selon le jour.
+     */
+    suspend fun readActiveCaloriesForDay(date: java.time.LocalDate): Int {
+        if (isEmulator()) {
+            val seed = date.dayOfMonth + date.monthValue * 31
+            val mocks = intArrayOf(180, 320, 245, 410, 135, 370, 220, 455, 95, 290)
+            return mocks[seed % mocks.size]
+        }
+        val zone = ZoneId.systemDefault()
+        val from = date.atStartOfDay(zone).toInstant()
+        val to = date.plusDays(1).atStartOfDay(zone).toInstant()
+        val request = ReadRecordsRequest(
+            recordType = ActiveCaloriesBurnedRecord::class,
+            timeRangeFilter = TimeRangeFilter.between(from, to)
+        )
+        return runCatching {
+            client.get().readRecords(request).records
+                .sumOf { it.energy.inKilocalories }
+                .toInt()
+        }.onFailure { Log.w(TAG, "readActiveCaloriesForDay a échoué, retour à 0", it) }
+            .getOrDefault(0)
+    }
+
+    /**
+     * Calcule le temps actif (en minutes) pour un [date] précis.
+     * Tente d'abord [ExerciseSessionRecord] ; si aucune session, estime via les pas (pas × 0.01 min).
+     * Sur émulateur, retourne une valeur mock réaliste selon le jour.
+     */
+    suspend fun readActiveMinutesForDay(date: java.time.LocalDate, stepsFallback: Long = 0L): Int {
+        if (isEmulator()) {
+            val seed = date.dayOfMonth + date.monthValue * 31
+            val mocks = intArrayOf(42, 75, 58, 92, 25, 85, 48, 105, 18, 63)
+            return mocks[seed % mocks.size]
+        }
+        val zone = ZoneId.systemDefault()
+        val from = date.atStartOfDay(zone).toInstant()
+        val to = date.plusDays(1).atStartOfDay(zone).toInstant()
+        val request = ReadRecordsRequest(
+            recordType = ExerciseSessionRecord::class,
+            timeRangeFilter = TimeRangeFilter.between(from, to)
+        )
+        val exerciseMinutes = runCatching {
+            client.get().readRecords(request).records.sumOf { record ->
+                val durationMs = record.endTime.toEpochMilli() - record.startTime.toEpochMilli()
+                durationMs / 60_000L
+            }.toInt()
+        }.onFailure { Log.w(TAG, "readActiveMinutesForDay (ExerciseSession) a échoué", it) }
+            .getOrDefault(-1)
+        // Fallback : estimation via les pas (1 pas ≈ 0.01 min d'activité)
+        return if (exerciseMinutes >= 0) exerciseMinutes
+        else (stepsFallback * 0.01).toInt()
     }
 
     /**

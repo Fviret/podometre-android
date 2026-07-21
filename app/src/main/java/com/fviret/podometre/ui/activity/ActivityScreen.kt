@@ -181,7 +181,19 @@ fun ActivityScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // ── 2. Bannière météo + prévisions 7 jours ────────────────────────────
+        // ── 2. Métriques du jour (distance · temps actif · calories) ──────────
+        if (prefs.showTodayMetrics) {
+            TodayMetricsView(
+                ringColor = AppColors.colorForId(prefs.ringColorId),
+                distanceKm = uiState.distanceKm,
+                activeMinutes = uiState.activeMinutes,
+                caloriesKcal = uiState.caloriesKcal,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // ── 4. Bannière météo + prévisions 7 jours ────────────────────────────
         if (prefs.showWeatherForecast) {
             WeatherBanner(
                 state = uiState.weatherState,
@@ -198,7 +210,7 @@ fun ActivityScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // ── 3. Calendrier mensuel ─────────────────────────────────────────────
+        // ── 5. Calendrier mensuel ─────────────────────────────────────────────
         if (prefs.showMonthCalendar) {
             MonthCalendarView(
                 month = uiState.calendarMonth,
@@ -214,7 +226,7 @@ fun ActivityScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // ── 4. Graphe comparaison hebdomadaire ────────────────────────────────
+        // ── 6. Graphe comparaison hebdomadaire ────────────────────────────────
         if (prefs.showWeeklyChart) {
             WeeklyChartView(
                 currentWeek = uiState.currentWeekSteps,

@@ -27,4 +27,6 @@ data class UserPreferences(
     val aphorismEnabled: Boolean = true,
     /** Date ISO (yyyy-MM-dd) de la dernière fois où la popup a été affichée. */
     val lastAphorismDate: String = "",
+    /** Afficher ou masquer la rangée de métriques (distance, temps actif, calories) sous l'anneau. */
+    val showTodayMetrics: Boolean = true,
 )

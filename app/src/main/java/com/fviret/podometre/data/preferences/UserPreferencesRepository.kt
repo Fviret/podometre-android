@@ -42,6 +42,7 @@ class UserPreferencesRepository @Inject constructor(
             activeJourneyId = prefs[PreferenceKeys.ACTIVE_JOURNEY_ID],
             aphorismEnabled = prefs[PreferenceKeys.APHORISM_ENABLED] ?: true,
             lastAphorismDate = prefs[PreferenceKeys.LAST_APHORISM_DATE] ?: "",
+            showTodayMetrics = prefs[PreferenceKeys.SHOW_TODAY_METRICS] ?: true,
         )
     }
 
@@ -114,6 +115,11 @@ class UserPreferencesRepository @Inject constructor(
             prefs[PreferenceKeys.CACHED_STEPS_TODAY] = steps
             prefs[PreferenceKeys.CACHED_STEPS_TODAY_DATE] = date
         }
+    }
+
+    /** Afficher ou masquer la rangée de métriques sous l'anneau. */
+    suspend fun setShowTodayMetrics(show: Boolean) {
+        dataStore.edit { it[PreferenceKeys.SHOW_TODAY_METRICS] = show }
     }
 
     /** Active ou désactive la popup "Pensée du jour". */

@@ -54,4 +54,14 @@
     <string name="nav_tab_activity_desc">Voir mon activité quotidienne</string>
     <string name="nav_tab_journeys_desc">Explorer les trajets virtuels</string>
     <string name="nav_tab_settings_desc">Gérer mes paramètres</string>
+
+    <!-- Métriques du jour (KAN-81) -->
+    <string name="metrics_distance_label">Distance</string>
+    <string name="metrics_distance_unit">km</string>
+    <string name="metrics_active_time_label">Temps actif</string>
+    <string name="metrics_calories_label">Calories</string>
+    <string name="metrics_calories_unit">kcal</string>
+    <string name="metrics_distance_accessibility">Distance : %1$s km</string>
+    <string name="metrics_active_time_accessibility">Temps actif : %1$s</string>
+    <string name="metrics_calories_accessibility">Calories actives : %1$d kcal</string>
 </resources>
