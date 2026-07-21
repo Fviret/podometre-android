@@ -1,6 +1,7 @@
 package com.fviret.podometre.ui.activity
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -51,6 +52,7 @@ fun WeeklyForecastBanner(
     forecasts: List<DailyForecast>,
     cityName: String?,
     modifier: Modifier = Modifier,
+    onDayClick: ((DailyForecast) -> Unit)? = null,
 ) {
     if (forecasts.isEmpty()) return
 
@@ -76,6 +78,7 @@ fun WeeklyForecastBanner(
                     dayLabel = dayLabel(forecast.date, today),
                     isToday = index == 0,
                     accessibilityLabel = accessibilityLabel(forecast, today),
+                    onClick = onDayClick?.let { cb -> { cb(forecast) } },
                 )
             }
         }
@@ -104,22 +107,28 @@ fun WeeklyForecastBanner(
     }
 }
 
-/** Cellule d'un jour de prévision. */
+/** Cellule d'un jour de prévision. Cliquable si [onClick] est non null. */
 @Composable
 private fun DayCell(
     forecast: DailyForecast,
     dayLabel: String,
     isToday: Boolean,
     accessibilityLabel: String,
+    onClick: (() -> Unit)? = null,
 ) {
     val bgColor = if (isToday) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
     val labelColor = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+
+    val clickModifier = if (onClick != null) {
+        Modifier.clickable(onClick = onClick)
+    } else Modifier
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .width(52.dp)
             .background(color = bgColor, shape = RoundedCornerShape(10.dp))
+            .then(clickModifier)
             .padding(vertical = 8.dp, horizontal = 4.dp)
             .clearAndSetSemantics { contentDescription = accessibilityLabel }
     ) {
