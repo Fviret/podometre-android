@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Card
@@ -44,6 +45,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -413,20 +415,39 @@ private fun RingColorRow(
                 AppColors.ringColorOptions.forEach { (id, color) ->
                     val isSelected = id == selectedColorId
                     val name = ringColorNames[id] ?: id
-                    val a11yLabel = "$name${if (isSelected) ", sélectionnée" else ""}"
+                    // contentDescription verbeux : nom + état pour TalkBack
+                    val a11yLabel = if (isSelected) "$name — sélectionnée" else name
                     Box(
+                        contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(44.dp)
+                            // Cible tactile 48 dp (minimum recommandé Android)
+                            .size(48.dp)
                             .clip(CircleShape)
                             .background(color)
                             .then(
                                 if (isSelected)
-                                    Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                                    Modifier.border(3.dp, Color.White, CircleShape)
                                 else Modifier
                             )
-                            .clickable(onClickLabel = a11yLabel) { onColorSelected(id) }
-                            .semantics { contentDescription = a11yLabel },
-                    )
+                            .clickable(
+                                onClickLabel = "Définit la couleur de l'anneau sur $name",
+                            ) { onColorSelected(id) }
+                            .semantics {
+                                contentDescription = a11yLabel
+                                role = Role.RadioButton
+                                selected = isSelected
+                            },
+                    ) {
+                        // Coche ✓ visible sur la pastille sélectionnée (indicateur non-couleur)
+                        if (isSelected) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
+                    }
                 }
             }
         }
