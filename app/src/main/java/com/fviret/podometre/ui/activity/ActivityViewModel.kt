@@ -115,6 +115,12 @@ data class ActivityUiState(
     val weekDayLabels: List<String> = List(7) { "" },
     /** Nombre de jours consécutifs avec l'objectif atteint (streak courant). 0 si aucun. */
     val streak: Int = 0,
+    /** Distance parcourue (en km) pour le jour sélectionné. */
+    val distanceKm: Double = 0.0,
+    /** Temps actif estimé (en minutes) pour le jour sélectionné. */
+    val activeMinutes: Int = 0,
+    /** Calories actives brûlées (en kcal) pour le jour sélectionné. */
+    val caloriesKcal: Int = 0,
 )
 
 /**
@@ -346,6 +352,7 @@ class ActivityViewModel @Inject constructor(
     /**
      * Charge les pas depuis Health Connect pour le jour correspondant à [offset] (0 = aujourd'hui).
      * Requête idempotente : recalcule depuis le début du jour cible.
+     * Déclenche également [loadMetrics] pour mettre à jour distance, temps actif et calories.
      */
     private fun loadStepsForOffset(offset: Int) {
         viewModelScope.launch {
@@ -367,7 +374,24 @@ class ActivityViewModel @Inject constructor(
             } else {
                 _uiState.value = _uiState.value.copy(stepsToday = steps)
             }
+            loadMetrics(offset, stepsFallback = steps)
         }
+    }
+
+    /**
+     * Charge distance, temps actif et calories pour le jour correspondant à [offset].
+     * [stepsFallback] est utilisé pour estimer le temps actif si aucune session d'exercice n'est trouvée.
+     */
+    private suspend fun loadMetrics(offset: Int, stepsFallback: Long = 0L) {
+        val targetDate = LocalDate.now().plusDays(offset.toLong())
+        val distanceKm = healthConnectRepository.readDistanceForDay(targetDate)
+        val caloriesKcal = healthConnectRepository.readActiveCaloriesForDay(targetDate)
+        val activeMinutes = healthConnectRepository.readActiveMinutesForDay(targetDate, stepsFallback)
+        _uiState.value = _uiState.value.copy(
+            distanceKm = distanceKm,
+            activeMinutes = activeMinutes,
+            caloriesKcal = caloriesKcal,
+        )
     }
 
     /**
