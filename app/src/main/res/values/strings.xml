@@ -66,4 +66,10 @@
     <string name="metrics_distance_accessibility">Distance : %1$s km</string>
     <string name="metrics_active_time_accessibility">Temps actif : %1$s</string>
     <string name="metrics_calories_accessibility">Calories actives : %1$d kcal</string>
+
+    <!-- Détail météo bottom sheet (KAN-85) -->
+    <string name="weather_detail_no_data">Détail horaire non disponible</string>
+    <string name="weather_detail_today">Aujourd\'hui</string>
+    <string name="weather_detail_tomorrow">Demain</string>
+    <string name="weather_detail_precip_mm">💧 %1$s mm attendus</string>
 </resources>
