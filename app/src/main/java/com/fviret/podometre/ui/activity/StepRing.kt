@@ -2,9 +2,14 @@ package com.fviret.podometre.ui.activity
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.InfiniteRepeatableSpec
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -42,6 +47,18 @@ import kotlin.math.roundToInt
 
 /** Alpha de l'ombre interne de la piste (effet creusé). */
 private const val TRACK_INNER_SHADOW_ALPHA = 0.12f
+
+/**
+ * Retourne la couleur de la flamme et du texte streak selon le palier de jours.
+ * - 1–6 jours  : orange
+ * - 7–29 jours : rouge
+ * - 30+ jours  : violet
+ */
+internal fun streakColor(streakDays: Int): Color = when {
+    streakDays >= 30 -> Color(0xFFA64CF2) // violet
+    streakDays >= 7  -> Color(0xFFF23F4C) // rouge
+    else             -> Color(0xFFFF9F1A) // orange
+}
 
 private const val RING_STROKE_WIDTH_DP = 20
 private const val RING_ANIMATION_DURATION_MS = 600
@@ -246,16 +263,41 @@ fun StepRing(
                     visible = showStreak,
                     enter = fadeIn(tween(400)) + scaleIn(tween(400), initialScale = 0.85f),
                 ) {
-                    val streakLabel = if (streak <= 1)
-                        stringResource(R.string.activity_ring_streak_label, streak)
-                    else
-                        stringResource(R.string.activity_ring_streak_label_plural, streak)
-                    Text(
-                        text = streakLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        textAlign = TextAlign.Center,
+                    val color = streakColor(streak)
+                    // Animation de pulsation douce de la flamme (scale 0.9 → 1.1, ~1.2s)
+                    val infiniteTransition = rememberInfiniteTransition(label = "streak_pulse")
+                    val flameScale by infiniteTransition.animateFloat(
+                        initialValue = 0.9f,
+                        targetValue = 1.1f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(600, easing = FastOutSlowInEasing),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "streak_scale"
                     )
+                    val streakDaysLabel = if (streak <= 1)
+                        stringResource(R.string.activity_ring_streak_label_days, streak)
+                    else
+                        stringResource(R.string.activity_ring_streak_label_days_plural, streak)
+                    androidx.compose.foundation.layout.Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+                    ) {
+                        Text(
+                            text = "🔥",
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.graphicsLayer {
+                                scaleX = flameScale
+                                scaleY = flameScale
+                            },
+                        )
+                        Text(
+                            text = " $streakDaysLabel",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = color,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
                 // Pourcentage d'objectif — masqué si anneau vide, exclu de l'A11y car
                 // déjà présent dans le contentDescription du Box parent.
