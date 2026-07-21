@@ -33,6 +33,7 @@ object PreferenceKeys {
     val ACTIVE_JOURNEY_ID = stringPreferencesKey("activeJourneyId")
     val APHORISM_ENABLED = booleanPreferencesKey("aphorismEnabled")
     val LAST_APHORISM_DATE = stringPreferencesKey("lastAphorismDate")
+    val SHOW_TODAY_METRICS = booleanPreferencesKey("showTodayMetrics")
 
     /**
      * Liste exhaustive de toutes les clés — utilisée pour les tests d'unicité
@@ -55,5 +56,6 @@ object PreferenceKeys {
         ACTIVE_JOURNEY_ID,
         APHORISM_ENABLED,
         LAST_APHORISM_DATE,
+        SHOW_TODAY_METRICS,
     )
 }

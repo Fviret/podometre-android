@@ -5,7 +5,9 @@ import android.util.Log
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
 import androidx.health.connect.client.records.DistanceRecord
+import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
@@ -84,6 +86,91 @@ class HealthConnectRepository @Inject constructor(
     }
 
     /**
+     * Lit la distance totale parcourue (en km) pour un [date] précis.
+     * Sur émulateur, retourne une valeur mock réaliste selon le jour.
+     */
+    suspend fun readDistanceForDay(date: java.time.LocalDate): Double {
+        if (isEmulator()) {
+            val seed = date.dayOfMonth + date.monthValue * 31
+            val mocks = doubleArrayOf(3.2, 6.8, 5.1, 8.4, 2.7, 7.3, 4.5, 9.1, 1.9, 6.0)
+            return mocks[seed % mocks.size]
+        }
+        val zone = ZoneId.systemDefault()
+        val from = date.atStartOfDay(zone).toInstant()
+        val to = date.plusDays(1).atStartOfDay(zone).toInstant()
+        return readDistance(from = from, to = to)
+    }
+
+    /**
+     * Lit les calories actives brûlées (en kcal, arrondi) pour un [date] précis.
+     * Sur émulateur, retourne une valeur mock réaliste selon le jour.
+     */
+    suspend fun readActiveCaloriesForDay(date: java.time.LocalDate): Int {
+        if (isEmulator()) {
+            val seed = date.dayOfMonth + date.monthValue * 31
+            val mocks = intArrayOf(180, 320, 245, 410, 135, 370, 220, 455, 95, 290)
+            return mocks[seed % mocks.size]
+        }
+        val zone = ZoneId.systemDefault()
+        val from = date.atStartOfDay(zone).toInstant()
+        val to = date.plusDays(1).atStartOfDay(zone).toInstant()
+        val request = ReadRecordsRequest(
+            recordType = ActiveCaloriesBurnedRecord::class,
+            timeRangeFilter = TimeRangeFilter.between(from, to)
+        )
+        return runCatching {
+            client.get().readRecords(request).records
+                .sumOf { it.energy.inKilocalories }
+                .toInt()
+        }.onFailure { Log.w(TAG, "readActiveCaloriesForDay a échoué, retour à 0", it) }
+            .getOrDefault(0)
+    }
+
+    /**
+     * Calcule le temps actif (en minutes) pour un [date] précis.
+     *
+     * Stratégie :
+     * 1. Tente de lire [ExerciseSessionRecord] (marche, course, cyclisme, fitness…) depuis Health Connect.
+     *    Somme les durées de toutes les sessions du jour.
+     * 2. Si la lecture échoue (permission refusée, HK indisponible), retourne -1 → fallback.
+     * 3. Si la lecture réussit mais retourne 0 sessions (pas de wearable ni d'app fitness),
+     *    applique l'estimation via les pas : [stepsFallback] × 0.01 min/pas.
+     *    (Exemple : 7 000 pas → ~70 min d'activité légère.)
+     *
+     * Sur émulateur, retourne une valeur mock réaliste selon le jour.
+     *
+     * Équivalent iOS : CMMotionActivityManager / HKWorkoutType.
+     */
+    suspend fun readActiveMinutesForDay(date: java.time.LocalDate, stepsFallback: Long = 0L): Int {
+        if (isEmulator()) {
+            val seed = date.dayOfMonth + date.monthValue * 31
+            val mocks = intArrayOf(42, 75, 58, 92, 25, 85, 48, 105, 18, 63)
+            return mocks[seed % mocks.size]
+        }
+        val zone = ZoneId.systemDefault()
+        val from = date.atStartOfDay(zone).toInstant()
+        val to = date.plusDays(1).atStartOfDay(zone).toInstant()
+        val request = ReadRecordsRequest(
+            recordType = ExerciseSessionRecord::class,
+            timeRangeFilter = TimeRangeFilter.between(from, to)
+        )
+        val exerciseMinutes = runCatching {
+            client.get().readRecords(request).records.sumOf { record ->
+                val durationMs = record.endTime.toEpochMilli() - record.startTime.toEpochMilli()
+                durationMs / 60_000L
+            }.toInt()
+        }.onFailure { Log.w(TAG, "readActiveMinutesForDay (ExerciseSession) a échoué", it) }
+            .getOrDefault(-1)
+
+        return when {
+            // Lecture réussie avec au moins une session : donnée réelle
+            exerciseMinutes > 0 -> exerciseMinutes
+            // Lecture réussie mais 0 session OU lecture échouée : estimation par les pas
+            else -> (stepsFallback * 0.01).toInt()
+        }
+    }
+
+    /**
      * Compte, pour chaque seuil de [thresholds], le nombre de jours dans tout l'historique
      * Health Connect où le nombre de pas a atteint ou dépassé ce seuil.
      * Retourne une map seuil → nombre de jours (0 si jamais atteint).
@@ -102,6 +189,38 @@ class HealthConnectRepository @Inject constructor(
         val stepsByDay = readStepsByDay(from, to)
         return thresholds.associateWith { threshold ->
             stepsByDay.values.count { it >= threshold }
+        }
+    }
+
+    /**
+     * Retourne la première date à laquelle chaque seuil de pas a été atteint.
+     * Parcourt toutes les journées depuis le 1er janvier 2020.
+     * Retourne null pour les seuils jamais atteints.
+     * Sur émulateur, retourne des dates mock réalistes.
+     */
+    suspend fun readStepBadgeFirstEarnedDates(thresholds: List<Long>): Map<Long, LocalDate?> {
+        if (isEmulator()) {
+            val today = LocalDate.now()
+            return mapOf(
+                5_000L  to today.minusDays(90),
+                10_000L to today.minusDays(60),
+                20_000L to today.minusDays(30),
+                30_000L to null,
+                50_000L to null,
+                100_000L to null,
+            )
+        }
+
+        val zone = ZoneId.systemDefault()
+        val from = LocalDate.of(2020, 1, 1).atStartOfDay(zone).toInstant()
+        val to = ZonedDateTime.now(zone).toInstant()
+
+        val stepsByDay = readStepsByDay(from, to)
+        return thresholds.associateWith { threshold ->
+            stepsByDay.entries
+                .filter { it.value >= threshold }
+                .minByOrNull { it.key }
+                ?.key
         }
     }
 
@@ -151,10 +270,14 @@ class HealthConnectRepository @Inject constructor(
 
     companion object {
         private const val TAG = "HealthConnectRepository"
-        /** Permissions de lecture demandées à l'onboarding (KAN-18). */
+        /**
+         * Permissions de lecture demandées à l'onboarding.
+         * Inclut READ_EXERCISE (KAN-82) pour les sessions d'exercice (temps actif).
+         */
         val PERMISSIONS: Set<String> = setOf(
             HealthPermission.getReadPermission(StepsRecord::class),
             HealthPermission.getReadPermission(DistanceRecord::class),
+            HealthPermission.getReadPermission(ExerciseSessionRecord::class),
         )
 
         /** Contrat système pour la demande de permissions Health Connect. */

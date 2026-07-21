@@ -22,8 +22,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -31,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,6 +47,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -52,24 +56,32 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.view.HapticFeedbackConstants
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.remember
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.fviret.podometre.BuildConfig
 import com.fviret.podometre.domain.JourneyData
 import com.fviret.podometre.ui.theme.AppColors
 
@@ -85,6 +97,7 @@ fun SettingsScreen(
     val prefs by viewModel.userPreferences.collectAsStateWithLifecycle()
     val streak by viewModel.streak.collectAsStateWithLifecycle()
     val stepBadgeCounts by viewModel.stepBadgeCounts.collectAsStateWithLifecycle()
+    val stepBadgeFirstDates by viewModel.stepBadgeFirstDates.collectAsStateWithLifecycle()
     val completedJourneyIds by viewModel.completedJourneyIds.collectAsStateWithLifecycle()
 
     Column(
@@ -148,6 +161,12 @@ fun SettingsScreen(
                 checked = prefs.showWeeklyChart,
                 onToggle = { viewModel.updateShowWeeklyChart(it) },
             )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            ModuleToggleRow(
+                label = "Métriques du jour",
+                checked = prefs.showTodayMetrics,
+                onToggle = { viewModel.updateShowTodayMetrics(it) },
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -189,8 +208,18 @@ fun SettingsScreen(
         }
         BadgesSection(
             stepBadgeCounts = stepBadgeCounts,
+            stepBadgeFirstDates = stepBadgeFirstDates,
             completedJourneyIds = completedJourneyIds,
         )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // ── Section : À propos ────────────────────────────────────────────────
+        SectionHeader(title = "À propos")
+
+        AboutSection()
+
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
@@ -216,6 +245,8 @@ private fun StepGoalRow(
     onGoalSelected: (Int) -> Unit,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
+    val view = LocalView.current
 
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -268,6 +299,11 @@ private fun StepGoalRow(
                         options = STEP_GOAL_OPTIONS,
                         selectedGoal = currentGoal,
                         onSelect = { goal ->
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            } else {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
                             onGoalSelected(goal)
                             expanded = false
                         },
@@ -368,6 +404,7 @@ private fun RingColorRow(
 ) {
     val selectedColor = AppColors.colorForId(selectedColorId)
     val selectedName = ringColorNames[selectedColorId] ?: selectedColorId
+    val haptic = LocalHapticFeedback.current
 
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -402,20 +439,42 @@ private fun RingColorRow(
                 AppColors.ringColorOptions.forEach { (id, color) ->
                     val isSelected = id == selectedColorId
                     val name = ringColorNames[id] ?: id
-                    val a11yLabel = "$name${if (isSelected) ", sélectionnée" else ""}"
+                    // contentDescription verbeux : nom + état pour TalkBack
+                    val a11yLabel = if (isSelected) "$name — sélectionnée" else name
                     Box(
+                        contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(44.dp)
+                            // Cible tactile 48 dp (minimum recommandé Android)
+                            .size(48.dp)
                             .clip(CircleShape)
                             .background(color)
                             .then(
                                 if (isSelected)
-                                    Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                                    Modifier.border(3.dp, Color.White, CircleShape)
                                 else Modifier
                             )
-                            .clickable(onClickLabel = a11yLabel) { onColorSelected(id) }
-                            .semantics { contentDescription = a11yLabel },
-                    )
+                            .clickable(
+                                onClickLabel = "Définit la couleur de l'anneau sur $name",
+                            ) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onColorSelected(id)
+                            }
+                            .semantics {
+                                contentDescription = a11yLabel
+                                role = Role.RadioButton
+                                selected = isSelected
+                            },
+                    ) {
+                        // Coche ✓ visible sur la pastille sélectionnée (indicateur non-couleur)
+                        if (isSelected) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -564,23 +623,89 @@ private fun ModuleToggleRow(
     }
 }
 
+// ── Taille du logo de badge (constante unique) ────────────────────────────────
+private val BADGE_LOGO_SIZE = 46.dp
+
+/**
+ * Données d'un badge de seuil de pas : seuil, emoji illustratif, couleur d'accent,
+ * titre court et description contextuelle.
+ * La couleur est indépendante de la couleur d'anneau choisie dans les réglages.
+ */
+private data class BadgeData(
+    val threshold: Long,
+    val emoji: String,
+    val color: Color,
+    val title: String,
+    val description: String,
+)
+
+/** Liste des 6 badges de seuil de pas, centralisée ici comme unique source de vérité. */
+private val STEP_BADGES: List<BadgeData> = listOf(
+    BadgeData(
+        threshold  = 5_000L,
+        emoji      = "🚶",
+        color      = Color(0xFF4CAF50),
+        title      = "Objectif 5 K",
+        description = "Premier 5 000 pas — les premiers pas comptent !",
+    ),
+    BadgeData(
+        threshold  = 10_000L,
+        emoji      = "🏃",
+        color      = Color(0xFF2196F3),
+        title      = "Objectif 10 K",
+        description = "Marcheur régulier — 10 000 pas dans la journée.",
+    ),
+    BadgeData(
+        threshold  = 20_000L,
+        emoji      = "⭐",
+        color      = Color(0xFFFF9800),
+        title      = "Objectif 20 K",
+        description = "Grand marcheur — deux fois l'objectif quotidien !",
+    ),
+    BadgeData(
+        threshold  = 30_000L,
+        emoji      = "🏅",
+        color      = Color(0xFFF44336),
+        title      = "Objectif 30 K",
+        description = "Marathonien du quotidien — endurance remarquable.",
+    ),
+    BadgeData(
+        threshold  = 50_000L,
+        emoji      = "🦅",
+        color      = Color(0xFF9C27B0),
+        title      = "Objectif 50 K",
+        description = "Ultra-marcheur — 50 000 pas en une seule journée.",
+    ),
+    BadgeData(
+        threshold  = 100_000L,
+        emoji      = "🏆",
+        color      = Color(0xFF26BFB8),
+        title      = "Objectif 100 K",
+        description = "Légende de la marche — exploit hors du commun !",
+    ),
+)
+
 /**
  * Section "Badges" — grille 3 colonnes avec badges de seuils de pas et badges de trajets.
- * Badges déverrouillés : fond coloré. Badges verrouillés : gris, opacité 35%.
- * Équivalent iOS : BadgeGridView.swift
+ * Badges de pas : illustration emoji, couleur propre, pastille du compteur.
+ * Badges verrouillés : niveaux de gris + icône 🔒.
+ * Tap sur badge débloqué → ModalBottomSheet de détail.
+ * Équivalent iOS : BadgeGridView.swift / BadgeData.swift
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BadgesSection(
     stepBadgeCounts: Map<Long, Int>,
+    stepBadgeFirstDates: Map<Long, java.time.LocalDate?>,
     completedJourneyIds: Set<String>,
 ) {
-    var dialogBadge by remember { mutableStateOf<Pair<String, Int>?>(null) }
+    var selectedBadge by remember { mutableStateOf<Triple<BadgeData, Int, java.time.LocalDate?>?>(null) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
     Column {
         // ── Badges de seuils de pas ───────────────────────────────────────────
         val columns = 3
-        val thresholds = STEP_BADGE_THRESHOLDS
-        val rows = (thresholds.size + columns - 1) / columns
+        val rows = (STEP_BADGES.size + columns - 1) / columns
         for (row in 0 until rows) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -588,13 +713,14 @@ private fun BadgesSection(
             ) {
                 for (col in 0 until columns) {
                     val index = row * columns + col
-                    if (index < thresholds.size) {
-                        val threshold = thresholds[index]
-                        val count = stepBadgeCounts[threshold] ?: 0
+                    if (index < STEP_BADGES.size) {
+                        val badge = STEP_BADGES[index]
+                        val count = stepBadgeCounts[badge.threshold] ?: 0
+                        val firstDate = stepBadgeFirstDates[badge.threshold]
                         StepBadgeCell(
-                            threshold = threshold,
+                            badge = badge,
                             count = count,
-                            onClick = { if (count > 0) dialogBadge = formatThreshold(threshold) to count },
+                            onClick = { selectedBadge = Triple(badge, count, firstDate) },
                             modifier = Modifier.weight(1f),
                         )
                     } else {
@@ -638,15 +764,14 @@ private fun BadgesSection(
         }
     }
 
-    dialogBadge?.let { (label, count) ->
-        AlertDialog(
-            onDismissRequest = { dialogBadge = null },
-            title = { Text("$label pas") },
-            text = { Text("Vous avez réussi ce défi $count fois !") },
-            confirmButton = {
-                TextButton(onClick = { dialogBadge = null }) { Text("Super !") }
-            },
-        )
+    // ── Modale de détail (ModalBottomSheet) ───────────────────────────────────
+    selectedBadge?.let { (badge, count, firstDate) ->
+        ModalBottomSheet(
+            onDismissRequest = { selectedBadge = null },
+            sheetState = sheetState,
+        ) {
+            BadgeDetailContent(badge = badge, count = count, firstEarnedDate = firstDate)
+        }
     }
 }
 
@@ -655,72 +780,190 @@ private fun formatThreshold(threshold: Long): String =
     "%,d".format(threshold).replace(',', ' ')
 
 /**
- * Cellule de badge pour un seuil de pas.
- * Déverrouillé (count > 0) : fond coloré + chiffre accent.
- * Verrouillé : fond gris, opacité 35%.
+ * Contenu de la modale de détail d'un badge de seuil de pas.
+ * Affiche l'illustration agrandie, le titre centré, la pastille compteur et une phrase de contexte.
+ */
+@Composable
+private fun BadgeDetailContent(badge: BadgeData, count: Int, firstEarnedDate: java.time.LocalDate?) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 16.dp)
+            .padding(bottom = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // Grande illustration
+        Text(
+            text = badge.emoji,
+            fontSize = 72.sp,
+            textAlign = TextAlign.Center,
+        )
+        // Titre centré
+        Text(
+            text = badge.title,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            color = badge.color,
+        )
+        // Pastille compteur (affichée seulement si count > 0)
+        if (count > 0) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(badge.color)
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+            ) {
+                Text(
+                    text = "$count ×",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+        // Phrase de contexte
+        Text(
+            text = badge.description,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        // Date du premier déblocage (si disponible)
+        if (firstEarnedDate != null) {
+            val formatted = firstEarnedDate.format(
+                java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", java.util.Locale.FRENCH)
+            )
+            Text(
+                text = "Débloqué le $formatted",
+                style = MaterialTheme.typography.labelMedium,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            )
+        }
+    }
+}
+
+/**
+ * Cellule de badge pour un seuil de pas (refonte KAN-89).
+ * — Illustration emoji grande (~46 dp)
+ * — Titre sous l'illustration ("Objectif X K"), visible même verrouillé (grisé)
+ * — Pastille colorée "N ×" masquée si count = 0
+ * — Verrouillé : niveaux de gris + icône 🔒
+ * — Tap → modale de détail (badge débloqué comme verrouillé)
  */
 @Composable
 private fun StepBadgeCell(
-    threshold: Long,
+    badge: BadgeData,
     count: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val label = formatThreshold(threshold)
     val isUnlocked = count > 0
-    val a11y = if (isUnlocked) "$label pas — débloqué ($count fois)" else "$label pas — verrouillé"
+    val a11y = if (isUnlocked)
+        "${badge.title} — débloqué ($count fois)"
+    else
+        "${badge.title} — verrouillé"
 
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isUnlocked)
-                MaterialTheme.colorScheme.primaryContainer
-            else
-                MaterialTheme.colorScheme.surfaceVariant,
-        ),
-        modifier = modifier
-            .aspectRatio(1f)
-            .alpha(if (isUnlocked) 1f else 0.35f)
-            .clickable(enabled = isUnlocked, onClickLabel = a11y, onClick = onClick)
-            .clearAndSetSemantics { contentDescription = a11y },
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = if (isUnlocked)
-                    MaterialTheme.colorScheme.primary
+    // Filtre niveaux de gris pour les badges verrouillés
+    val grayscaleMatrix = ColorMatrix().apply { setToSaturation(0f) }
+
+    Box(modifier = modifier.aspectRatio(1f)) {
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isUnlocked)
+                    badge.color.copy(alpha = 0.15f)
                 else
-                    MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
-            Text(
-                text = "pas",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
-            if (isUnlocked) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "×$count",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
+                    MaterialTheme.colorScheme.surfaceVariant,
+            ),
+            modifier = Modifier
+                .fillMaxSize()
+                .then(
+                    if (!isUnlocked)
+                        Modifier.drawWithContent {
+                            val paint = Paint().apply {
+                                colorFilter = ColorFilter.colorMatrix(grayscaleMatrix)
+                            }
+                            drawIntoCanvas { canvas ->
+                                canvas.saveLayer(
+                                    androidx.compose.ui.geometry.Rect(
+                                        0f, 0f, size.width, size.height
+                                    ),
+                                    paint,
+                                )
+                                drawContent()
+                                canvas.restore()
+                            }
+                        }
+                    else Modifier
                 )
+                .alpha(if (isUnlocked) 1f else 0.5f)
+                .clickable(onClickLabel = a11y, onClick = onClick)
+                .clearAndSetSemantics { contentDescription = a11y },
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                // Illustration emoji
+                Text(
+                    text = badge.emoji,
+                    fontSize = 36.sp,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                // Titre (visible même verrouillé)
+                Text(
+                    text = badge.title,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isUnlocked) badge.color
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                // Pastille compteur (masquée si count = 0)
+                if (count > 0) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(badge.color)
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Text(
+                            text = "$count ×",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
             }
+        }
+        // Icône 🔒 en overlay pour les badges verrouillés
+        if (!isUnlocked) {
+            Text(
+                text = "🔒",
+                fontSize = 14.sp,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp),
+            )
         }
     }
 }
 
 /**
  * Cellule de badge pour un trajet.
- * Déverrouillé : couleurs normales. Verrouillé : filtre grayscale + opacité 35%.
+ * Déverrouillé : couleurs normales, emoji agrandi (~46 dp).
+ * Verrouillé : niveaux de gris + icône 🔒 + opacité réduite.
  */
 @Composable
 private fun JourneyBadgeCell(
@@ -730,39 +973,72 @@ private fun JourneyBadgeCell(
     modifier: Modifier = Modifier,
 ) {
     val a11y = if (isUnlocked) "$name — débloqué" else "$name — verrouillé"
+    val grayscaleMatrix = ColorMatrix().apply { setToSaturation(0f) }
 
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isUnlocked)
-                MaterialTheme.colorScheme.secondaryContainer
-            else
-                MaterialTheme.colorScheme.surfaceVariant,
-        ),
-        modifier = modifier
-            .aspectRatio(1f)
-            .alpha(if (isUnlocked) 1f else 0.35f)
-            .clearAndSetSemantics { contentDescription = a11y },
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+    Box(modifier = modifier.aspectRatio(1f)) {
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isUnlocked)
+                    MaterialTheme.colorScheme.secondaryContainer
+                else
+                    MaterialTheme.colorScheme.surfaceVariant,
+            ),
+            modifier = Modifier
+                .fillMaxSize()
+                .then(
+                    if (!isUnlocked)
+                        Modifier.drawWithContent {
+                            val paint = Paint().apply {
+                                colorFilter = ColorFilter.colorMatrix(grayscaleMatrix)
+                            }
+                            drawIntoCanvas { canvas ->
+                                canvas.saveLayer(
+                                    androidx.compose.ui.geometry.Rect(
+                                        0f, 0f, size.width, size.height
+                                    ),
+                                    paint,
+                                )
+                                drawContent()
+                                canvas.restore()
+                            }
+                        }
+                    else Modifier
+                )
+                .alpha(if (isUnlocked) 1f else 0.5f)
+                .clearAndSetSemantics { contentDescription = a11y },
         ) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                // Emoji agrandi (~46 dp)
+                Text(
+                    text = emoji,
+                    fontSize = 36.sp,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                )
+            }
+        }
+        // Icône 🔒 en overlay pour les badges verrouillés
+        if (!isUnlocked) {
             Text(
-                text = emoji,
-                style = MaterialTheme.typography.titleLarge,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = name,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(horizontal = 4.dp),
+                text = "🔒",
+                fontSize = 14.sp,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp),
             )
         }
     }
@@ -810,6 +1086,96 @@ private fun StreakBanner(streakDays: Int) {
                 textAlign = TextAlign.Center,
             )
         }
+    }
+}
+
+/**
+ * Section "À propos" — nom de l'app, version, lien politique de confidentialité et crédits.
+ * La version est lue depuis [BuildConfig.VERSION_NAME].
+ * Tap sur "Politique de confidentialité" → AlertDialog informatif.
+ */
+@Composable
+private fun AboutSection() {
+    var showPrivacyDialog by remember { mutableStateOf(false) }
+
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column {
+            // Nom + version
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Podomètre",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = "Version ${BuildConfig.VERSION_NAME}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+            // Politique de confidentialité
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        onClickLabel = "Afficher la politique de confidentialité",
+                    ) { showPrivacyDialog = true }
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
+                    .semantics { role = Role.Button },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Politique de confidentialité",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+            // Crédits
+            Text(
+                text = "Développé par Fviret • Citations CC0",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            )
+        }
+    }
+
+    // Dialog politique de confidentialité
+    if (showPrivacyDialog) {
+        AlertDialog(
+            onDismissRequest = { showPrivacyDialog = false },
+            title = {
+                Text(text = "Politique de confidentialité")
+            },
+            text = {
+                Text(
+                    text = "Aucune donnée n'est collectée. Toutes les données restent sur votre appareil.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showPrivacyDialog = false }) {
+                    Text("Fermer")
+                }
+            },
+        )
     }
 }
 

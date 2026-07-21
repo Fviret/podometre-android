@@ -27,7 +27,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -44,6 +46,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fviret.podometre.R
+import com.fviret.podometre.data.weather.DailyForecast
 import com.fviret.podometre.ui.theme.AppColors
 
 /**
@@ -61,6 +64,9 @@ fun ActivityScreen(
     val haptic = LocalHapticFeedback.current
     val view = LocalView.current
     val context = LocalContext.current
+
+    /** Prévision sélectionnée — non null → bottom sheet de détail météo ouvert. */
+    var selectedForecast by remember { mutableStateOf<DailyForecast?>(null) }
 
     // Demande ACTIVITY_RECOGNITION (nécessaire sur Android 10+) puis démarre le capteur.
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -81,6 +87,14 @@ fun ActivityScreen(
     // Détecte le franchissement de l'objectif (< 100 % → ≥ 100 %), aujourd'hui uniquement.
     // -1L = sentinelle : on ne tire pas de haptic lors de la première composition.
     val prevStepsRef = remember { mutableLongStateOf(-1L) }
+
+    // Réinitialise la référence à chaque changement de jour pour éviter un haptic fantôme
+    // au retour sur aujourd'hui : sans reset, les pas du jour passé (< objectif) ferait
+    // croire que l'objectif vient d'être franchi alors qu'il l'était déjà.
+    LaunchedEffect(uiState.selectedDayOffset) {
+        prevStepsRef.longValue = -1L
+    }
+
     LaunchedEffect(uiState.stepsToday, uiState.stepGoal) {
         val prev = prevStepsRef.longValue
         val current = uiState.stepsToday
@@ -93,6 +107,14 @@ fun ActivityScreen(
             }
         }
         prevStepsRef.longValue = current
+    }
+
+    // Bottom sheet de détail météo horaire
+    selectedForecast?.let { forecast ->
+        WeatherDetailBottomSheet(
+            forecast = forecast,
+            onDismiss = { selectedForecast = null },
+        )
     }
 
     if (showAphorism) {
@@ -155,7 +177,9 @@ fun ActivityScreen(
             StepRing(
                 steps = uiState.stepsToday,
                 goal = uiState.stepGoal,
-                ringColor = AppColors.colorForId(prefs.ringColorId)
+                ringColor = AppColors.colorForId(prefs.ringColorId),
+                streak = uiState.streak,
+                isToday = uiState.selectedDayOffset == 0,
             )
 
             if (uiState.selectedDayOffset < 0) {
@@ -179,7 +203,19 @@ fun ActivityScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // ── 2. Bannière météo + prévisions 7 jours ────────────────────────────
+        // ── 2. Métriques du jour (distance · temps actif · calories) ──────────
+        if (prefs.showTodayMetrics) {
+            TodayMetricsView(
+                ringColor = AppColors.colorForId(prefs.ringColorId),
+                distanceKm = uiState.distanceKm,
+                activeMinutes = uiState.activeMinutes,
+                caloriesKcal = uiState.caloriesKcal,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // ── 4. Bannière météo + prévisions 7 jours ────────────────────────────
         if (prefs.showWeatherForecast) {
             WeatherBanner(
                 state = uiState.weatherState,
@@ -190,13 +226,14 @@ fun ActivityScreen(
                 WeeklyForecastBanner(
                     forecasts = uiState.dailyForecasts,
                     cityName = uiState.cityName,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    onDayClick = { forecast -> selectedForecast = forecast },
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // ── 3. Calendrier mensuel ─────────────────────────────────────────────
+        // ── 5. Calendrier mensuel ─────────────────────────────────────────────
         if (prefs.showMonthCalendar) {
             MonthCalendarView(
                 month = uiState.calendarMonth,
@@ -212,7 +249,7 @@ fun ActivityScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // ── 4. Graphe comparaison hebdomadaire ────────────────────────────────
+        // ── 6. Graphe comparaison hebdomadaire ────────────────────────────────
         if (prefs.showWeeklyChart) {
             WeeklyChartView(
                 currentWeek = uiState.currentWeekSteps,

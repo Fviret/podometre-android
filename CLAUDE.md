@@ -13,7 +13,8 @@ Développement incrémental solo, sans dépendances tierces inutiles.
 
 - **Langage** : Kotlin 2.0+
 - **UI** : Jetpack Compose + Material 3
-- **Données santé** : Health Connect API (`androidx.health.connect`) — `StepsRecord`, `DistanceRecord`
+- **Données santé** : Health Connect API (`androidx.health.connect`) — `StepsRecord`, `DistanceRecord`, `ExerciseSessionRecord`
+- **Capteur live** : `SensorManager` + `TYPE_STEP_COUNTER` (pas en temps réel, aujourd'hui uniquement)
 - **Notifications** : NotificationManager + WorkManager
 - **Localisation** : FusedLocationProviderClient (Google Play Services)
 - **Météo** : Open-Meteo API (REST, gratuit, sans clé)
@@ -39,13 +40,15 @@ Développement incrémental solo, sans dépendances tierces inutiles.
 ```
 app/src/main/java/com/fviret/podometre/
 ├── ui/
-│   ├── activity/          ← Écran Activité (anneau, météo, calendrier, graphe)
+│   ├── activity/          ← Écran Activité (anneau, météo, calendrier, graphe, métriques, détail météo)
+│   ├── aphorism/          ← AphorismCard, AphorismPopup
 │   ├── journey/           ← Catalogue trajets, preview, détail
 │   ├── settings/          ← Paramètres, badges, streak
 │   ├── onboarding/        ← Flux d'onboarding 4 slides
 │   └── theme/             ← MaterialTheme, couleurs, typographie
 ├── data/
 │   ├── health/            ← HealthConnectRepository
+│   ├── aphorism/          ← AphorismRepository (400 citations CC0, assets JSON)
 │   ├── journey/           ← JourneyProgressRepository (JSON local)
 │   ├── weather/           ← WeatherRepository (Open-Meteo)
 │   └── preferences/       ← UserPreferencesRepository (DataStore)
@@ -60,14 +63,15 @@ app/src/main/java/com/fviret/podometre/
 
 | Service | Rôle | Équivalent iOS |
 |---|---|---|
-| `HealthConnectRepository` | Pas, distance, idempotent | `StepCountViewModel` / `JourneyProgressService` |
+| `HealthConnectRepository` | Pas, distance, streak, idempotent | `StepCountViewModel` / `JourneyProgressService` |
 | `JourneyProgressRepository` | Progression trajets, JSON, jalons | `JourneyProgressService` |
 | `WeatherRepository` | Open-Meteo, cache 30min | `WeatherService` |
 | `UserPreferencesRepository` | DataStore Preferences | `UserDefaults` / `@AppStorage` |
+| `AphorismRepository` | 400 citations CC0, sélection déterministe par jour | — |
 
 ---
 
-## Fonctionnalités à implémenter (référence roadmap)
+## Fonctionnalités implémentées
 
 ### Onboarding
 - Carrousel 4 slides, non-dismissable
@@ -76,11 +80,20 @@ app/src/main/java/com/fviret/podometre/
 - Persisté via `hasCompletedOnboarding` dans DataStore
 
 ### Écran Activité
-- Anneau circulaire Canvas Compose (épaisseur 20dp, dégradé)
+- Anneau circulaire Canvas Compose (épaisseur 20dp, dégradé + effet creusé sur la piste)
+- Compteur animé (ease-out, 600ms, chiffres tabulaires `tnum`)
+- Pourcentage d'objectif sous le compteur (non plafonné — peut dépasser 100 %)
+- Halo de célébration (dégradé radial + spring animation) quand objectif atteint
+- Série 🔥 sous le compteur quand objectif atteint aujourd'hui (fade-in + scale)
+- Haptic feedback au franchissement de l'objectif
+- Capteur live `TYPE_STEP_COUNTER` (baseline HK + delta capteur, today only)
 - Navigation par chevrons (ghost slot pattern pour maintenir le centrage)
-- Bannière météo + prévisions 7 jours (Open-Meteo)
+- Bannière météo + prévisions 7 jours (Open-Meteo) avec en-tête de section
+- Tap sur un jour → bottom sheet détail météo (`WeatherDetailBottomSheet`) : héros, tranches 3h (00h–02h … 21h–23h), filtre tranches passées pour aujourd'hui
 - Calendrier mensuel (grille L-D, lundi en premier)
 - Graphe comparaison semaines (Canvas Compose, sans bibliothèque externe)
+- Rangée métriques du jour (`TodayMetricsView`) : Distance, Temps actif (ExerciseSessionRecord + fallback), Calories — masquable via toggle Paramètres
+- Popup pensée du jour (1×/jour, réarmable)
 
 ### Système de Trajets
 - 19 trajets, 4 catégories : Promenades, Sentiers, Histoire, Mythes & Épopées
@@ -95,6 +108,14 @@ app/src/main/java/com/fviret/podometre/
 - Streak : calculé Health Connect, 365 jours max
 - Badges de pas : 5k, 10k, 20k, 30k, 50k, 100k
 - Badges de trajets : 19 badges (un par trajet complété)
+- Toggle affichage rangée métriques du jour (`showTodayMetrics`)
+
+### Pensée du jour
+- Popup matinale à la première ouverture (garde 1×/jour dans DataStore, réarmable)
+- 400 citations CC0 embarquées (`assets/aphorisms_humor_400.json`)
+- Sélection déterministe : `recueil[(quantième - 1) % 400]`
+- Carte dans les Paramètres (appui = copie presse-papiers)
+- Toggle dans les Paramètres (réinitialise la garde à la réactivation)
 
 ---
 
@@ -116,6 +137,9 @@ app/src/main/java/com/fviret/podometre/
 | `cachedStepsToday` | Long | 0 |
 | `cachedStepsTodayDate` | String (date ISO yyyy-MM-dd) | "" (vide) |
 | `activeJourneyId` | String? (UUID) | null |
+| `showTodayMetrics` | Boolean | true |
+| `aphorismEnabled` | Boolean | true |
+| `lastAphorismDate` | String (date ISO yyyy-MM-dd) | "" (vide) |
 
 Ne pas créer de nouvelles clés sans les ajouter ici.
 
@@ -165,6 +189,29 @@ if (km <= progress.totalKm) return
 progress = progress.copy(totalKm = km)
 ```
 
+### Pattern capteur live (SensorManager + HK baseline)
+
+Le capteur `TYPE_STEP_COUNTER` fournit un compteur croissant depuis le reboot — pas les pas du jour.
+La baseline HK est capturée au chargement, le delta capteur s'y ajoute en temps réel.
+
+```kotlin
+// Fonction pure testable (top-level internal)
+internal fun computeLiveSteps(hcBaseline: Long, sensorStart: Long, sensorCurrent: Long): Long {
+    if (sensorStart < 0L) return hcBaseline          // capteur non démarré
+    val delta = (sensorCurrent - sensorStart).coerceAtLeast(0L)  // protect contre reboot
+    return hcBaseline + delta
+}
+
+// Dans onSensorChanged — max() uniquement pour offset == 0
+val live = computeLiveSteps(hcStepsRef, sensorStart, raw)
+_uiState.value = _uiState.value.copy(stepsToday = maxOf(_uiState.value.stepsToday, live))
+```
+
+- `sensorStart = -1L` est la sentinelle "capteur non initialisé"
+- `@Volatile` sur `hcStepsRef` et `sensorStart` (lecture cross-thread)
+- `max()` uniquement pour `offset == 0` — pour les jours passés, affectation directe
+- `ACTIVITY_RECOGNITION` requis Android 10+ (API 29) — vérifier avant d'enregistrer le listener
+
 ### Communication entre ViewModels
 
 Préférer les Flows partagés via le Repository plutôt que `EventBus` ou `BroadcastReceiver`.
@@ -180,6 +227,23 @@ viewModelScope.launch {
     }
 }
 ```
+
+### Pattern `GrantPermissionRule` dans les tests instrumentés
+
+Quand un écran demande une permission système au démarrage (`ACTIVITY_RECOGNITION`, etc.),
+le dialog système détruit la hiérarchie Compose dans les tests.
+Pré-accorder la permission via `RuleChain` avant que `composeTestRule` s'initialise :
+
+```kotlin
+private val composeTestRule = createComposeRule()
+
+@get:Rule
+val ruleChain: RuleChain = RuleChain
+    .outerRule(GrantPermissionRule.grant(Manifest.permission.ACTIVITY_RECOGNITION))
+    .around(composeTestRule)
+```
+
+Dépendance requise : `androidTestImplementation("androidx.test:rules:1.5.0")`.
 
 ---
 
@@ -263,9 +327,11 @@ git push origin main
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+<uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />  <!-- API 29+ capteur pas -->
 <!-- Health Connect -->
 <uses-permission android:name="android.permission.health.READ_STEPS" />
 <uses-permission android:name="android.permission.health.READ_DISTANCE" />
+<uses-permission android:name="android.permission.health.READ_EXERCISE" />
 ```
 
 ---
@@ -280,6 +346,7 @@ git push origin main
 - Ne pas créer de clé DataStore sans la documenter dans la table ci-dessus
 - Ne pas utiliser Room — Health Connect est la source de vérité pour les données santé
 - Ne pas utiliser de bibliothèque tierce pour les graphes — Canvas Compose uniquement
+- Ne pas appliquer `max()` sur les pas pour les jours passés (offset ≠ 0) — affectation directe uniquement
 
 ---
 
@@ -287,17 +354,21 @@ git push origin main
 
 Projet Jira : **KAN** (Podomètre Android) — floviret.atlassian.net
 
-| Sprint | Épic |
-|---|---|
-| Sprint 1 | KAN-4 Fondations & KAN-5 Onboarding |
-| Sprint 2 | KAN-6 Écran Activité (US 3.1–3.3) |
-| Sprint 3 | KAN-6 Écran Activité (US 3.4–3.7) |
-| Sprint 4 | KAN-7 Trajets (US 4.1–4.3) |
-| Sprint 5 | KAN-7 Trajets (US 4.4–4.6) |
-| Sprint 6 | KAN-8 Paramètres + Badges + Streak |
-| Sprint 7 | KAN-9 Catalogue 19 trajets |
-| Sprint 8 | KAN-10 Accessibilité + KAN-11 Tests |
+| Sprint | Épic | Statut |
+|---|---|---|
+| Sprint 1 | KAN-4 Fondations & KAN-5 Onboarding | ✅ Terminé |
+| Sprint 2 | KAN-6 Écran Activité (US 3.1–3.3) | ✅ Terminé |
+| Sprint 3 | KAN-6 Écran Activité (US 3.4–3.7) | ✅ Terminé |
+| Sprint 4 | KAN-7 Trajets (US 4.1–4.3) | ✅ Terminé |
+| Sprint 5 | KAN-7 Trajets (US 4.4–4.6) | ✅ Terminé |
+| Sprint 6 | KAN-8 Paramètres + Badges + Streak | ✅ Terminé |
+| Sprint 7 | KAN-9 Catalogue 19 trajets | ✅ Terminé |
+| Sprint 8 | KAN-10 Accessibilité + KAN-11 Tests | ✅ Terminé |
+| Sprint 9 | KAN-60–68 Pensée du jour (aphorismes) | ✅ Terminé |
+| Sprint 10 | KAN-71–78 Polish UI (haptic, live sensor, typo, anneau) | ✅ Terminé |
+| Sprint 11 | KAN-79–86 Polish UI II (halo, métriques, détail météo, tests) | ✅ Terminé |
+| Sprint 12 | KAN-89–96 Polish III (badges, streak animé, densif. trajets, a11y, haptic, À propos) | ✅ Terminé |
 
 ---
 
-*Document généré le 30/06/2026 — basé sur la roadmap Android (36 US, 8 Épics)*
+*Mis à jour le 21/07/2026*

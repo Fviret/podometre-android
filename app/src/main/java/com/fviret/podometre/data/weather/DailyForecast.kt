@@ -3,6 +3,21 @@ package com.fviret.podometre.data.weather
 import java.time.LocalDate
 
 /**
+ * Prévision météo pour un créneau horaire donné.
+ * Construit depuis la réponse Open-Meteo `hourly`.
+ */
+data class HourlyForecast(
+    /** Heure de la journée (0–23). */
+    val hour: Int,
+    /** Température en degrés Celsius. */
+    val tempCelsius: Double,
+    /** Code WMO Open-Meteo. */
+    val weatherCode: Int,
+    /** Probabilité de précipitation en pourcentage (0–100). */
+    val precipProbability: Int,
+)
+
+/**
  * Prévisions météo pour un jour donné.
  * Construit depuis la réponse Open-Meteo `daily`.
  * Équivalent iOS : DayForecast dans WeatherService.swift
@@ -14,6 +29,8 @@ data class DailyForecast(
     val tempMinCelsius: Double,
     /** Total de précipitations en mm. Affiché uniquement si > [PRECIP_THRESHOLD_MM]. */
     val precipitationMm: Double,
+    /** Créneaux horaires pour ce jour (vide si non chargé). */
+    val hourlyForecasts: List<HourlyForecast> = emptyList(),
 ) {
     companion object {
         const val PRECIP_THRESHOLD_MM = 0.2

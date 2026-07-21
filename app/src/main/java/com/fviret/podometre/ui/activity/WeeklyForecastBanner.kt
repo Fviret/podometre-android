@@ -1,25 +1,35 @@
 package com.fviret.podometre.ui.activity
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import com.fviret.podometre.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -42,12 +52,22 @@ fun WeeklyForecastBanner(
     forecasts: List<DailyForecast>,
     cityName: String?,
     modifier: Modifier = Modifier,
+    onDayClick: ((DailyForecast) -> Unit)? = null,
 ) {
     if (forecasts.isEmpty()) return
 
     val today = LocalDate.now()
 
     Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = stringResource(R.string.weather_forecast_section_title),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .padding(horizontal = 4.dp)
+                .semantics { heading() },
+        )
+        Spacer(modifier = Modifier.height(8.dp))
         LazyRow(
             contentPadding = PaddingValues(horizontal = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -58,39 +78,57 @@ fun WeeklyForecastBanner(
                     dayLabel = dayLabel(forecast.date, today),
                     isToday = index == 0,
                     accessibilityLabel = accessibilityLabel(forecast, today),
+                    onClick = onDayClick?.let { cb -> { cb(forecast) } },
                 )
             }
         }
 
         cityName?.let { city ->
             Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = city,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.LocationOn,
+                    contentDescription = null,
+                    modifier = Modifier.size(11.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.width(2.dp))
+                Text(
+                    text = city,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
 
-/** Cellule d'un jour de prévision. */
+/** Cellule d'un jour de prévision. Cliquable si [onClick] est non null. */
 @Composable
 private fun DayCell(
     forecast: DailyForecast,
     dayLabel: String,
     isToday: Boolean,
     accessibilityLabel: String,
+    onClick: (() -> Unit)? = null,
 ) {
     val bgColor = if (isToday) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
     val labelColor = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+
+    val clickModifier = if (onClick != null) {
+        Modifier.clickable(onClick = onClick)
+    } else Modifier
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .width(52.dp)
             .background(color = bgColor, shape = RoundedCornerShape(10.dp))
+            .then(clickModifier)
             .padding(vertical = 8.dp, horizontal = 4.dp)
             .clearAndSetSemantics { contentDescription = accessibilityLabel }
     ) {

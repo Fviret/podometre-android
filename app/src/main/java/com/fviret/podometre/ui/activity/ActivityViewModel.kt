@@ -19,6 +19,7 @@ import com.fviret.podometre.data.health.HealthConnectRepository
 import com.fviret.podometre.data.preferences.UserPreferences
 import com.fviret.podometre.data.preferences.UserPreferencesRepository
 import com.fviret.podometre.data.weather.DailyForecast
+import com.fviret.podometre.data.weather.HourlyForecast
 import com.fviret.podometre.data.weather.WeatherRepository
 import com.fviret.podometre.data.weather.WeatherState
 import com.fviret.podometre.util.isEmulator
@@ -113,6 +114,14 @@ data class ActivityUiState(
     val previousWeekSteps: List<Long> = List(7) { 0L },
     /** Labels abrégés des 7 derniers jours (ex. ["Me", "Je", …, "Me"]). */
     val weekDayLabels: List<String> = List(7) { "" },
+    /** Nombre de jours consécutifs avec l'objectif atteint (streak courant). 0 si aucun. */
+    val streak: Int = 0,
+    /** Distance parcourue (en km) pour le jour sélectionné. */
+    val distanceKm: Double = 0.0,
+    /** Temps actif estimé (en minutes) pour le jour sélectionné. */
+    val activeMinutes: Int = 0,
+    /** Calories actives brûlées (en kcal) pour le jour sélectionné. */
+    val caloriesKcal: Int = 0,
 )
 
 /**
@@ -233,6 +242,7 @@ class ActivityViewModel @Inject constructor(
         loadWeather()
         loadCalendarMonth(YearMonth.now())
         loadWeeklyData()
+        loadStreak()
         SyncStepsWorker.schedule(WorkManager.getInstance(context))
         checkAphorismVisibility()
         // Ré-affiche la popup quand l'utilisateur réactive la feature depuis les Paramètres.
@@ -252,6 +262,21 @@ class ActivityViewModel @Inject constructor(
     internal fun checkAphorismVisibility() {
         viewModelScope.launch {
             _showAphorismDialog.value = aphorismRepository.shouldShowPopup()
+        }
+    }
+
+    /**
+     * Charge le streak de jours consécutifs depuis Health Connect.
+     * Appelé uniquement à l'initialisation et au retour en foreground — jamais lors d'un
+     * changement de jour (KAN-92). [computeStreak] part toujours d'aujourd'hui : la valeur
+     * est donc indépendante du jour affiché. L'affichage est de plus conditionné par
+     * [StepRing] à `isToday && steps >= goal && streak > 0`.
+     */
+    private fun loadStreak() {
+        viewModelScope.launch {
+            val goal = userPreferences.value.dailyStepGoal.toLong()
+            val streak = healthConnectRepository.computeStreak(goal)
+            _uiState.value = _uiState.value.copy(streak = streak)
         }
     }
 
@@ -331,6 +356,7 @@ class ActivityViewModel @Inject constructor(
     /**
      * Charge les pas depuis Health Connect pour le jour correspondant à [offset] (0 = aujourd'hui).
      * Requête idempotente : recalcule depuis le début du jour cible.
+     * Déclenche également [loadMetrics] pour mettre à jour distance, temps actif et calories.
      */
     private fun loadStepsForOffset(offset: Int) {
         viewModelScope.launch {
@@ -352,7 +378,24 @@ class ActivityViewModel @Inject constructor(
             } else {
                 _uiState.value = _uiState.value.copy(stepsToday = steps)
             }
+            loadMetrics(offset, stepsFallback = steps)
         }
+    }
+
+    /**
+     * Charge distance, temps actif et calories pour le jour correspondant à [offset].
+     * [stepsFallback] est utilisé pour estimer le temps actif si aucune session d'exercice n'est trouvée.
+     */
+    private suspend fun loadMetrics(offset: Int, stepsFallback: Long = 0L) {
+        val targetDate = LocalDate.now().plusDays(offset.toLong())
+        val distanceKm = healthConnectRepository.readDistanceForDay(targetDate)
+        val caloriesKcal = healthConnectRepository.readActiveCaloriesForDay(targetDate)
+        val activeMinutes = healthConnectRepository.readActiveMinutesForDay(targetDate, stepsFallback)
+        _uiState.value = _uiState.value.copy(
+            distanceKm = distanceKm,
+            activeMinutes = activeMinutes,
+            caloriesKcal = caloriesKcal,
+        )
     }
 
     /**
@@ -487,8 +530,29 @@ class ActivityViewModel @Inject constructor(
                 tempMaxCelsius = maxT[i],
                 tempMinCelsius = minT[i],
                 precipitationMm = precip[i],
+                hourlyForecasts = emulatorHourlyForecasts(codes[i], minT[i], maxT[i]),
             )
         }
+    }
+
+    /**
+     * Génère des créneaux horaires mock (0h–23h) pour l'émulateur.
+     * La température évolue entre [minT] et [maxT] selon une courbe sinusoïdale simplifiée.
+     */
+    private fun emulatorHourlyForecasts(
+        dayCode: Int,
+        minT: Double,
+        maxT: Double,
+    ): List<HourlyForecast> = List(24) { h ->
+        val ratio = ((h - 6).coerceIn(0, 12) / 12.0)
+        val temp = minT + (maxT - minT) * ratio
+        val precip = if (dayCode in 51..99) (20 + h % 3 * 10).coerceAtMost(80) else 0
+        HourlyForecast(
+            hour = h,
+            tempCelsius = temp,
+            weatherCode = dayCode,
+            precipProbability = precip,
+        )
     }
 
     /**

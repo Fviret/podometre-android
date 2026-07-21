@@ -62,6 +62,18 @@ class SettingsViewModel @Inject constructor(
     }.asStateFlow()
 
     /**
+     * Première date à laquelle chaque seuil de pas a été atteint.
+     * Null pour les seuils jamais atteints.
+     * Chargé une seule fois au démarrage.
+     */
+    val stepBadgeFirstDates: StateFlow<Map<Long, java.time.LocalDate?>> =
+        MutableStateFlow<Map<Long, java.time.LocalDate?>>(emptyMap()).also { flow ->
+            viewModelScope.launch {
+                flow.value = healthConnectRepository.readStepBadgeFirstEarnedDates(STEP_BADGE_THRESHOLDS)
+            }
+        }.asStateFlow()
+
+    /**
      * IDs des trajets entièrement complétés (totalKm >= Journey.totalKm).
      * Déterminé en croisant [JourneyProgressRepository.progressMap] avec [JourneyData.all].
      */
@@ -149,6 +161,11 @@ class SettingsViewModel @Inject constructor(
     /** Affiche ou masque le graphe comparatif hebdomadaire sur l'écran Activité. */
     fun updateShowWeeklyChart(show: Boolean) {
         viewModelScope.launch { userPreferencesRepository.setShowWeeklyChart(show) }
+    }
+
+    /** Affiche ou masque la rangée de métriques du jour (Distance, Temps actif, Calories) sur l'écran Activité. */
+    fun updateShowTodayMetrics(show: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.setShowTodayMetrics(show) }
     }
 
     /**
