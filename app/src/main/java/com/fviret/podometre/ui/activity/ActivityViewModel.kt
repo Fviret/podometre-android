@@ -267,7 +267,10 @@ class ActivityViewModel @Inject constructor(
 
     /**
      * Charge le streak de jours consécutifs depuis Health Connect.
-     * Affiché dans l'anneau uniquement si aujourd'hui est sélectionné et l'objectif est atteint.
+     * Appelé uniquement à l'initialisation et au retour en foreground — jamais lors d'un
+     * changement de jour (KAN-92). [computeStreak] part toujours d'aujourd'hui : la valeur
+     * est donc indépendante du jour affiché. L'affichage est de plus conditionné par
+     * [StepRing] à `isToday && steps >= goal && streak > 0`.
      */
     private fun loadStreak() {
         viewModelScope.launch {

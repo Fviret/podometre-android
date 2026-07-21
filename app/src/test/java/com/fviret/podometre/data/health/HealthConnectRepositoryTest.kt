@@ -117,4 +117,28 @@ class HealthConnectRepositoryTest {
 
         assertEquals(0, streak)
     }
+
+    /**
+     * KAN-92 — le streak part toujours d'aujourd'hui, indépendamment du jour affiché.
+     * Si l'objectif d'aujourd'hui n'est pas atteint, le streak est 0, même si plusieurs
+     * jours passés l'atteignaient (scénario : utilisateur navigue vers hier où il avait
+     * atteint son objectif, puis ouvre les Paramètres).
+     */
+    @Test
+    fun `KAN-92 streak reste 0 quand objectif non atteint aujourd hui meme si jours passes atteignaient l objectif`() = runTest {
+        val today = LocalDate.now(zone)
+        mockStepsForDays(
+            mapOf(
+                today to 2_000L,                        // aujourd'hui : objectif non atteint
+                today.minusDays(1) to 15_000L,          // hier : objectif atteint
+                today.minusDays(2) to 12_000L,          // avant-hier : objectif atteint
+                today.minusDays(3) to 11_000L,
+            )
+        )
+
+        val streak = repository.computeStreak(goalSteps = 10_000L)
+
+        // La série doit être 0 car aujourd'hui n'atteint pas l'objectif
+        assertEquals(0, streak)
+    }
 }
