@@ -367,6 +367,7 @@ Projet Jira : **KAN** (Podomètre Android) — floviret.atlassian.net
 | Sprint 9 | KAN-60–68 Pensée du jour (aphorismes) | ✅ Terminé |
 | Sprint 10 | KAN-71–78 Polish UI (haptic, live sensor, typo, anneau) | ✅ Terminé |
 | Sprint 11 | KAN-79–86 Polish UI II (halo, métriques, détail météo, tests) | ✅ Terminé |
+| Sprint 12 | KAN-89–96 Polish III (badges, streak animé, densif. trajets, a11y, haptic, À propos) | ✅ Terminé |
 
 ---
 
