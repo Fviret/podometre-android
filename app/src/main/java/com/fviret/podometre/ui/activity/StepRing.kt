@@ -105,7 +105,7 @@ fun StepRing(
     // Couleurs de la piste calculées ici (pas dans Canvas) pour accéder à MaterialTheme.
     val trackColorTop = MaterialTheme.colorScheme.surfaceVariant
     val trackColorBottom = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-    val percent = (progress * 100).roundToInt()
+    val percent = (rawProgress * 100).roundToInt()
 
     // ── Halo de célébration ──────────────────────────────────────────────────
     // Visible uniquement aujourd'hui, quand les pas atteignent l'objectif.
