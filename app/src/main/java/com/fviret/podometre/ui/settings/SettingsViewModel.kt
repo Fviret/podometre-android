@@ -151,6 +151,11 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { userPreferencesRepository.setShowWeeklyChart(show) }
     }
 
+    /** Affiche ou masque la rangée de métriques du jour (Distance, Temps actif, Calories) sur l'écran Activité. */
+    fun updateShowTodayMetrics(show: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.setShowTodayMetrics(show) }
+    }
+
     /**
      * Active ou désactive la popup "Pensée du jour".
      * Si réactivée, remet à zéro la garde "1×/jour" afin que la popup se ré-affiche
