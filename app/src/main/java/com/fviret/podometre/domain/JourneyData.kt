@@ -323,10 +323,15 @@ object JourneyData {
                 emoji = "🌊",
                 milestones = listOf(
                     Milestone(UUID.fromString("11000000-0000-0000-0000-000000000001"), 100.0, "Ismaros", "Ulysse saccage la ville des Kikoniens. Premier arrêt, premier désastre : leurs alliés arrivent et massacrent ses hommes."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000017"), 175.0, "Côtes de Thrace", "La flotte longe les côtes thraces, où les vents du nord menacent de dérouter les embarcations. La mer n'est pas encore amie."),
                     Milestone(UUID.fromString("11000000-0000-0000-0000-000000000002"), 250.0, "Détroit des Dardanelles", "Tu traverses le détroit là où Troie veillait sur le passage entre deux mondes depuis des siècles."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000018"), 350.0, "Mer Égée", "Les îles grecques se succèdent, chacune abritant un dieu, un monstre ou un souvenir. La nostalgie d'Ithaque grandit."),
                     Milestone(UUID.fromString("11000000-0000-0000-0000-000000000003"), 450.0, "Cap Malée", "Le cap le plus redouté des marins grecs. Une tempête ici envoie Ulysse bien au-delà de sa route prévue."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000019"), 525.0, "Golfe de Corinthe", "Les eaux resserrées du golfe offrent un moment de répit. Les marins réparent les voiles déchirées par la tempête du cap Malée."),
                     Milestone(UUID.fromString("11000000-0000-0000-0000-000000000004"), 600.0, "Mer Ionienne", "Tu navigues dans les eaux qui séparent la Grèce de l'Italie, où Charybde et Scylla guettent les imprudents."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000020"), 675.0, "Îles Ioniennes", "L'archipel d'îles verdoyantes s'étend à l'horizon. Ithaque est si proche et pourtant toujours hors d'atteinte."),
                     Milestone(UUID.fromString("11000000-0000-0000-0000-000000000005"), 750.0, "Corfou (Phéaciens)", "Les Phéaciens t'accueillent. Nausicaa trouve Ulysse sur la plage. Le retour est enfin possible."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000021"), 825.0, "Passage de Corfou", "La nef phéacienne vogue sans effort, guidée par un vent divin. Ulysse, épuisé, dort d'un sommeil de mort."),
                     Milestone(UUID.fromString("11000000-0000-0000-0000-000000000006"), 900.0, "Ithaque", "Ulysse rentre incognito après 20 ans d'absence. Il bande son arc, perce les anneaux. Pénélope est libre."),
                 )
             ),
@@ -356,7 +361,14 @@ object JourneyData {
                 category = JourneyCategory.MYTH,
                 emoji = "🐴",
                 milestones = listOf(
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000022"), 50.0, "Mycènes", "Tu pars de la citadelle d'Agamemnon, roi des rois. La porte des Lions s'ouvre sur la plus grande expédition de l'Antiquité."),
                     Milestone(UUID.fromString("11000000-0000-0000-0000-000000000015"), 100.0, "Aulis", "La flotte grecque de mille navires se rassemble ici. Agamemnon sacrifie Iphigénie pour que les vents soufflent."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000023"), 160.0, "Mer Égée", "La flotte traverse l'Égée sous les auspices des dieux divisés. Zeus observe, Héra complote, Athéna choisit son camp."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000024"), 200.0, "Lemnos", "L'île de Philoctète, abandonnée par les Grecs à cause d'une blessure purulente. Son arc d'Héraclès sera pourtant décisif."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000025"), 250.0, "Détroit des Dardanelles", "Tu franchis le détroit qui sépare l'Europe de l'Asie. Protésilas sera le premier à mourir sur le sol troyen."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000026"), 290.0, "Plaine de Troade", "La plaine devant Troie où neuf ans de batailles ont imprégné la terre de sang. Les dieux descendent se mêler aux hommes."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000027"), 340.0, "Camp Grec", "Le rempart de bois et de fossés qui protège les nefs. Achille est ici, dans sa tente, bouillonnant de colère contre Agamemnon."),
+                    Milestone(UUID.fromString("11000000-0000-0000-0000-000000000028"), 370.0, "Porte Scée", "La porte de Troie où Hector embrassa Andromaque et son fils pour la dernière fois. Le destin s'accomplit."),
                     Milestone(UUID.fromString("11000000-0000-0000-0000-000000000016"), 400.0, "Troie (Ilion)", "Dix ans de siège, la colère d'Achille, la mort d'Hector, le cheval de bois. La cité brûle. La légende commence."),
                 )
             ),
