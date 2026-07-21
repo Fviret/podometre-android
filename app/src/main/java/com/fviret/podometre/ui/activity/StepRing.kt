@@ -261,6 +261,17 @@ fun StepRing(
                         textAlign = TextAlign.Center,
                     )
                 }
+                // Pourcentage d'objectif — masqué si anneau vide, exclu de l'A11y car
+                // déjà présent dans le contentDescription du Box parent.
+                if (percent > 0) {
+                    Text(
+                        text = stringResource(R.string.activity_ring_percent_label, percent),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.clearAndSetSemantics { },
+                    )
+                }
             }
         }
 
