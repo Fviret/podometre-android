@@ -54,11 +54,15 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.view.HapticFeedbackConstants
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.remember
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -229,6 +233,8 @@ private fun StepGoalRow(
     onGoalSelected: (Int) -> Unit,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
+    val view = LocalView.current
 
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -281,6 +287,11 @@ private fun StepGoalRow(
                         options = STEP_GOAL_OPTIONS,
                         selectedGoal = currentGoal,
                         onSelect = { goal ->
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                            } else {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
                             onGoalSelected(goal)
                             expanded = false
                         },
@@ -381,6 +392,7 @@ private fun RingColorRow(
 ) {
     val selectedColor = AppColors.colorForId(selectedColorId)
     val selectedName = ringColorNames[selectedColorId] ?: selectedColorId
+    val haptic = LocalHapticFeedback.current
 
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -431,7 +443,10 @@ private fun RingColorRow(
                             )
                             .clickable(
                                 onClickLabel = "Définit la couleur de l'anneau sur $name",
-                            ) { onColorSelected(id) }
+                            ) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onColorSelected(id)
+                            }
                             .semantics {
                                 contentDescription = a11yLabel
                                 role = Role.RadioButton
