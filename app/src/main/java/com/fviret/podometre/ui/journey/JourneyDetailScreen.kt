@@ -51,6 +51,7 @@ import com.fviret.podometre.domain.model.Milestone
 import com.fviret.podometre.domain.model.formatKm
 import com.fviret.podometre.domain.model.nextMilestone
 import com.fviret.podometre.domain.model.progressPercent
+import com.fviret.podometre.ui.theme.rememberReduceMotion
 
 /**
  * Écran de détail d'un trajet en cours.
@@ -88,15 +89,20 @@ fun JourneyDetailScreen(
         progress?.unlockedMilestoneIds?.contains(it.id.toString()) == true
     }
     val listState = rememberLazyListState()
+    val reduceMotion = rememberReduceMotion()
 
-    // Scroll automatique vers le dernier jalon débloqué au chargement
+    // Scroll automatique vers le dernier jalon débloqué au chargement.
+    // Si "Réduire les animations" est actif, défilement instantané sans animation.
     LaunchedEffect(lastUnlockedIndex) {
         if (lastUnlockedIndex >= 0) {
-            listState.animateScrollToItem(
-                index = (lastUnlockedIndex + HEADER_ITEMS).coerceAtMost(
-                    HEADER_ITEMS + sortedMilestones.lastIndex
-                )
+            val targetIndex = (lastUnlockedIndex + HEADER_ITEMS).coerceAtMost(
+                HEADER_ITEMS + sortedMilestones.lastIndex
             )
+            if (reduceMotion) {
+                listState.scrollToItem(targetIndex)
+            } else {
+                listState.animateScrollToItem(targetIndex)
+            }
         }
     }
 

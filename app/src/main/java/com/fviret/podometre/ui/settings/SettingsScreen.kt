@@ -1,8 +1,11 @@
 package com.fviret.podometre.ui.settings
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import com.fviret.podometre.ui.theme.rememberReduceMotion
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -247,6 +250,7 @@ private fun StepGoalRow(
     var expanded by rememberSaveable { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
     val view = LocalView.current
+    val reduceMotion = rememberReduceMotion()
 
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -288,10 +292,11 @@ private fun StepGoalRow(
             }
 
             // ── Picker expandable ──────────────────────────────────────────────
+            // Si "Réduire les animations" est actif, affichage/masquage instantané.
             AnimatedVisibility(
                 visible = expanded,
-                enter = expandVertically(),
-                exit = shrinkVertically(),
+                enter = if (reduceMotion) EnterTransition.None else expandVertically(),
+                exit = if (reduceMotion) ExitTransition.None else shrinkVertically(),
             ) {
                 Column {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))

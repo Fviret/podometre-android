@@ -10,10 +10,12 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
+import com.fviret.podometre.ui.theme.rememberReduceMotion
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -96,22 +98,24 @@ fun StepRing(
     streak: Int = 0,
     isToday: Boolean = false,
 ) {
+    val reduceMotion = rememberReduceMotion()
     val rawProgress = if (goal > 0) steps.toFloat() / goal.toFloat() else 0f
     val progress = rawProgress.coerceIn(0f, 1f)
     /**
      * Compteur animé : monte progressivement vers la nouvelle valeur (ease-out, 0,6 s).
      * L'affichage des intermédiaires (ex. 5 423,7 → 5 423) crée l'effet "rouleau".
-     * Compose respecte ANIMATOR_DURATION_SCALE : si "Réduire les animations" est actif,
-     * la durée passe à 0 et le chiffre s'affiche directement.
+     * Si "Réduire les animations" est actif, [snap] est utilisé pour un affichage instantané.
      */
     val animatedSteps by animateFloatAsState(
         targetValue = steps.toFloat(),
-        animationSpec = tween(durationMillis = COUNTER_ANIMATION_DURATION_MS, easing = LinearOutSlowInEasing),
+        animationSpec = if (reduceMotion) snap()
+        else tween(durationMillis = COUNTER_ANIMATION_DURATION_MS, easing = LinearOutSlowInEasing),
         label = "step_counter"
     )
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
-        animationSpec = tween(durationMillis = RING_ANIMATION_DURATION_MS, easing = FastOutSlowInEasing),
+        animationSpec = if (reduceMotion) snap()
+        else tween(durationMillis = RING_ANIMATION_DURATION_MS, easing = FastOutSlowInEasing),
         label = "step_ring_progress"
     )
 
@@ -136,7 +140,8 @@ fun StepRing(
     }
     val haloScale by animateFloatAsState(
         targetValue = if (haloTriggered) HALO_SCALE_END else HALO_SCALE_START,
-        animationSpec = spring(
+        animationSpec = if (reduceMotion) snap()
+        else spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
         ),
@@ -261,12 +266,14 @@ fun StepRing(
                 )
                 AnimatedVisibility(
                     visible = showStreak,
-                    enter = fadeIn(tween(400)) + scaleIn(tween(400), initialScale = 0.85f),
+                    enter = if (reduceMotion) fadeIn(snap())
+                    else fadeIn(tween(400)) + scaleIn(tween(400), initialScale = 0.85f),
                 ) {
                     val color = streakColor(streak)
-                    // Animation de pulsation douce de la flamme (scale 0.9 → 1.1, ~1.2s)
+                    // Animation de pulsation douce de la flamme (scale 0.9 → 1.1, ~1.2s).
+                    // Si "Réduire les animations" est actif, la flamme reste à sa taille naturelle.
                     val infiniteTransition = rememberInfiniteTransition(label = "streak_pulse")
-                    val flameScale by infiniteTransition.animateFloat(
+                    val flameScaleAnimated by infiniteTransition.animateFloat(
                         initialValue = 0.9f,
                         targetValue = 1.1f,
                         animationSpec = infiniteRepeatable(
@@ -275,6 +282,7 @@ fun StepRing(
                         ),
                         label = "streak_scale"
                     )
+                    val flameScale = if (reduceMotion) 1f else flameScaleAnimated
                     val streakDaysLabel = if (streak <= 1)
                         stringResource(R.string.activity_ring_streak_label_days, streak)
                     else

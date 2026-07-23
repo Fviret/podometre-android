@@ -1,8 +1,11 @@
 package com.fviret.podometre.ui.aphorism
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import com.fviret.podometre.ui.theme.rememberReduceMotion
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -60,6 +63,7 @@ fun AphorismCard(
     val clipboard = LocalClipboardManager.current
     val view = LocalView.current
     var copied by remember { mutableStateOf(false) }
+    val reduceMotion = rememberReduceMotion()
 
     LaunchedEffect(copied) {
         if (copied) {
@@ -128,10 +132,11 @@ fun AphorismCard(
                 )
             }
 
+            // Si "Réduire les animations" est actif, affichage instantané sans fondu.
             AnimatedVisibility(
                 visible = copied,
-                enter = fadeIn(),
-                exit = fadeOut(),
+                enter = if (reduceMotion) EnterTransition.None else fadeIn(),
+                exit = if (reduceMotion) ExitTransition.None else fadeOut(),
             ) {
                 Column {
                     Spacer(modifier = Modifier.height(8.dp))
