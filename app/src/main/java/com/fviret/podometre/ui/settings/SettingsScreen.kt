@@ -83,6 +83,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlin.math.pow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fviret.podometre.BuildConfig
 import com.fviret.podometre.domain.JourneyData
@@ -785,6 +786,24 @@ private fun formatThreshold(threshold: Long): String =
     "%,d".format(threshold).replace(',', ' ')
 
 /**
+ * Calcule la couleur de texte (noir ou blanc) offrant le meilleur contraste WCAG AA
+ * sur le fond [background] donné. Utilise la luminance relative (formule WCAG 1.4.3)
+ * avec le seuil 0,179 (ratio ≥ 4,5:1 garanti).
+ */
+private fun contrastTextColor(background: Color): Color {
+    val r = background.red.linearize()
+    val g = background.green.linearize()
+    val b = background.blue.linearize()
+    val luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+    return if (luminance > 0.179) Color.Black else Color.White
+}
+
+/** Linéarise une composante sRGB pour le calcul de luminance WCAG. */
+private fun Float.linearize(): Double =
+    if (this <= 0.03928f) (this / 12.92).toDouble()
+    else ((this + 0.055) / 1.055).pow(2.4)
+
+/**
  * Contenu de la modale de détail d'un badge de seuil de pas.
  * Affiche l'illustration agrandie, le titre centré, la pastille compteur et une phrase de contexte.
  */
@@ -823,7 +842,7 @@ private fun BadgeDetailContent(badge: BadgeData, count: Int, firstEarnedDate: ja
                 Text(
                     text = "$count ×",
                     style = MaterialTheme.typography.labelLarge,
-                    color = Color.White,
+                    color = contrastTextColor(badge.color),
                     fontWeight = FontWeight.Bold,
                 )
             }
@@ -906,7 +925,10 @@ private fun StepBadgeCell(
                 )
                 .alpha(if (isUnlocked) 1f else 0.5f)
                 .clickable(onClickLabel = a11y, onClick = onClick)
-                .clearAndSetSemantics { contentDescription = a11y },
+                .clearAndSetSemantics {
+                    contentDescription = a11y
+                    role = Role.Button
+                },
         ) {
             Column(
                 modifier = Modifier
@@ -945,7 +967,7 @@ private fun StepBadgeCell(
                         Text(
                             text = "$count ×",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.White,
+                            color = contrastTextColor(badge.color),
                             fontWeight = FontWeight.Bold,
                         )
                     }
