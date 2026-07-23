@@ -32,6 +32,7 @@ import androidx.compose.ui.semantics.semantics
 import com.fviret.podometre.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.fviret.podometre.data.weather.DailyForecast
 import com.fviret.podometre.data.weather.emojiForWeatherCode
@@ -90,10 +91,14 @@ fun WeeklyForecastBanner(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                // Taille de l'icône alignée sur la taille du texte voisin (bodySmall) en sp.
+                val iconSize = with(LocalDensity.current) {
+                    MaterialTheme.typography.bodySmall.fontSize.toDp()
+                }
                 Icon(
                     imageVector = Icons.Filled.LocationOn,
                     contentDescription = null,
-                    modifier = Modifier.size(11.dp),
+                    modifier = Modifier.size(iconSize),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.width(2.dp))

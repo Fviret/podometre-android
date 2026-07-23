@@ -27,8 +27,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -186,7 +188,10 @@ private fun CalendarDayCell(
             .then(
                 if (onTap != null) Modifier.clickable { onTap(date) } else Modifier
             )
-            .clearAndSetSemantics { contentDescription = a11yLabel },
+            .clearAndSetSemantics {
+                contentDescription = a11yLabel
+                if (onTap != null) role = Role.Button
+            },
     ) {
         when {
             isFuture || steps == 0L -> {
