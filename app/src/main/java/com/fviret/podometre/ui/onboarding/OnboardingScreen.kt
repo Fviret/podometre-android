@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import com.fviret.podometre.ui.theme.rememberReduceMotion
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,15 +47,21 @@ fun OnboardingScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val pagerState = rememberPagerState(pageCount = { OnboardingViewModel.TOTAL_PAGES })
+    val reduceMotion = rememberReduceMotion()
 
     // Lance le dialogue système Health Connect ; avance à la slide suivante quel que soit le résultat
     val healthPermissionLauncher = rememberLauncherForActivityResult(
         contract = HealthConnectRepository.requestPermissionsContract()
     ) { granted -> viewModel.onHealthPermissionsResult(granted) }
 
-    // Synchronise le pager avec l'état du ViewModel
+    // Synchronise le pager avec l'état du ViewModel.
+    // Si "Réduire les animations" est actif, saut instantané sans transition.
     LaunchedEffect(uiState.currentPage) {
-        pagerState.animateScrollToPage(uiState.currentPage)
+        if (reduceMotion) {
+            pagerState.scrollToPage(uiState.currentPage)
+        } else {
+            pagerState.animateScrollToPage(uiState.currentPage)
+        }
     }
 
     // Signal de complétion → remonte au parent
