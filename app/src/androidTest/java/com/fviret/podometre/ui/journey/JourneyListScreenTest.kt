@@ -92,8 +92,14 @@ class JourneyListScreenTest {
         composeTestRule.onNodeWithText("Commencer le trajet").performClick()
         composeTestRule.waitForIdle()
 
-        // ── Détail affiché : la carte bascule sur "Voir mes étapes", qui déclenche la navigation ──
-        composeTestRule.onAllNodesWithText("Voir mes étapes")[0].performClick()
+        // ── Détail affiché : après startJourney, la carte est isInProgress → un tap dessus
+        //    déclenche directement onNavigateToDetail (pas de preview sheet intermédiaire).
+        //    On attend que la barre de progression apparaisse pour confirmer l'état mis à jour.
+        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+            composeTestRule.onAllNodesWithContentDescription(firstJourney.name)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithContentDescription(firstJourney.name).performClick()
         composeTestRule.waitForIdle()
 
         assertEquals(firstJourney.id.toString(), navigatedToJourneyId)
