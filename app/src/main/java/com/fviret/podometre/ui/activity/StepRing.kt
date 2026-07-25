@@ -318,6 +318,23 @@ fun StepRing(
                         modifier = Modifier.clearAndSetSemantics { },
                     )
                 }
+                /**
+                 * Message motivant affiché uniquement quand aucun pas n'a encore été compté
+                 * pour le jour sélectionné. Disparaît dès qu'un premier pas est enregistré.
+                 * Exclu de l'arbre d'accessibilité car le contentDescription du Box parent
+                 * communique déjà l'état "0 pas".
+                 */
+                if (steps == 0L) {
+                    Text(
+                        text = stringResource(R.string.activity_ring_empty_state),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .padding(top = 4.dp)
+                            .clearAndSetSemantics { },
+                    )
+                }
             }
         }
 

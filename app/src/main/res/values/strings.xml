@@ -40,6 +40,8 @@
     <string name="activity_ring_streak_accessibility_plural">Série de %1$d jours consécutifs</string>
     <!-- Pourcentage d'objectif affiché dans l'anneau (KAN-84) -->
     <string name="activity_ring_percent_label">%1$d %%</string>
+    <!-- Message motivant affiché dans l'anneau quand aucun pas n'est compté (KAN-105) -->
+    <string name="activity_ring_empty_state">Démarrez votre journée !</string>
 
     <!-- Écran Activité — bannière météo (KAN-22) -->
     <string name="weather_forecast_section_title">Météo · 7 jours</string>
