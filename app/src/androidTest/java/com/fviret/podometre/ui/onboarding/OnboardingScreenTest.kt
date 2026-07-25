@@ -8,6 +8,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.fviret.podometre.R
 import com.fviret.podometre.fakes.TestFactories
+import com.fviret.podometre.util.formatSteps
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -66,8 +67,9 @@ class OnboardingScreenTest {
         // Slide 3 (permissions) : simule le retour du lanceur système Health Connect,
         // sans dépendre de la disponibilité réelle de Health Connect sur l'appareil de test.
         viewModel.onHealthPermissionsResult(emptySet())
-        // waitUntil : la page 3 (slide 4) doit être rendue avant de cliquer sur l'objectif.
-        val goalText = context.getString(R.string.onboarding_slide4_goal_label, 15_000)
+        // L'écran appelle goal.formatSteps() → espace fine insécable (U+202F).
+        // Passer formatSteps() ici pour que le texte cherché corresponde exactement.
+        val goalText = context.getString(R.string.onboarding_slide4_goal_label, 15_000.formatSteps())
         composeTestRule.waitUntil(timeoutMillis = 10_000) {
             composeTestRule.onAllNodesWithText(goalText).fetchSemanticsNodes().isNotEmpty()
         }
