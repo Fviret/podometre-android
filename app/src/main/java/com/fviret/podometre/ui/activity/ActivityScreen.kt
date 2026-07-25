@@ -68,6 +68,29 @@ fun ActivityScreen(
     /** Prévision sélectionnée — non null → bottom sheet de détail météo ouvert. */
     var selectedForecast by remember { mutableStateOf<DailyForecast?>(null) }
 
+    // Demande ACCESS_FINE_LOCATION / ACCESS_COARSE_LOCATION pour la météo.
+    val locationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+                || permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        viewModel.onLocationPermissionResult(granted)
+    }
+
+    LaunchedEffect(Unit) {
+        val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+        if (fine != PackageManager.PERMISSION_GRANTED) {
+            locationLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        } else {
+            viewModel.onLocationPermissionResult(true)
+        }
+    }
+
     // Demande ACTIVITY_RECOGNITION (nécessaire sur Android 10+) puis démarre le capteur.
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()

@@ -140,6 +140,9 @@ class ActivityViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
+    /** Indique si la permission ACCESS_FINE_LOCATION / COARSE_LOCATION a été accordée au runtime. */
+    @Volatile private var locationGranted = false
+
     /** Préférences utilisateur exposées en StateFlow pour les Composables. */
     val userPreferences: StateFlow<UserPreferences> = userPreferencesRepository.userPreferences
         .stateIn(
@@ -265,7 +268,6 @@ class ActivityViewModel @Inject constructor(
             }
         }
         loadStepsForOffset(0)
-        loadWeather()
         loadCalendarMonth(YearMonth.now())
         loadWeeklyData()
         loadStreak()
@@ -317,9 +319,18 @@ class ActivityViewModel @Inject constructor(
         loadWeeklyData()
     }
 
-    /** Rafraîchit la météo et les prévisions au retour en foreground. */
+    /**
+     * Appelé par [ActivityScreen] après le résultat de la demande de permission localisation.
+     * Déclenche le chargement météo uniquement si la permission est accordée.
+     */
+    fun onLocationPermissionResult(granted: Boolean) {
+        locationGranted = granted
+        if (granted) loadWeather()
+    }
+
+    /** Rafraîchit la météo et les prévisions au retour en foreground (gard permission). */
     fun refreshWeather() {
-        loadWeather()
+        if (locationGranted) loadWeather()
     }
 
     /** Navigue vers le jour précédent (décalage - 1). */

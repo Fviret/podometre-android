@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.EmojiEvents
@@ -77,15 +78,11 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ColorMatrix
-import androidx.compose.ui.graphics.Paint
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
@@ -898,9 +895,6 @@ private fun StepBadgeCell(
     else
         "${badge.title} — verrouillé"
 
-    // Filtre niveaux de gris pour les badges verrouillés
-    val grayscaleMatrix = ColorMatrix().apply { setToSaturation(0f) }
-
     Box(modifier = modifier.aspectRatio(1f)) {
         Card(
             shape = RoundedCornerShape(12.dp),
@@ -908,30 +902,19 @@ private fun StepBadgeCell(
                 containerColor = if (isUnlocked)
                     badge.color.copy(alpha = 0.15f)
                 else
-                    MaterialTheme.colorScheme.surfaceVariant,
+                    badge.color.copy(alpha = 0.08f),
             ),
             modifier = Modifier
                 .fillMaxSize()
                 .then(
                     if (!isUnlocked)
-                        Modifier.drawWithContent {
-                            val paint = Paint().apply {
-                                colorFilter = ColorFilter.colorMatrix(grayscaleMatrix)
-                            }
-                            drawIntoCanvas { canvas ->
-                                canvas.saveLayer(
-                                    androidx.compose.ui.geometry.Rect(
-                                        0f, 0f, size.width, size.height
-                                    ),
-                                    paint,
-                                )
-                                drawContent()
-                                canvas.restore()
-                            }
-                        }
+                        Modifier.border(
+                            width = 1.5.dp,
+                            color = badge.color.copy(alpha = 0.4f),
+                            shape = RoundedCornerShape(12.dp),
+                        )
                     else Modifier
                 )
-                .alpha(if (isUnlocked) 1f else 0.5f)
                 .clickable(onClickLabel = a11y, onClick = onClick)
                 .clearAndSetSemantics {
                     contentDescription = a11y
@@ -946,11 +929,12 @@ private fun StepBadgeCell(
                 verticalArrangement = Arrangement.Center,
             ) {
                 // Icône vectorielle scalable (remplace l'emoji bitmap — KAN-104)
+                // Verrouillé : couleur réelle atténuée (alpha 0.35) pour l'effet aspirationnel
                 Icon(
                     imageVector = badge.icon,
                     contentDescription = null,
                     tint = if (isUnlocked) badge.color
-                           else MaterialTheme.colorScheme.onSurfaceVariant,
+                           else badge.color.copy(alpha = 0.35f),
                     modifier = Modifier.size(BADGE_LOGO_SIZE),
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -960,7 +944,7 @@ private fun StepBadgeCell(
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = if (isUnlocked) badge.color
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -984,14 +968,16 @@ private fun StepBadgeCell(
                 }
             }
         }
-        // Icône 🔒 en overlay pour les badges verrouillés
+        // Cadenas en coin bas-droit pour les badges verrouillés (KAN-111 — aspect aspirationnel)
         if (!isUnlocked) {
-            Text(
-                text = "🔒",
-                fontSize = 14.sp,
+            Icon(
+                imageVector = Icons.Default.Lock,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(4.dp),
+                    .size(16.dp)
+                    .align(Alignment.BottomEnd)
+                    .offset(x = (-4).dp, y = (-4).dp),
             )
         }
     }
@@ -1010,7 +996,8 @@ private fun JourneyBadgeCell(
     modifier: Modifier = Modifier,
 ) {
     val a11y = if (isUnlocked) "$name — débloqué" else "$name — verrouillé"
-    val grayscaleMatrix = ColorMatrix().apply { setToSaturation(0f) }
+    // Couleur d'accent neutre utilisée pour le contour aspirationnel des badges de trajet verrouillés
+    val journeyAccent = MaterialTheme.colorScheme.secondary
 
     Box(modifier = modifier.aspectRatio(1f)) {
         Card(
@@ -1019,30 +1006,19 @@ private fun JourneyBadgeCell(
                 containerColor = if (isUnlocked)
                     MaterialTheme.colorScheme.secondaryContainer
                 else
-                    MaterialTheme.colorScheme.surfaceVariant,
+                    journeyAccent.copy(alpha = 0.08f),
             ),
             modifier = Modifier
                 .fillMaxSize()
                 .then(
                     if (!isUnlocked)
-                        Modifier.drawWithContent {
-                            val paint = Paint().apply {
-                                colorFilter = ColorFilter.colorMatrix(grayscaleMatrix)
-                            }
-                            drawIntoCanvas { canvas ->
-                                canvas.saveLayer(
-                                    androidx.compose.ui.geometry.Rect(
-                                        0f, 0f, size.width, size.height
-                                    ),
-                                    paint,
-                                )
-                                drawContent()
-                                canvas.restore()
-                            }
-                        }
+                        Modifier.border(
+                            width = 1.5.dp,
+                            color = journeyAccent.copy(alpha = 0.4f),
+                            shape = RoundedCornerShape(12.dp),
+                        )
                     else Modifier
                 )
-                .alpha(if (isUnlocked) 1f else 0.5f)
                 .clearAndSetSemantics { contentDescription = a11y },
         ) {
             Column(
@@ -1050,17 +1026,21 @@ private fun JourneyBadgeCell(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
-                // Emoji agrandi (~46 dp)
+                // Emoji agrandi (~46 dp) — atténué si verrouillé
                 Text(
                     text = emoji,
                     fontSize = 36.sp,
                     textAlign = TextAlign.Center,
+                    modifier = if (!isUnlocked) Modifier.alpha(0.35f) else Modifier,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = name,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (isUnlocked)
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -1068,14 +1048,16 @@ private fun JourneyBadgeCell(
                 )
             }
         }
-        // Icône 🔒 en overlay pour les badges verrouillés
+        // Cadenas en coin bas-droit pour les badges verrouillés (KAN-111 — aspect aspirationnel)
         if (!isUnlocked) {
-            Text(
-                text = "🔒",
-                fontSize = 14.sp,
+            Icon(
+                imageVector = Icons.Default.Lock,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(4.dp),
+                    .size(16.dp)
+                    .align(Alignment.BottomEnd)
+                    .offset(x = (-4).dp, y = (-4).dp),
             )
         }
     }
