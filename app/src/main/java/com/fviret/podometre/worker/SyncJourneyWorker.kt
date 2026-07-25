@@ -8,6 +8,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.fviret.podometre.data.health.HealthConnectRepository
+import com.fviret.podometre.data.journey.JourneySyncResult
 import com.fviret.podometre.data.journey.JourneyProgressRepository
 import com.fviret.podometre.data.preferences.UserPreferencesRepository
 import com.fviret.podometre.domain.JourneyData
@@ -74,6 +75,19 @@ class SyncJourneyWorker @AssistedInject constructor(
          * Planifie (ou maintient) le worker périodique horaire de synchronisation des trajets.
          * Utilise [ExistingPeriodicWorkPolicy.KEEP] pour ne pas réinitialiser le timer si déjà actif.
          */
+        /**
+         * Détermine si des notifications de progression de trajet doivent être envoyées.
+         * Fonction pure extraite de [SyncJourneyWorker] pour être testable indépendamment
+         * de WorkManager et Hilt.
+         * Retourne vrai si les notifications sont activées et qu'il y a au moins
+         * un jalon nouvellement débloqué ou que le trajet vient d'être complété.
+         */
+        fun shouldNotifyJourneyProgress(
+            journeyNotificationsEnabled: Boolean,
+            syncResult: JourneySyncResult,
+        ): Boolean = journeyNotificationsEnabled &&
+            (syncResult.newlyUnlockedMilestones.isNotEmpty() || syncResult.isNewlyCompleted)
+
         fun schedule(workManager: WorkManager) {
             val request = PeriodicWorkRequestBuilder<SyncJourneyWorker>(1, TimeUnit.HOURS).build()
             workManager.enqueueUniquePeriodicWork(
