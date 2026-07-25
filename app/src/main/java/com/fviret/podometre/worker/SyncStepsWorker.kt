@@ -43,6 +43,9 @@ class SyncStepsWorker @AssistedInject constructor(
             val startOfDay = today.atStartOfDay(ZoneId.systemDefault()).toInstant()
             healthConnectRepository.readSteps(from = startOfDay, to = Instant.now())
         }
+        // Guard : si HC est indisponible, readSteps() renvoie 0L.
+        // On retente plus tard plutôt que d'écraser un cache valide avec 0.
+        if (!isStepsValueValid(steps)) return Result.retry()
         userPreferencesRepository.updateCachedSteps(steps, todayStr)
         checkAndNotifyGoalReached(steps, today)
         return Result.success()
@@ -112,3 +115,10 @@ fun shouldNotifyGoalReached(
     }
     return lastNotifiedDay != today
 }
+
+/**
+ * Retourne true si la valeur de pas lue depuis Health Connect est exploitable (non nulle).
+ * Lorsque HC est temporairement indisponible, [HealthConnectRepository.readSteps] renvoie 0L —
+ * dans ce cas [SyncStepsWorker] doit replanifier plutôt qu'écraser le cache existant.
+ */
+internal fun isStepsValueValid(steps: Long): Boolean = steps > 0L
