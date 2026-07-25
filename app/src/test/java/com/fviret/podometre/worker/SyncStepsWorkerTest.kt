@@ -7,6 +7,8 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
+// ─── isStepsValueValid ───────────────────────────────────────────────────────
+
 /**
  * Teste [shouldNotifyGoalReached], la logique de décision extraite de [SyncStepsWorker]
  * pour la notification "Objectif atteint !" (max 1 fois par jour, respecte le toggle
@@ -16,6 +18,22 @@ class SyncStepsWorkerTest {
 
     private val zone = ZoneId.systemDefault()
     private val today = LocalDate.of(2026, 7, 2)
+
+    // ─── isStepsValueValid ───────────────────────────────────────────────────
+
+    @Test
+    fun `quand readSteps retourne 0 le cache ne doit pas etre mis a jour et le worker doit retenter`() {
+        // isStepsValueValid(0L) == false → SyncStepsWorker retourne Result.retry()
+        assertFalse(isStepsValueValid(0L))
+    }
+
+    @Test
+    fun `quand readSteps retourne une valeur positive la mise en cache est autorisee`() {
+        assertTrue(isStepsValueValid(1L))
+        assertTrue(isStepsValueValid(8_500L))
+    }
+
+    // ─── shouldNotifyGoalReached ─────────────────────────────────────────────
 
     @Test
     fun `notifie quand l'objectif est atteint pour la premiere fois aujourd'hui`() {
