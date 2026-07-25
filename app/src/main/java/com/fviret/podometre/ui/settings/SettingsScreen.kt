@@ -26,8 +26,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.EmojiNature
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MilitaryTech
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -633,13 +640,13 @@ private fun ModuleToggleRow(
 private val BADGE_LOGO_SIZE = 46.dp
 
 /**
- * Données d'un badge de seuil de pas : seuil, emoji illustratif, couleur d'accent,
+ * Données d'un badge de seuil de pas : seuil, icône vectorielle Material, couleur d'accent,
  * titre court et description contextuelle.
  * La couleur est indépendante de la couleur d'anneau choisie dans les réglages.
  */
 private data class BadgeData(
     val threshold: Long,
-    val emoji: String,
+    val icon: ImageVector,
     val color: Color,
     val title: String,
     val description: String,
@@ -649,42 +656,42 @@ private data class BadgeData(
 private val STEP_BADGES: List<BadgeData> = listOf(
     BadgeData(
         threshold  = 5_000L,
-        emoji      = "🚶",
+        icon       = Icons.AutoMirrored.Filled.DirectionsWalk,
         color      = Color(0xFF4CAF50),
         title      = "Objectif 5 K",
         description = "Premier 5 000 pas — les premiers pas comptent !",
     ),
     BadgeData(
         threshold  = 10_000L,
-        emoji      = "🏃",
+        icon       = Icons.AutoMirrored.Filled.DirectionsRun,
         color      = Color(0xFF2196F3),
         title      = "Objectif 10 K",
         description = "Marcheur régulier — 10 000 pas dans la journée.",
     ),
     BadgeData(
         threshold  = 20_000L,
-        emoji      = "⭐",
+        icon       = Icons.Default.Star,
         color      = Color(0xFFFF9800),
         title      = "Objectif 20 K",
         description = "Grand marcheur — deux fois l'objectif quotidien !",
     ),
     BadgeData(
         threshold  = 30_000L,
-        emoji      = "🏅",
+        icon       = Icons.Default.MilitaryTech,
         color      = Color(0xFFF44336),
         title      = "Objectif 30 K",
         description = "Marathonien du quotidien — endurance remarquable.",
     ),
     BadgeData(
         threshold  = 50_000L,
-        emoji      = "🦅",
+        icon       = Icons.Default.EmojiNature,
         color      = Color(0xFF9C27B0),
         title      = "Objectif 50 K",
         description = "Ultra-marcheur — 50 000 pas en une seule journée.",
     ),
     BadgeData(
         threshold  = 100_000L,
-        emoji      = "🏆",
+        icon       = Icons.Default.EmojiEvents,
         color      = Color(0xFF26BFB8),
         title      = "Objectif 100 K",
         description = "Légende de la marche — exploit hors du commun !",
@@ -817,11 +824,12 @@ private fun BadgeDetailContent(badge: BadgeData, count: Int, firstEarnedDate: ja
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // Grande illustration
-        Text(
-            text = badge.emoji,
-            fontSize = 72.sp,
-            textAlign = TextAlign.Center,
+        // Grande icône vectorielle scalable (remplace l'emoji bitmap — KAN-104)
+        Icon(
+            imageVector = badge.icon,
+            contentDescription = null,
+            tint = badge.color,
+            modifier = Modifier.size(96.dp),
         )
         // Titre centré
         Text(
@@ -870,9 +878,9 @@ private fun BadgeDetailContent(badge: BadgeData, count: Int, firstEarnedDate: ja
 }
 
 /**
- * Cellule de badge pour un seuil de pas (refonte KAN-89).
- * — Illustration emoji grande (~46 dp)
- * — Titre sous l'illustration ("Objectif X K"), visible même verrouillé (grisé)
+ * Cellule de badge pour un seuil de pas (refonte KAN-89, icônes vectorielles KAN-104).
+ * — Icône Material vectorielle scalable (~46 dp)
+ * — Titre sous l'icône ("Objectif X K"), visible même verrouillé (grisé)
  * — Pastille colorée "N ×" masquée si count = 0
  * — Verrouillé : niveaux de gris + icône 🔒
  * — Tap → modale de détail (badge débloqué comme verrouillé)
@@ -937,11 +945,13 @@ private fun StepBadgeCell(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
-                // Illustration emoji
-                Text(
-                    text = badge.emoji,
-                    fontSize = 36.sp,
-                    textAlign = TextAlign.Center,
+                // Icône vectorielle scalable (remplace l'emoji bitmap — KAN-104)
+                Icon(
+                    imageVector = badge.icon,
+                    contentDescription = null,
+                    tint = if (isUnlocked) badge.color
+                           else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(BADGE_LOGO_SIZE),
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 // Titre (visible même verrouillé)
