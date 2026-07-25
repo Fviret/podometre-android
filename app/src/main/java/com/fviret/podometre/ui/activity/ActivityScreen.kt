@@ -255,6 +255,7 @@ fun ActivityScreen(
                 currentWeek = uiState.currentWeekSteps,
                 previousWeek = uiState.previousWeekSteps,
                 dayLabels = uiState.weekDayLabels,
+                todayIndex = uiState.weekTodayIndex,
                 accentColor = AppColors.colorForId(prefs.ringColorId),
                 modifier = Modifier.fillMaxWidth(),
             )

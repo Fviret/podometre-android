@@ -34,6 +34,8 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.fviret.podometre.R
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -152,9 +154,10 @@ fun MonthCalendarView(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Total mensuel
+        // Total mensuel avec le nom du mois et l'année
+        val monthLabel = month.format(MONTH_FORMATTER).replaceFirstChar { it.uppercase() }
         Text(
-            text = "Total : ${"%,d".format(total).replace(',', ' ')} pas",
+            text = stringResource(R.string.activity_calendar_total, monthLabel, "%,d".format(total).replace(',', ' ')),
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,

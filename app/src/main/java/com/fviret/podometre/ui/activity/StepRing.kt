@@ -45,6 +45,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.fviret.podometre.R
+import com.fviret.podometre.util.formatSteps
 import kotlin.math.roundToInt
 
 /** Alpha de l'ombre interne de la piste (effet creusé). */
@@ -155,7 +156,7 @@ fun StepRing(
         else stringResource(R.string.activity_ring_streak_accessibility_plural, streak)
     } else ""
     val accessibilityLabel = buildString {
-        append(stringResource(R.string.activity_ring_accessibility_label, steps, goal, percent))
+        append(stringResource(R.string.activity_ring_accessibility_label, steps.formatSteps(), goal.formatSteps(), percent))
         if (streakA11y.isNotEmpty()) append(". $streakA11y")
     }
 
@@ -254,7 +255,7 @@ fun StepRing(
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = "%,d".format(animatedSteps.toLong()).replace(',', ' '),
+                    text = animatedSteps.toLong().formatSteps(),
                     // "tnum" = chiffres tabulaires (largeur fixe) → pas de jitter pendant l'animation.
                     style = MaterialTheme.typography.displaySmall.copy(fontFeatureSettings = "tnum"),
                     textAlign = TextAlign.Center,
@@ -318,11 +319,28 @@ fun StepRing(
                         modifier = Modifier.clearAndSetSemantics { },
                     )
                 }
+                /**
+                 * Message motivant affiché uniquement quand aucun pas n'a encore été compté
+                 * pour le jour sélectionné. Disparaît dès qu'un premier pas est enregistré.
+                 * Exclu de l'arbre d'accessibilité car le contentDescription du Box parent
+                 * communique déjà l'état "0 pas".
+                 */
+                if (steps == 0L) {
+                    Text(
+                        text = stringResource(R.string.activity_ring_empty_state),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .padding(top = 4.dp)
+                            .clearAndSetSemantics { },
+                    )
+                }
             }
         }
 
         Text(
-            text = stringResource(R.string.activity_ring_goal_label, goal),
+            text = stringResource(R.string.activity_ring_goal_label, goal.formatSteps()),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 16.dp)

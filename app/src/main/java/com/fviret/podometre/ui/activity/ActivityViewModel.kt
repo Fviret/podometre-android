@@ -112,8 +112,10 @@ data class ActivityUiState(
     val currentWeekSteps: List<Long> = List(7) { 0L },
     /** Pas des 7 jours précédents (index 0 = il y a 13 jours, index 6 = il y a 7 jours). */
     val previousWeekSteps: List<Long> = List(7) { 0L },
-    /** Labels abrégés des 7 derniers jours (ex. ["Me", "Je", …, "Me"]). */
+    /** Labels abrégés de la semaine ISO courante (lundi → dimanche). */
     val weekDayLabels: List<String> = List(7) { "" },
+    /** Indice du jour courant dans la semaine ISO (0=lundi … 6=dimanche). */
+    val weekTodayIndex: Int = 6,
     /** Nombre de jours consécutifs avec l'objectif atteint (streak courant). 0 si aucun. */
     val streak: Int = 0,
     /** Distance parcourue (en km) pour le jour sélectionné. */
@@ -173,6 +175,12 @@ class ActivityViewModel @Inject constructor(
     /** Valeur cumulative du capteur TYPE_STEP_COUNTER au démarrage de la session. -1 = non initialisé. */
     @Volatile private var sensorStart: Long = -1L
 
+    /** Timestamp (ms) de la dernière écriture dans Health Connect. Throttle à 60 s minimum. */
+    @Volatile private var lastHcWriteMs: Long = 0L
+
+    /** Nombre de pas lors de la dernière écriture HC. Throttle par palier de 50 pas. */
+    @Volatile private var lastHcWriteSteps: Long = 0L
+
     private val stepListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent) {
             if (_uiState.value.selectedDayOffset != 0) return
@@ -180,8 +188,26 @@ class ActivityViewModel @Inject constructor(
             if (sensorStart < 0L) sensorStart = raw
             val live = computeLiveSteps(hcStepsRef, sensorStart, raw)
             _uiState.value = _uiState.value.copy(stepsToday = maxOf(_uiState.value.stepsToday, live))
+            maybeWriteStepsToHealthConnect(live)
         }
         override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+    }
+
+    /**
+     * Écrit les pas dans Health Connect si le throttle le permet.
+     * Conditions : au moins 60 secondes depuis la dernière écriture OU au moins 50 pas de plus.
+     * Appellé uniquement pour aujourd'hui (selectedDayOffset == 0).
+     */
+    private fun maybeWriteStepsToHealthConnect(currentSteps: Long) {
+        val nowMs = System.currentTimeMillis()
+        val elapsed = nowMs - lastHcWriteMs
+        val stepDelta = currentSteps - lastHcWriteSteps
+        if (elapsed < 60_000L && stepDelta < 50L) return
+        lastHcWriteMs = nowMs
+        lastHcWriteSteps = currentSteps
+        viewModelScope.launch(Dispatchers.IO) {
+            healthConnectRepository.writeStepsToday(currentSteps)
+        }
     }
 
     /**
@@ -425,53 +451,64 @@ class ActivityViewModel @Inject constructor(
     }
 
     /**
-     * Charge les pas sur une fenêtre glissante de 7 jours :
-     * - currentWeek : les 7 derniers jours (index 6 = aujourd'hui, toujours à droite)
-     * - previousWeek : les 7 jours précédents (index 6 = il y a 7 jours)
-     * Équivalent iOS : les 7 points partent du jour le plus ancien vers aujourd'hui.
+     * Charge les pas sur la semaine ISO courante (lundi → dimanche) :
+     * - currentWeek  : lundi → dimanche de la semaine en cours (index 0=Lu … 6=Di)
+     * - previousWeek : lundi → dimanche de la semaine précédente
+     * [weekTodayIndex] : position du jour courant dans la grille (0=lundi … 6=dimanche),
+     * utilisé pour surligner le bon label en vert sur l'axe X.
+     * Cohérent avec le calendrier mensuel qui commence également le lundi.
      */
     private fun loadWeeklyData() {
         viewModelScope.launch {
             val today = LocalDate.now()
             val dayFmt = DateTimeFormatter.ofPattern("EEE", Locale.FRENCH)
 
-            // Labels : abréviation du jour pour chacun des 7 derniers jours
+            // Lundi de la semaine ISO courante
+            val weekStart = today.with(java.time.DayOfWeek.MONDAY)
+            val prevWeekStart = weekStart.minusWeeks(1)
+
+            // Labels fixes Lu Ma Me Je Ve Sa Di (ne dépendent pas de la date du jour)
             val labels = List(7) { i ->
-                val d = today.minusDays((6 - i).toLong())
+                val d = weekStart.plusDays(i.toLong())
                 d.format(dayFmt).replaceFirstChar { it.uppercaseChar() }.take(2)
             }
 
+            // Indice du jour courant dans la semaine ISO (MONDAY=1 → index 0, SUNDAY=7 → index 6)
+            val todayIndex = today.dayOfWeek.value - 1
+
             if (isEmulator()) {
                 val mockCurrent = List(7) { i ->
-                    emulatorStepsForDay(today.minusDays((6 - i).toLong()))
+                    emulatorStepsForDay(weekStart.plusDays(i.toLong()))
                 }
                 val mockPrev = List(7) { i ->
-                    emulatorStepsForDay(today.minusDays((13 - i).toLong()))
+                    emulatorStepsForDay(prevWeekStart.plusDays(i.toLong()))
                 }
                 _uiState.value = _uiState.value.copy(
                     currentWeekSteps = mockCurrent,
                     previousWeekSteps = mockPrev,
                     weekDayLabels = labels,
+                    weekTodayIndex = todayIndex,
                 )
             } else {
                 val zone = ZoneId.systemDefault()
-                val currFrom = today.minusDays(6).atStartOfDay(zone).toInstant()
-                val prevFrom = today.minusDays(13).atStartOfDay(zone).toInstant()
-                val prevTo = today.minusDays(6).atStartOfDay(zone).toInstant()
+                val currFrom = weekStart.atStartOfDay(zone).toInstant()
+                val prevFrom = prevWeekStart.atStartOfDay(zone).toInstant()
+                val prevTo = weekStart.atStartOfDay(zone).toInstant()
 
                 val currMap = healthConnectRepository.readStepsByDay(currFrom, Instant.now())
                 val prevMap = healthConnectRepository.readStepsByDay(prevFrom, prevTo)
 
                 val currentWeek = List(7) { i ->
-                    currMap[today.minusDays((6 - i).toLong())] ?: 0L
+                    currMap[weekStart.plusDays(i.toLong())] ?: 0L
                 }
                 val previousWeek = List(7) { i ->
-                    prevMap[today.minusDays((13 - i).toLong())] ?: 0L
+                    prevMap[prevWeekStart.plusDays(i.toLong())] ?: 0L
                 }
                 _uiState.value = _uiState.value.copy(
                     currentWeekSteps = currentWeek,
                     previousWeekSteps = previousWeek,
                     weekDayLabels = labels,
+                    weekTodayIndex = todayIndex,
                 )
             }
         }

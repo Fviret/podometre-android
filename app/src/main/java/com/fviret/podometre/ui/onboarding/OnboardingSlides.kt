@@ -28,6 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.fviret.podometre.R
+import com.fviret.podometre.util.formatSteps
 
 // ── Slide 1 — Écran Activité ─────────────────────────────────────────────────
 
@@ -206,7 +207,7 @@ private fun GoalCard(
         ) {
             Column {
                 Text(
-                    text = stringResource(R.string.onboarding_slide4_goal_label, goal),
+                    text = stringResource(R.string.onboarding_slide4_goal_label, goal.formatSteps()),
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(

@@ -20,7 +20,7 @@
 
     <string name="onboarding_slide4_title">Quel est votre\nobjectif quotidien ?</string>
     <string name="onboarding_slide4_subtitle">Vous pourrez le modifier à tout moment dans les paramètres.</string>
-    <string name="onboarding_slide4_goal_label">%1$d pas / jour</string>
+    <string name="onboarding_slide4_goal_label">%1$s pas / jour</string>
     <string name="onboarding_goal_5000_desc">Idéal pour commencer</string>
     <string name="onboarding_goal_8000_desc">Recommandé par l\'OMS</string>
     <string name="onboarding_goal_10000_desc">Objectif classique</string>
@@ -30,8 +30,8 @@
 
     <!-- Écran Activité — anneau de progression -->
     <string name="activity_ring_steps_label">pas</string>
-    <string name="activity_ring_goal_label">Objectif : %1$d pas</string>
-    <string name="activity_ring_accessibility_label">%1$d pas sur %2$d, %3$d %%</string>
+    <string name="activity_ring_goal_label">Objectif : %1$s pas</string>
+    <string name="activity_ring_accessibility_label">%1$s pas sur %2$s, %3$d %%</string>
     <string name="activity_ring_streak_label">🔥 %1$d jour de suite</string>
     <string name="activity_ring_streak_label_plural">🔥 %1$d jours de suite</string>
     <string name="activity_ring_streak_label_days">%1$d jour de suite</string>
@@ -40,6 +40,8 @@
     <string name="activity_ring_streak_accessibility_plural">Série de %1$d jours consécutifs</string>
     <!-- Pourcentage d'objectif affiché dans l'anneau (KAN-84) -->
     <string name="activity_ring_percent_label">%1$d %%</string>
+    <!-- Message motivant affiché dans l'anneau quand aucun pas n'est compté (KAN-105) -->
+    <string name="activity_ring_empty_state">Démarrez votre journée !</string>
 
     <!-- Écran Activité — bannière météo (KAN-22) -->
     <string name="weather_forecast_section_title">Météo · 7 jours</string>
@@ -74,4 +76,7 @@
     <string name="weather_detail_today">Aujourd\'hui</string>
     <string name="weather_detail_tomorrow">Demain</string>
     <string name="weather_detail_precip_mm">💧 %1$s mm attendus</string>
+    <string name="weekly_chart_no_data">Pas de données cette semaine</string>
+    <string name="journey_timeline_end">Arrivée</string>
+    <string name="activity_calendar_total">Total %1$s : %2$s pas</string>
 </resources>
