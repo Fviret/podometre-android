@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -57,6 +58,8 @@ import com.fviret.podometre.domain.model.JourneyCategory
 import com.fviret.podometre.domain.model.JourneyProgress
 import com.fviret.podometre.domain.model.formatKm
 import com.fviret.podometre.domain.model.progressPercent
+import androidx.compose.ui.res.stringResource
+import com.fviret.podometre.R
 
 /**
  * Écran principal du catalogue des trajets.
@@ -330,97 +333,90 @@ private fun JourneyPreviewSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
     ) {
-        Column(modifier = Modifier
-            .fillMaxWidth()
-            .fillMaxHeight(0.85f)) {
-
-            // ── Contenu scrollable ───────────────────────────────────────────
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(scrollState)
-                    .padding(horizontal = 24.dp)
-                    .padding(top = 8.dp, bottom = 16.dp)
-            ) {
-                // Header
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = journey.emoji,
-                        style = MaterialTheme.typography.displaySmall,
-                        modifier = Modifier.semantics { invisibleToUser() },
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = journey.name,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = journey.subtitle,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Badges métadonnées
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MetaBadge(text = formatKm(journey.totalKm))
-                    MetaBadge(text = "${journey.milestones.size} étapes")
-                    MetaBadge(text = journey.category.displayName)
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
+        // ── Contenu entièrement scrollable — pas de zone vide fixe ──────────
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(scrollState)
+                .padding(horizontal = 24.dp)
+                .padding(top = 8.dp, bottom = 24.dp)
+        ) {
+            // Header
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "ÉTAPES DU TRAJET",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = journey.emoji,
+                    style = MaterialTheme.typography.displaySmall,
+                    modifier = Modifier.semantics { invisibleToUser() },
                 )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Timeline verticale des jalons
-                val sortedMilestones = journey.milestones.sortedBy { it.km }
-                sortedMilestones.forEachIndexed { index, milestone ->
-                    val isUnlocked = progress?.unlockedMilestoneIds
-                        ?.contains(milestone.id.toString()) == true
-                    val isLast = index == sortedMilestones.lastIndex
-
-                    MilestoneRow(
-                        number = index + 1,
-                        label = milestone.label,
-                        distanceKm = milestone.km,
-                        description = milestone.description,
-                        isUnlocked = isUnlocked,
-                        showConnector = !isLast,
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = journey.name,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = journey.subtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            // ── Bouton fixe en bas ───────────────────────────────────────────
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Badges métadonnées
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MetaBadge(text = formatKm(journey.totalKm))
+                MetaBadge(text = "${journey.milestones.size} étapes")
+                MetaBadge(text = journey.category.displayName)
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "ÉTAPES DU TRAJET",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Timeline verticale des jalons
+            val sortedMilestones = journey.milestones.sortedBy { it.km }
+            sortedMilestones.forEachIndexed { index, milestone ->
+                val isUnlocked = progress?.unlockedMilestoneIds
+                    ?.contains(milestone.id.toString()) == true
+
+                MilestoneRow(
+                    number = index + 1,
+                    label = milestone.label,
+                    distanceKm = milestone.km,
+                    description = milestone.description,
+                    isUnlocked = isUnlocked,
+                    showConnector = true,
+                )
+            }
+
+            // ── Terminus de la timeline ──────────────────────────────────────
+            TimelineTerminus(label = stringResource(R.string.journey_timeline_end))
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // ── Bouton CTA ───────────────────────────────────────────────────
+            Button(
+                onClick = onStart,
+                enabled = !isActive && !isCompleted,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Button(
-                    onClick = onStart,
-                    enabled = !isActive && !isCompleted,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text(
-                        text = when {
-                            isCompleted -> "Trajet terminé ✓"
-                            isActive -> "Trajet en cours"
-                            else -> "Commencer le trajet"
-                        }
-                    )
-                }
+                Text(
+                    text = when {
+                        isCompleted -> "Trajet terminé ✓"
+                        isActive -> "Trajet en cours"
+                        else -> "Commencer le trajet"
+                    }
+                )
             }
         }
     }
@@ -500,6 +496,59 @@ private fun MilestoneRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.height(if (showConnector) 32.dp else 8.dp))
+        }
+    }
+}
+
+/**
+ * Terminus visuel de la timeline : connecteur + cercle avec icône drapeau + label "Arrivée".
+ * Indique la fin du trajet après le dernier jalon.
+ */
+@Composable
+private fun TimelineTerminus(label: String) {
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val connectorColor = MaterialTheme.colorScheme.outlineVariant
+
+    Row(modifier = Modifier.fillMaxWidth()) {
+        // Colonne gauche : connecteur entrant + cercle terminus
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(
+                modifier = Modifier
+                    .width(2.dp)
+                    .height(32.dp)
+                    .background(connectorColor)
+            )
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(primaryColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Flag,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        // Colonne droite : label aligné verticalement avec le cercle
+        Box(
+            modifier = Modifier
+                .height(32.dp + 32.dp) // hauteur connecteur + cercle
+                .padding(top = 32.dp), // aligner avec le centre du cercle
+            contentAlignment = Alignment.TopStart
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = primaryColor
+            )
         }
     }
 }
