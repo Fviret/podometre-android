@@ -79,6 +79,10 @@ class JourneyListScreenTest {
         composeTestRule.onNodeWithText(firstJourney.name).assertIsDisplayed()
 
         // ── Tap preview (première carte : Tour des Tuileries) ──────────
+        // waitUntil : le ViewModel charge les trajets en async, attendre que le bouton soit présent.
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText("Voir le trajet").fetchSemanticsNodes().isNotEmpty()
+        }
         composeTestRule.onAllNodesWithText("Voir le trajet")[0].performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Commencer le trajet").performClick()

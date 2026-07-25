@@ -41,7 +41,11 @@ class ActivityScreenTest {
 
     @get:Rule
     val ruleChain: RuleChain = RuleChain
-        .outerRule(GrantPermissionRule.grant(Manifest.permission.ACTIVITY_RECOGNITION))
+        .outerRule(GrantPermissionRule.grant(
+            Manifest.permission.ACTIVITY_RECOGNITION,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+        ))
         .around(composeTestRule)
 
     private lateinit var viewModel: ActivityViewModel

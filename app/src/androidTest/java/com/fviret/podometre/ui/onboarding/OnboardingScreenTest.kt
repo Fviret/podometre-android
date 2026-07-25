@@ -65,6 +65,7 @@ class OnboardingScreenTest {
         // Slide 3 (permissions) : simule le retour du lanceur système Health Connect,
         // sans dépendre de la disponibilité réelle de Health Connect sur l'appareil de test.
         viewModel.onHealthPermissionsResult(emptySet())
+        composeTestRule.waitForIdle()
         assertEquals(3, viewModel.uiState.value.currentPage)
 
         // Slide 4 : sélection d'un objectif différent du défaut (8 000)
