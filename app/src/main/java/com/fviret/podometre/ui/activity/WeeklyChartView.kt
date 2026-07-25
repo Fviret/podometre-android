@@ -29,24 +29,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.ceil
 
-private val DAY_LABELS = listOf("Lu", "Ma", "Me", "Je", "Ve", "Sa", "Di")
-
 /**
- * Graphe en courbes comparant la semaine courante et la semaine précédente.
+ * Graphe en courbes comparant la semaine ISO courante et la semaine précédente.
  * Titre + légende en haut, dessin Canvas Compose pur, sans bibliothèque externe.
  * [currentWeek] et [previousWeek] : 7 valeurs (lundi → dimanche).
- * [todayIndex] : indice du jour courant (0=lundi … 6=dimanche).
+ * [dayLabels] : 7 étiquettes correspondant aux jours Lu … Di.
+ * [todayIndex] : indice du jour courant dans la semaine ISO (0=lundi … 6=dimanche).
  * Équivalent iOS : WeeklyBarChartView.swift
  */
 @Composable
 fun WeeklyChartView(
     currentWeek: List<Long>,
     previousWeek: List<Long>,
-    dayLabels: List<String>,         // 7 labels, index 6 = aujourd'hui
+    dayLabels: List<String>,
+    todayIndex: Int,
     accentColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    val todayIndex = 6               // aujourd'hui est toujours le dernier point
     val a11yLabel = buildA11yLabel(currentWeek, previousWeek, dayLabels)
     val prevColor = Color(0xFFAAAAAA)
 
