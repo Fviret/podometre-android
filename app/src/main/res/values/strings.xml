@@ -77,4 +77,5 @@
     <string name="weather_detail_tomorrow">Demain</string>
     <string name="weather_detail_precip_mm">💧 %1$s mm attendus</string>
     <string name="weekly_chart_no_data">Pas de données cette semaine</string>
+    <string name="activity_calendar_total">Total %1$s : %2$s pas</string>
 </resources>
