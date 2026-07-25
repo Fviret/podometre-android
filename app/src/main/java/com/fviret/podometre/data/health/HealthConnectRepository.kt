@@ -9,6 +9,7 @@ import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.StepsRecord
+import androidx.health.connect.client.records.metadata.Metadata
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import com.fviret.podometre.util.isEmulator
@@ -17,6 +18,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -255,9 +257,49 @@ class HealthConnectRepository @Inject constructor(
         return streak
     }
 
+    /**
+     * Écrit les pas du jour courant dans Health Connect.
+     * Idempotent : le même [clientRecordId] par jour évite les doublons — Health Connect fusionne
+     * automatiquement les enregistrements portant le même identifiant client.
+     * Ne s'exécute que si [steps] > 0 et que Health Connect est disponible.
+     * Sur émulateur, simule uniquement un log (Health Connect émulateur est instable).
+     */
+    suspend fun writeStepsToday(steps: Long) {
+        if (steps <= 0L) return
+        if (!isAvailable()) return
+        if (isEmulator()) {
+            Log.d(TAG, "writeStepsToday (émulateur) : $steps pas — écriture simulée")
+            return
+        }
+        runCatching {
+            val today = LocalDate.now()
+            val zone = ZoneId.systemDefault()
+            val startOfDay = today.atStartOfDay(zone).toInstant()
+            val now = Instant.now()
+            val record = StepsRecord(
+                startTime = startOfDay,
+                endTime = now,
+                count = steps,
+                startZoneOffset = ZoneOffset.systemDefault().rules.getOffset(startOfDay),
+                endZoneOffset = ZoneOffset.systemDefault().rules.getOffset(now),
+                metadata = Metadata(clientRecordId = "podometre-steps-$today")
+            )
+            client.get().insertRecords(listOf(record))
+        }.onFailure { Log.w(TAG, "writeStepsToday a échoué", it) }
+    }
+
     /** Retourne true si Health Connect est installé et disponible sur cet appareil. */
     fun isAvailable(): Boolean =
         HealthConnectClient.getSdkStatus(context) == HealthConnectClient.SDK_AVAILABLE
+
+    /**
+     * Retourne true si Health Connect est installé (même s'il nécessite une mise à jour).
+     * Utilisé dans l'onboarding pour lancer le dialogue de permission même quand le SDK
+     * signale [HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED] — Health Connect
+     * gère alors lui-même la redirection vers le Play Store.
+     */
+    fun isInstalled(): Boolean =
+        HealthConnectClient.getSdkStatus(context) != HealthConnectClient.SDK_UNAVAILABLE
 
     /**
      * Vérifie si toutes les permissions de lecture requises (pas, distance) sont accordées.
@@ -271,11 +313,14 @@ class HealthConnectRepository @Inject constructor(
     companion object {
         private const val TAG = "HealthConnectRepository"
         /**
-         * Permissions de lecture demandées à l'onboarding.
-         * Inclut READ_EXERCISE (KAN-82) pour les sessions d'exercice (temps actif).
+         * Permissions demandées à l'onboarding.
+         * READ_EXERCISE (KAN-82) pour les sessions d'exercice (temps actif).
+         * WRITE_STEPS (KAN-102) pour écrire les pas capteur dans HC sur les appareils
+         * sans app fitness tierce (Google Fit, etc.).
          */
         val PERMISSIONS: Set<String> = setOf(
             HealthPermission.getReadPermission(StepsRecord::class),
+            HealthPermission.getWritePermission(StepsRecord::class),
             HealthPermission.getReadPermission(DistanceRecord::class),
             HealthPermission.getReadPermission(ExerciseSessionRecord::class),
         )

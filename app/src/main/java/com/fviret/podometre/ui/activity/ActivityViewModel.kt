@@ -173,6 +173,12 @@ class ActivityViewModel @Inject constructor(
     /** Valeur cumulative du capteur TYPE_STEP_COUNTER au démarrage de la session. -1 = non initialisé. */
     @Volatile private var sensorStart: Long = -1L
 
+    /** Timestamp (ms) de la dernière écriture dans Health Connect. Throttle à 60 s minimum. */
+    @Volatile private var lastHcWriteMs: Long = 0L
+
+    /** Nombre de pas lors de la dernière écriture HC. Throttle par palier de 50 pas. */
+    @Volatile private var lastHcWriteSteps: Long = 0L
+
     private val stepListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent) {
             if (_uiState.value.selectedDayOffset != 0) return
@@ -180,8 +186,26 @@ class ActivityViewModel @Inject constructor(
             if (sensorStart < 0L) sensorStart = raw
             val live = computeLiveSteps(hcStepsRef, sensorStart, raw)
             _uiState.value = _uiState.value.copy(stepsToday = maxOf(_uiState.value.stepsToday, live))
+            maybeWriteStepsToHealthConnect(live)
         }
         override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+    }
+
+    /**
+     * Écrit les pas dans Health Connect si le throttle le permet.
+     * Conditions : au moins 60 secondes depuis la dernière écriture OU au moins 50 pas de plus.
+     * Appellé uniquement pour aujourd'hui (selectedDayOffset == 0).
+     */
+    private fun maybeWriteStepsToHealthConnect(currentSteps: Long) {
+        val nowMs = System.currentTimeMillis()
+        val elapsed = nowMs - lastHcWriteMs
+        val stepDelta = currentSteps - lastHcWriteSteps
+        if (elapsed < 60_000L && stepDelta < 50L) return
+        lastHcWriteMs = nowMs
+        lastHcWriteSteps = currentSteps
+        viewModelScope.launch(Dispatchers.IO) {
+            healthConnectRepository.writeStepsToday(currentSteps)
+        }
     }
 
     /**
