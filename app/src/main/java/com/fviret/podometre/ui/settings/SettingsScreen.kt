@@ -95,6 +95,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fviret.podometre.BuildConfig
 import com.fviret.podometre.domain.JourneyData
 import com.fviret.podometre.ui.theme.AppColors
+import com.fviret.podometre.util.formatSteps
 
 /**
  * Écran Paramètres — section US-5.1 : objectif quotidien de pas.
@@ -285,7 +286,7 @@ private fun StepGoalRow(
                     modifier = Modifier.weight(1f),
                 )
                 Text(
-                    text = "%,d pas".format(currentGoal).replace(',', ' '),
+                    text = "${currentGoal.formatSteps()} pas",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold,
@@ -373,7 +374,7 @@ private fun GoalCell(
     onSelect: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val label = "%,d".format(goal).replace(',', ' ')
+    val label = goal.formatSteps()
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
@@ -789,8 +790,7 @@ private fun BadgesSection(
 }
 
 /** Formate un seuil de pas en libellé lisible (ex. 5000 → "5 000", 10000 → "10 000"). */
-private fun formatThreshold(threshold: Long): String =
-    "%,d".format(threshold).replace(',', ' ')
+private fun formatThreshold(threshold: Long): String = threshold.formatSteps()
 
 /**
  * Calcule la couleur de texte (noir ou blanc) offrant le meilleur contraste WCAG AA
