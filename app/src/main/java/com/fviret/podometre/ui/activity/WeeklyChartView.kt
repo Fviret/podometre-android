@@ -2,6 +2,7 @@ package com.fviret.podometre.ui.activity
 
 import android.graphics.Paint
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +16,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.fviret.podometre.R
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -48,6 +51,8 @@ fun WeeklyChartView(
 ) {
     val a11yLabel = buildA11yLabel(currentWeek, previousWeek, dayLabels)
     val prevColor = Color(0xFFAAAAAA)
+    /** Vrai quand aucune donnée n'est disponible pour les deux semaines. */
+    val allZero = currentWeek.all { it == 0L } && previousWeek.all { it == 0L }
 
     Column(modifier = modifier.fillMaxWidth()) {
         // ── En-tête : titre + légende ──────────────────────────────────────────
@@ -95,6 +100,12 @@ fun WeeklyChartView(
         Spacer(modifier = Modifier.height(8.dp))
 
         // ── Canvas du graphe ───────────────────────────────────────────────────
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(180.dp),
+            contentAlignment = Alignment.Center,
+        ) {
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
@@ -121,6 +132,18 @@ fun WeeklyChartView(
 
             fun xFor(i: Int): Float = padLeft + i * (chartW / 6f)
             fun yFor(v: Long): Float = padTop + (1f - v / maxY.toFloat()) * chartH
+
+            // ── Empty state : ligne pointillée centrale ───────────────────────
+            if (allZero) {
+                val midY = padTop + chartH * 0.4f
+                drawLine(
+                    color = Color(0xFF999999).copy(alpha = 0.3f),
+                    start = Offset(padLeft, midY),
+                    end = Offset(size.width - padRight, midY),
+                    strokeWidth = 1.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f),
+                )
+            }
 
             // ── Graduations axe Y ─────────────────────────────────────────────
             val yLabelPaint = Paint().apply {
@@ -234,6 +257,16 @@ fun WeeklyChartView(
                 drawCircle(color = Color.White, radius = 2.5.dp.toPx(), center = Offset(xFor(idx), yFor(v)))
             }
         }
+
+        // ── Label empty state superposé au Canvas ─────────────────────────────
+        if (allZero) {
+            Text(
+                text = stringResource(R.string.weekly_chart_no_data),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            )
+        }
+        } // fin Box
     }
 }
 
