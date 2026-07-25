@@ -118,6 +118,8 @@ dependencies {
     // Tests UI
     androidTestImplementation(composeBom)
     androidTestImplementation(libs.compose.ui.test)
+    // Force tracing:1.0.0 pour résoudre le conflit strict AGP 8.9.1 ↔ Compose BOM
+    androidTestImplementation("androidx.tracing:tracing:1.0.0")
     androidTestImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
