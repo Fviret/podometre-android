@@ -50,7 +50,7 @@ class HealthConnectRepositoryTest {
             endTime = end,
             endZoneOffset = ZoneOffset.UTC,
             count = count,
-            metadata = Metadata(),
+            metadata = Metadata.Companion.unknownRecordingMethod(),
         )
     }
 
