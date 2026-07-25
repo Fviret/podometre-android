@@ -325,9 +325,10 @@ private fun JourneyPreviewSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        modifier = Modifier.fillMaxHeight(0.9f),
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.85f)) {
 
             // ── Contenu scrollable ───────────────────────────────────────────
             Column(
