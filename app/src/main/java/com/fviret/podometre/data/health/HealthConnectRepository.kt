@@ -282,7 +282,7 @@ class HealthConnectRepository @Inject constructor(
                 count = steps,
                 startZoneOffset = ZoneOffset.systemDefault().rules.getOffset(startOfDay),
                 endZoneOffset = ZoneOffset.systemDefault().rules.getOffset(now),
-                metadata = Metadata(clientRecordId = "podometre-steps-$today")
+                metadata = Metadata.EMPTY
             )
             client.get().insertRecords(listOf(record))
         }.onFailure { Log.w(TAG, "writeStepsToday a échoué", it) }
