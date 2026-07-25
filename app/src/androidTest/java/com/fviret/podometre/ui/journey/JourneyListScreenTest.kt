@@ -2,7 +2,9 @@ package com.fviret.podometre.ui.journey
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -78,14 +80,26 @@ class JourneyListScreenTest {
         composeTestRule.onNodeWithText("Mes Trajets").assertIsDisplayed()
         composeTestRule.onNodeWithText(firstJourney.name).assertIsDisplayed()
 
-        // ── Tap preview (première carte : Tour des Tuileries) ──────────
-        composeTestRule.onAllNodesWithText("Voir le trajet")[0].performClick()
+        // ── Tap preview (première carte) ──────────────────────────────
+        // La carte est cliquable via contentDescription = journey.name (sémantique fusionnée).
+        // "Voir le trajet" n'existe pas dans le UI — c'est le contentDescription qui est l'ancre.
+        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+            composeTestRule.onAllNodesWithContentDescription(firstJourney.name)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithContentDescription(firstJourney.name).performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Commencer le trajet").performClick()
         composeTestRule.waitForIdle()
 
-        // ── Détail affiché : la carte bascule sur "Voir mes étapes", qui déclenche la navigation ──
-        composeTestRule.onAllNodesWithText("Voir mes étapes")[0].performClick()
+        // ── Détail affiché : après startJourney, la carte est isInProgress → un tap dessus
+        //    déclenche directement onNavigateToDetail (pas de preview sheet intermédiaire).
+        //    On attend que la barre de progression apparaisse pour confirmer l'état mis à jour.
+        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+            composeTestRule.onAllNodesWithContentDescription(firstJourney.name)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithContentDescription(firstJourney.name).performClick()
         composeTestRule.waitForIdle()
 
         assertEquals(firstJourney.id.toString(), navigatedToJourneyId)

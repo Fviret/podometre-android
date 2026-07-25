@@ -9,6 +9,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.fviret.podometre.data.aphorism.AphorismRepository
 import com.fviret.podometre.fakes.TestFactories
+import com.fviret.podometre.util.formatSteps
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -63,8 +64,9 @@ class SettingsScreenTest {
         composeTestRule.waitForIdle()
         // SectionHeader appelle title.uppercase() → "ACTIVITÉ"
         composeTestRule.onNodeWithText("ACTIVITÉ").assertIsDisplayed()
-        // StepGoalRow affiche "${currentGoal.formatSteps()} pas" → "10 000 pas"
-        composeTestRule.onNodeWithText("10 000 pas").assertIsDisplayed()
+        // StepGoalRow affiche "${currentGoal.formatSteps()} pas" — formatSteps() utilise
+        // Locale.FRENCH qui produit un espace fine insécable (U+202F) comme séparateur.
+        composeTestRule.onNodeWithText("${10_000.formatSteps()} pas").assertIsDisplayed()
     }
 
     /**

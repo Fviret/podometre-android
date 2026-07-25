@@ -1,12 +1,14 @@
 package com.fviret.podometre.ui.onboarding
 
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.fviret.podometre.R
 import com.fviret.podometre.fakes.TestFactories
+import com.fviret.podometre.util.formatSteps
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -65,10 +67,15 @@ class OnboardingScreenTest {
         // Slide 3 (permissions) : simule le retour du lanceur système Health Connect,
         // sans dépendre de la disponibilité réelle de Health Connect sur l'appareil de test.
         viewModel.onHealthPermissionsResult(emptySet())
+        // L'écran appelle goal.formatSteps() → espace fine insécable (U+202F).
+        // Passer formatSteps() ici pour que le texte cherché corresponde exactement.
+        val goalText = context.getString(R.string.onboarding_slide4_goal_label, 15_000.formatSteps())
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            composeTestRule.onAllNodesWithText(goalText).fetchSemanticsNodes().isNotEmpty()
+        }
         assertEquals(3, viewModel.uiState.value.currentPage)
 
         // Slide 4 : sélection d'un objectif différent du défaut (8 000)
-        val goalText = context.getString(R.string.onboarding_slide4_goal_label, 15_000)
         composeTestRule.onNodeWithText(goalText).performClick()
         assertEquals(15_000, viewModel.uiState.value.selectedGoal)
 
