@@ -93,14 +93,15 @@ class JourneyListScreenTest {
         composeTestRule.onNodeWithText("Commencer le trajet").performClick()
         composeTestRule.waitForIdle()
 
-        // ── Détail affiché : après startJourney, la carte est isInProgress → un tap dessus
-        //    déclenche directement onNavigateToDetail (pas de preview sheet intermédiaire).
-        //    On attend que la barre de progression apparaisse pour confirmer l'état mis à jour.
+        // ── Détail affiché : après startJourney (KAN-120), le trajet passe en ActiveJourneyCard
+        //    épinglée en haut de la liste. Sa contentDescription commence par "Trajet en cours :".
+        //    Un tap dessus déclenche directement onNavigateToDetail.
+        val activeCardDesc = "Trajet en cours :"
         composeTestRule.waitUntil(timeoutMillis = 15_000) {
-            composeTestRule.onAllNodesWithContentDescription(firstJourney.name)
+            composeTestRule.onAllNodesWithContentDescription(activeCardDesc, substring = true)
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        composeTestRule.onNodeWithContentDescription(firstJourney.name).performClick()
+        composeTestRule.onNodeWithContentDescription(activeCardDesc, substring = true).performClick()
         composeTestRule.waitForIdle()
 
         assertEquals(firstJourney.id.toString(), navigatedToJourneyId)
