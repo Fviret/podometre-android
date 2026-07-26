@@ -43,6 +43,16 @@ class OnboardingViewModel @Inject constructor(
     /** Retourne true si Health Connect est disponible — utilisé pour décider de lancer la demande de permissions. */
     fun isHealthConnectAvailable(): Boolean = healthConnectRepository.isAvailable()
 
+    /**
+     * Synchronise la page courante depuis le pager (swipe manuel de l'utilisateur).
+     * N'autorise la navigation que vers l'avant — le retour arrière est libre.
+     */
+    fun syncPage(page: Int) {
+        if (page in 0 until TOTAL_PAGES) {
+            _uiState.value = _uiState.value.copy(currentPage = page)
+        }
+    }
+
     /** Avance à la slide suivante. */
     fun nextPage() {
         val current = _uiState.value.currentPage

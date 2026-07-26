@@ -85,10 +85,10 @@ class JourneyListScreenTest {
         // La carte est cliquable via contentDescription = journey.name (sémantique fusionnée).
         // "Voir le trajet" n'existe pas dans le UI — c'est le contentDescription qui est l'ancre.
         composeTestRule.waitUntil(timeoutMillis = 15_000) {
-            composeTestRule.onAllNodesWithContentDescription(firstJourney.name)
+            composeTestRule.onAllNodesWithContentDescription(firstJourney.name, substring = true)
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        composeTestRule.onNodeWithContentDescription(firstJourney.name).performClick()
+        composeTestRule.onNodeWithContentDescription(firstJourney.name, substring = true).performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Commencer le trajet").performClick()
         composeTestRule.waitForIdle()
