@@ -140,6 +140,13 @@ fun JourneyDetailScreen(
                     journey = journey,
                     progress = progress,
                 )
+                // Tracé du segment courant (dernier jalon → prochain jalon) — masqué si terminé.
+                JourneySegmentTrack(
+                    journey = journey,
+                    progress = progress,
+                    isCompleted = isCompleted,
+                    modifier = Modifier.padding(top = 16.dp),
+                )
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
