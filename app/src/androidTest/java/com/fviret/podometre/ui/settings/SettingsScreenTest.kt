@@ -64,9 +64,9 @@ class SettingsScreenTest {
         composeTestRule.waitForIdle()
         // SectionHeader appelle title.uppercase() → "ACTIVITÉ"
         composeTestRule.onNodeWithText("ACTIVITÉ").assertIsDisplayed()
-        // StepGoalRow affiche "${currentGoal.formatSteps()} pas" — formatSteps() utilise
-        // Locale.FRENCH qui produit un espace fine insécable (U+202F) comme séparateur.
-        composeTestRule.onNodeWithText("${10_000.formatSteps()} pas").assertIsDisplayed()
+        // KAN-124 : le stepper affiche la valeur formatée et "pas / jour" en deux Text séparés.
+        composeTestRule.onNodeWithText(10_000.formatSteps()).assertIsDisplayed()
+        composeTestRule.onNodeWithText("pas / jour").assertIsDisplayed()
     }
 
     /**

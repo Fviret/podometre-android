@@ -23,8 +23,17 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** Valeurs autorisées pour l'objectif quotidien de pas (5 000 à 20 000 par pas de 500). */
-val STEP_GOAL_OPTIONS: List<Int> = (5_000..20_000 step 500).toList()
+/** Valeurs autorisées pour l'objectif quotidien de pas (500 à 100 000 par pas de 500). */
+val STEP_GOAL_OPTIONS: List<Int> = (500..100_000 step 500).toList()
+
+/** Borne minimale du stepper d'objectif (en pas). */
+const val STEP_GOAL_MIN: Int = 500
+
+/** Borne maximale du stepper d'objectif (en pas). */
+const val STEP_GOAL_MAX: Int = 100_000
+
+/** Incrément du stepper d'objectif (en pas). */
+const val STEP_GOAL_STEP: Int = 500
 
 /** Seuils de pas pour les 6 badges de performance. */
 val STEP_BADGE_THRESHOLDS: List<Long> = listOf(5_000L, 10_000L, 20_000L, 30_000L, 50_000L, 100_000L)
@@ -104,8 +113,13 @@ class SettingsViewModel @Inject constructor(
      * Persiste le nouvel objectif quotidien de pas dans DataStore.
      * Déclenche une mise à jour réactive dans tous les ViewModels qui observent les préférences.
      */
+    /**
+     * Persiste le nouvel objectif quotidien de pas dans DataStore.
+     * Déclenche une mise à jour réactive dans tous les ViewModels qui observent les préférences.
+     * L'objectif doit être compris entre [STEP_GOAL_MIN] et [STEP_GOAL_MAX] et multiple de [STEP_GOAL_STEP].
+     */
     fun updateDailyStepGoal(goal: Int) {
-        if (goal !in STEP_GOAL_OPTIONS) return
+        if (goal < STEP_GOAL_MIN || goal > STEP_GOAL_MAX || goal % STEP_GOAL_STEP != 0) return
         viewModelScope.launch {
             userPreferencesRepository.setDailyStepGoal(goal)
         }
