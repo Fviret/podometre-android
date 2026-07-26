@@ -288,6 +288,26 @@ class HealthConnectRepository @Inject constructor(
         }.onFailure { Log.w(TAG, "writeStepsToday a échoué", it) }
     }
 
+    /**
+     * Calcule la moyenne de pas quotidiens sur les 6 jours pleins précédant aujourd'hui
+     * (le jour en cours est exclu car il est partiel).
+     * Retourne null si aucune donnée n'est disponible (historique vide) — dans ce cas,
+     * l'ETA ne doit pas être affiché pour éviter une estimation trompeuse.
+     * Sur émulateur, retourne une valeur mock réaliste (8 500 pas/jour).
+     */
+    suspend fun readAverageDailyStepsLast6Days(): Long? {
+        if (isEmulator()) return 8_500L
+
+        val zone = ZoneId.systemDefault()
+        val today = LocalDate.now(zone)
+        val from = today.minusDays(6).atStartOfDay(zone).toInstant()
+        val to = today.atStartOfDay(zone).toInstant()
+
+        val stepsByDay = readStepsByDay(from, to)
+        if (stepsByDay.isEmpty()) return null
+        return stepsByDay.values.sum() / stepsByDay.size
+    }
+
     /** Retourne true si Health Connect est installé et disponible sur cet appareil. */
     fun isAvailable(): Boolean =
         HealthConnectClient.getSdkStatus(context) == HealthConnectClient.SDK_AVAILABLE

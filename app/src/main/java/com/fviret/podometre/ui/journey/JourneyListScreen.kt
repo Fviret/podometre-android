@@ -1,5 +1,6 @@
 package com.fviret.podometre.ui.journey
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.invisibleToUser
 import androidx.compose.ui.semantics.semantics
@@ -60,10 +62,13 @@ import com.fviret.podometre.domain.model.formatKm
 import com.fviret.podometre.domain.model.progressPercent
 import androidx.compose.ui.res.stringResource
 import com.fviret.podometre.R
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
  * Écran principal du catalogue des trajets.
- * Affiche les 19 trajets organisés en sections par catégorie.
+ * Affiche la card du trajet en cours en tête (si trajet actif),
+ * puis les 19 trajets organisés en sections par catégorie.
  * Équivalent iOS : JourneyPickerView.swift
  */
 @Composable
@@ -73,9 +78,13 @@ fun JourneyListScreen(
 ) {
     val progressMap by viewModel.progressMap.collectAsStateWithLifecycle()
     val preferences by viewModel.preferences.collectAsStateWithLifecycle()
+    val activeJourneyCard by viewModel.activeJourneyCard.collectAsStateWithLifecycle()
 
     var selectedJourney by remember { mutableStateOf<Journey?>(null) }
     var showAbandonDialog by rememberSaveable { mutableStateOf(false) }
+
+    // ID du trajet en cours — à exclure du catalogue
+    val activeJourneyId = activeJourneyCard?.journey?.id?.toString()
 
     val journeysByCategory = remember(JourneyData.all) {
         JourneyCategory.entries.map { cat ->
@@ -96,7 +105,23 @@ fun JourneyListScreen(
             )
         }
 
+        // Card du trajet en cours épinglée en tête
+        activeJourneyCard?.let { cardData ->
+            item(key = "active_journey_card") {
+                ActiveJourneyCard(
+                    cardData = cardData,
+                    onClick = { onNavigateToDetail(cardData.journey.id.toString()) },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+
         journeysByCategory.forEach { (category, journeys) ->
+            // Filtrer le trajet en cours de cette section
+            val filteredJourneys = journeys.filter { it.id.toString() != activeJourneyId }
+            if (filteredJourneys.isEmpty()) return@forEach
+
             item(key = category.name) {
                 Text(
                     text = category.displayName.uppercase(),
@@ -105,7 +130,7 @@ fun JourneyListScreen(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
             }
-            items(journeys, key = { it.id.toString() }) { journey ->
+            items(filteredJourneys, key = { it.id.toString() }) { journey ->
                 val progress = progressMap[journey.id.toString()]
                 val isCompleted = journey.id.toString() in preferences.completedJourneyIds
                 val isInProgress = progress != null && !isCompleted
@@ -129,9 +154,8 @@ fun JourneyListScreen(
     }
 
     selectedJourney?.let { journey ->
-        val activeJourneyId = preferences.activeJourneyId
-        val isThisJourneyActive = activeJourneyId == journey.id.toString()
-        val hasActiveOther = activeJourneyId != null && !isThisJourneyActive
+        val isThisJourneyActive = preferences.activeJourneyId == journey.id.toString()
+        val hasActiveOther = preferences.activeJourneyId != null && !isThisJourneyActive
 
         JourneyPreviewSheet(
             journey = journey,
@@ -152,7 +176,7 @@ fun JourneyListScreen(
         if (showAbandonDialog && hasActiveOther) {
             AbandonJourneyDialog(
                 onConfirm = {
-                    activeJourneyId?.let { abandonId ->
+                    preferences.activeJourneyId?.let { abandonId ->
                         viewModel.switchJourney(
                             abandonId = abandonId,
                             newJourneyId = journey.id.toString()
@@ -162,6 +186,200 @@ fun JourneyListScreen(
                     selectedJourney = null
                 },
                 onDismiss = { showAbandonDialog = false }
+            )
+        }
+    }
+}
+
+/**
+ * Card épinglée du trajet en cours, avec trois niveaux de lecture :
+ * 1. En-tête : emoji, nom, pourcentage global.
+ * 2. Tracé du segment entre le dernier et le prochain jalon avec marqueur « tu es ici ».
+ * 3. Distance jusqu'à la prochaine étape + date d'arrivée estimée.
+ *
+ * La card entière est un seul élément cliquable avec un résumé vocal complet.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ActiveJourneyCard(
+    cardData: ActiveJourneyCardData,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val journey = cardData.journey
+    val globalPct = (cardData.globalPercent * 100).toInt()
+    val etaText = cardData.etaDate?.let { date ->
+        "le ${date.format(DateTimeFormatter.ofPattern("d MMM", Locale.FRENCH))}"
+    }
+
+    val a11yDescription = buildString {
+        append("Trajet en cours : ${journey.name}, $globalPct %. ")
+        append("Prochaine étape : ${cardData.nextMilestoneLabel} dans ${formatKm(cardData.kmToNextMilestone)}. ")
+        etaText?.let { append("Arrivée estimée $it.") }
+    }
+
+    Card(
+        onClick = onClick,
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = a11yDescription },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+
+            // ── Niveau 1 : En-tête ───────────────────────────────────────────
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = journey.emoji,
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = journey.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "Trajet en cours · $globalPct %",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
+                    )
+                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // ── Niveau 2 : Tracé du segment avec marqueur « tu es ici » ─────
+            SegmentTrack(
+                leftLabel = cardData.lastMilestoneLabel,
+                rightLabel = cardData.nextMilestoneLabel,
+                progress = cardData.segmentProgress
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // ── Niveau 3 : Distance + ETA ────────────────────────────────────
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "${formatKm(cardData.kmToNextMilestone)} jusqu'à la prochaine étape",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                etaText?.let {
+                    Text(
+                        text = "Arrivée ~$it",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Tracé horizontal du segment courant entre deux jalons.
+ * Un point mobile indique la position « tu es ici » selon [progress] (0.0 à 1.0).
+ * Libellés gauche (dernier jalon) et droite (prochain jalon) en dessous.
+ */
+@Composable
+private fun SegmentTrack(
+    leftLabel: String,
+    rightLabel: String,
+    progress: Float,
+    modifier: Modifier = Modifier
+) {
+    val trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
+    val progressColor = MaterialTheme.colorScheme.primary
+    val markerColor = MaterialTheme.colorScheme.primary
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(20.dp)
+        ) {
+            val trackY = size.height / 2f
+            val trackHeight = 4.dp.toPx()
+            val markerRadius = 7.dp.toPx()
+            val padding = markerRadius
+
+            // Piste totale
+            drawRoundRect(
+                color = trackColor,
+                topLeft = Offset(padding, trackY - trackHeight / 2),
+                size = androidx.compose.ui.geometry.Size(size.width - padding * 2, trackHeight),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(trackHeight / 2)
+            )
+
+            // Portion parcourue
+            val progressWidth = (size.width - padding * 2) * progress.coerceIn(0f, 1f)
+            if (progressWidth > 0f) {
+                drawRoundRect(
+                    color = progressColor,
+                    topLeft = Offset(padding, trackY - trackHeight / 2),
+                    size = androidx.compose.ui.geometry.Size(progressWidth, trackHeight),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(trackHeight / 2)
+                )
+            }
+
+            // Marqueur « tu es ici »
+            val markerX = padding + (size.width - padding * 2) * progress.coerceIn(0f, 1f)
+            drawCircle(
+                color = markerColor,
+                radius = markerRadius,
+                center = Offset(markerX, trackY)
+            )
+            drawCircle(
+                color = androidx.compose.ui.graphics.Color.White,
+                radius = markerRadius * 0.45f,
+                center = Offset(markerX, trackY)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = leftLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = rightLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+                textAlign = androidx.compose.ui.text.style.TextAlign.End
             )
         }
     }
