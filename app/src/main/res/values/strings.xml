@@ -4,6 +4,7 @@
     <!-- Onboarding -->
     <string name="onboarding_next">Suivant</string>
     <string name="onboarding_start">Lancer l\'app</string>
+    <string name="onboarding_step_label">Étape %1$d / %2$d</string>
 
     <string name="onboarding_slide1_title">Vos pas du jour,\nen un coup d\'œil</string>
     <string name="onboarding_slide1_subtitle">Suivez votre activité quotidienne avec un anneau de progression clair et des statistiques hebdomadaires.</string>

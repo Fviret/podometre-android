@@ -36,10 +36,11 @@ import com.fviret.podometre.util.formatSteps
 fun OnboardingSlide1() {
     SlideLayout(
         icon = {
+            // Illustration légèrement agrandie pour un visuel plus présent (128 dp vs 96 dp)
             Icon(
                 imageVector = Icons.Default.DirectionsWalk,
                 contentDescription = null,
-                modifier = Modifier.size(96.dp),
+                modifier = Modifier.size(128.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
         },
@@ -54,10 +55,11 @@ fun OnboardingSlide1() {
 fun OnboardingSlide2() {
     SlideLayout(
         icon = {
+            // Illustration légèrement agrandie pour un visuel plus présent (128 dp vs 96 dp)
             Icon(
                 imageVector = Icons.Default.Map,
                 contentDescription = null,
-                modifier = Modifier.size(96.dp),
+                modifier = Modifier.size(128.dp),
                 tint = MaterialTheme.colorScheme.secondary
             )
         },
