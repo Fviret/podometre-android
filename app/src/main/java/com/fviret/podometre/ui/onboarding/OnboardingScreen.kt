@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.snapshotFlow
 import com.fviret.podometre.ui.theme.rememberReduceMotion
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,13 +59,22 @@ fun OnboardingScreen(
         contract = HealthConnectRepository.requestPermissionsContract()
     ) { granted -> viewModel.onHealthPermissionsResult(granted) }
 
-    // Synchronise le pager avec l'état du ViewModel.
+    // Synchronise le pager avec l'état du ViewModel (navigation programmatique via bouton).
     // Si "Réduire les animations" est actif, saut instantané sans transition.
     LaunchedEffect(uiState.currentPage) {
-        if (reduceMotion) {
-            pagerState.scrollToPage(uiState.currentPage)
-        } else {
-            pagerState.animateScrollToPage(uiState.currentPage)
+        if (pagerState.currentPage != uiState.currentPage) {
+            if (reduceMotion) {
+                pagerState.scrollToPage(uiState.currentPage)
+            } else {
+                pagerState.animateScrollToPage(uiState.currentPage)
+            }
+        }
+    }
+
+    // Synchronise le ViewModel depuis le pager quand l'utilisateur swipe manuellement.
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.currentPage }.collect { page ->
+            viewModel.syncPage(page)
         }
     }
 
@@ -93,7 +103,7 @@ fun OnboardingScreen(
             // ── Carrousel ────────────────────────────────────────────────
             HorizontalPager(
                 state = pagerState,
-                userScrollEnabled = false,
+                userScrollEnabled = true,
                 modifier = Modifier
                     .weight(1f)
                     .background(slideBackground)

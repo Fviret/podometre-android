@@ -107,6 +107,14 @@ fun OnboardingSlide3() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
             )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.onboarding_slide3_permission_timing),
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+            )
         }
     )
 }
