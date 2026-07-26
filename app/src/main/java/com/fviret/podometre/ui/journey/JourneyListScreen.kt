@@ -169,7 +169,8 @@ fun JourneyListScreen(
 
 /**
  * Carte représentant un trajet dans le catalogue.
- * La card entière est tappable — un chevron › indique l'affordance.
+ * La card entière est le seul élément tappable (un chevron › indique l'affordance visuelle).
+ * Les cartes à l'état « Terminé » sont non-interactives.
  * Affiche l'emoji, nom, sous-titre, distance, nombre d'étapes,
  * et une barre de progression si le trajet est en cours.
  */
@@ -185,19 +186,22 @@ private fun JourneyCard(
 ) {
     val progressPercent = if (progress != null) journey.progressPercent(progress).toFloat() else 0f
     val isInProgress = progress != null && !isCompleted
-    val onClick = if (isInProgress && onDetail != null) onDetail else onPreview
 
-    Card(
-        onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .semantics { contentDescription = journey.name },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
+    // Description accessibilité complète : nom, sous-titre, distance, étapes, progression éventuelle.
+    val a11yLabel = buildString {
+        append("${journey.name}, ${journey.subtitle}. ")
+        append("${formatKm(journey.totalKm)}, ${journey.milestones.size} étapes. ")
+        if (isInProgress && progress != null) {
+            append("Progression : ${(progressPercent * 100).toInt()} %, ${formatKm(progress.totalKm)} parcourus. ")
+        }
+    }
+
+    // Libellé de l'action vocale selon l'état du trajet.
+    val a11yActionLabel = if (isInProgress) "Voir mes étapes" else "Voir le trajet"
+
+    // Contenu partagé entre la version cliquable et non-cliquable.
+    @Composable
+    fun CardContent() {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -259,17 +263,34 @@ private fun JourneyCard(
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         MetaBadge(text = formatKm(journey.totalKm))
                         MetaBadge(text = "${journey.milestones.size} étapes")
+                        // Pastille purement visuelle — invisible pour TalkBack (annoncé via contentDescription de la card).
+                        if (!isCompleted) {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                modifier = Modifier.semantics { invisibleToUser() }
+                            ) {
+                                Text(
+                                    text = a11yActionLabel,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
                     }
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (!isCompleted) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             if (isInProgress) {
@@ -280,17 +301,51 @@ private fun JourneyCard(
                         .fillMaxWidth()
                         .height(4.dp)
                         .clip(RoundedCornerShape(2.dp))
-                        .semantics {
-                            contentDescription = "Progression : ${(progressPercent * 100).toInt()} %"
-                        },
+                        .semantics { invisibleToUser() },
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "${(progressPercent * 100).toInt()}% — ${formatKm(progress?.totalKm ?: 0.0)} parcourus",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.semantics { invisibleToUser() }
                 )
             }
+        }
+    }
+
+    if (isCompleted) {
+        // Carte non-interactive : les trajets terminés ne réagissent pas au tap.
+        Card(
+            modifier = modifier
+                .fillMaxWidth()
+                .semantics { contentDescription = a11yLabel },
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            CardContent()
+        }
+    } else {
+        // Carte interactive : toute la surface déclenche l'action.
+        val onCardClick = if (isInProgress && onDetail != null) onDetail else onPreview
+        Card(
+            onClick = onCardClick,
+            modifier = modifier
+                .fillMaxWidth()
+                .semantics {
+                    // La description inclut le résumé complet + l'action vocale pour TalkBack.
+                    contentDescription = "$a11yLabel$a11yActionLabel."
+                },
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            CardContent()
         }
     }
 }
