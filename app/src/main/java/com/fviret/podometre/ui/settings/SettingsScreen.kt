@@ -1,14 +1,10 @@
 package com.fviret.podometre.ui.settings
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import com.fviret.podometre.ui.theme.rememberReduceMotion
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,8 +27,6 @@ import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.EmojiNature
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MilitaryTech
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -46,14 +40,17 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -71,7 +68,10 @@ import android.view.HapticFeedbackConstants
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -93,6 +93,8 @@ import com.fviret.podometre.BuildConfig
 import com.fviret.podometre.domain.JourneyData
 import com.fviret.podometre.ui.theme.AppColors
 import com.fviret.podometre.util.formatSteps
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Écran Paramètres — section US-5.1 : objectif quotidien de pas.
@@ -244,19 +246,56 @@ private fun SectionHeader(title: String) {
 }
 
 /**
- * Ligne "Objectif quotidien" avec picker expandable.
- * Tap sur la ligne développe / réduit la grille de valeurs.
- * La valeur sélectionnée est mise en surbrillance et persiste immédiatement.
+ * Ligne "Objectif quotidien" avec stepper − / +.
+ * Bornes : [STEP_GOAL_MIN] à [STEP_GOAL_MAX] par pas de [STEP_GOAL_STEP].
+ * — Appui court : incrément / décrément simple avec rebond.
+ * — Appui long : répétition accélérée (intervalle initial 280 ms, ×0,82 par cran, plancher 40 ms).
+ * — Rebond : grossissant sur incrément, rétrécissant sur décrément.
+ * — Haptique léger à chaque cran.
+ * — Sans animation si "Réduire les animations" est actif.
  */
 @Composable
 private fun StepGoalRow(
     currentGoal: Int,
     onGoalSelected: (Int) -> Unit,
 ) {
-    var expanded by rememberSaveable { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
-    val view = LocalView.current
     val reduceMotion = rememberReduceMotion()
+
+    // Compteur de changements pour déclencher le rebond à chaque cran (même taps rapprochés)
+    var bounceKey by remember { mutableIntStateOf(0) }
+    // Direction du dernier changement : +1 grossit, -1 rétrécit
+    var bounceDirection by remember { mutableIntStateOf(1) }
+    val scaleAnim = remember { Animatable(1f) }
+    val scope = rememberCoroutineScope()
+
+    // Lance un rebond à chaque nouveau cran
+    LaunchedEffect(bounceKey) {
+        if (bounceKey == 0) return@LaunchedEffect
+        if (reduceMotion) return@LaunchedEffect
+        val peak = if (bounceDirection > 0) 1.18f else 0.82f
+        scaleAnim.snapTo(peak)
+        scaleAnim.animateTo(
+            targetValue = 1f,
+            animationSpec = spring(dampingRatio = 0.45f, stiffness = 400f),
+        )
+    }
+
+    /**
+     * Effectue un changement de valeur d'un [delta] (±[STEP_GOAL_STEP]).
+     * Déclenche le rebond et le retour haptique.
+     * @param isFirstOfLongPress vrai uniquement pour le premier cran du maintien (déclenche le rebond une fois).
+     */
+    fun applyDelta(delta: Int, isFirstOfLongPress: Boolean = false) {
+        val newGoal = (currentGoal + delta).coerceIn(STEP_GOAL_MIN, STEP_GOAL_MAX)
+        if (newGoal == currentGoal) return
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        onGoalSelected(newGoal)
+        if (!isFirstOfLongPress) {
+            bounceDirection = if (delta > 0) 1 else -1
+            bounceKey++
+        }
+    }
 
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -265,130 +304,142 @@ private fun StepGoalRow(
         ),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column {
-            // ── Ligne principale ───────────────────────────────────────────────
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(
-                        onClickLabel = if (expanded) "Fermer le picker d'objectif" else "Ouvrir le picker d'objectif",
-                    ) { expanded = !expanded }
-                    .padding(horizontal = 16.dp, vertical = 14.dp)
-                    .semantics { role = Role.Button },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "Pas par jour",
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    text = "${currentGoal.formatSteps()} pas",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(
-                    imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            // ── Bouton − ──────────────────────────────────────────────────────
+            StepperButton(
+                label = "−",
+                contentDesc = "Diminuer l'objectif",
+                enabled = currentGoal > STEP_GOAL_MIN,
+                onTap = {
+                    bounceDirection = -1
+                    bounceKey++
+                    applyDelta(-STEP_GOAL_STEP)
+                },
+                onLongPress = {
+                    // Premier cran du maintien : rebond unique
+                    bounceDirection = -1
+                    bounceKey++
+                    applyDelta(-STEP_GOAL_STEP, isFirstOfLongPress = true)
+                    // Répétition accélérée
+                    scope.launch {
+                        var intervalMs = 280L
+                        while (currentGoal - STEP_GOAL_STEP >= STEP_GOAL_MIN) {
+                            delay(intervalMs)
+                            applyDelta(-STEP_GOAL_STEP)
+                            intervalMs = (intervalMs * 0.82).toLong().coerceAtLeast(40L)
+                        }
+                    }
+                },
+            )
 
-            // ── Picker expandable ──────────────────────────────────────────────
-            // Si "Réduire les animations" est actif, affichage/masquage instantané.
-            AnimatedVisibility(
-                visible = expanded,
-                enter = if (reduceMotion) EnterTransition.None else expandVertically(),
-                exit = if (reduceMotion) ExitTransition.None else shrinkVertically(),
+            // ── Valeur centrale avec rebond ───────────────────────────────────
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics {
+                        // La valeur est annoncée par TalkBack ; les actions incrément/décrément
+                        // sont portées par les boutons − et + labellisés adjacents.
+                        contentDescription = "${currentGoal.formatSteps()} pas par jour"
+                    },
+                contentAlignment = Alignment.Center,
             ) {
-                Column {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                    StepGoalGrid(
-                        options = STEP_GOAL_OPTIONS,
-                        selectedGoal = currentGoal,
-                        onSelect = { goal ->
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                            } else {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            }
-                            onGoalSelected(goal)
-                            expanded = false
-                        },
-                        modifier = Modifier.padding(12.dp),
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = currentGoal.formatSteps(),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.scale(if (reduceMotion) 1f else scaleAnim.value),
+                    )
+                    Text(
+                        text = "pas / jour",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
+
+            // ── Bouton + ──────────────────────────────────────────────────────
+            StepperButton(
+                label = "+",
+                contentDesc = "Augmenter l'objectif",
+                enabled = currentGoal < STEP_GOAL_MAX,
+                onTap = {
+                    bounceDirection = 1
+                    bounceKey++
+                    applyDelta(+STEP_GOAL_STEP)
+                },
+                onLongPress = {
+                    bounceDirection = 1
+                    bounceKey++
+                    applyDelta(+STEP_GOAL_STEP, isFirstOfLongPress = true)
+                    scope.launch {
+                        var intervalMs = 280L
+                        while (currentGoal + STEP_GOAL_STEP <= STEP_GOAL_MAX) {
+                            delay(intervalMs)
+                            applyDelta(+STEP_GOAL_STEP)
+                            intervalMs = (intervalMs * 0.82).toLong().coerceAtLeast(40L)
+                        }
+                    }
+                },
+            )
         }
     }
 }
 
 /**
- * Grille des valeurs d'objectif (3 colonnes).
- * La cellule correspondant à [selectedGoal] est mise en couleur primaire.
+ * Bouton circulaire du stepper (− ou +).
+ * Gère le tap simple via [onTap] et l'appui long via [onLongPress].
+ * Désactivé aux bornes ([enabled] = false).
+ *
+ * @param label      Texte affiché dans le cercle ("−" ou "+")
+ * @param contentDesc Description pour TalkBack ("Diminuer l'objectif" / "Augmenter l'objectif")
+ * @param enabled     Faux quand la valeur est à la borne correspondante
+ * @param onTap       Callback déclenché sur un tap court
+ * @param onLongPress Callback déclenché au début d'un appui long (la répétition est gérée en interne)
  */
 @Composable
-private fun StepGoalGrid(
-    options: List<Int>,
-    selectedGoal: Int,
-    onSelect: (Int) -> Unit,
-    modifier: Modifier = Modifier,
+private fun StepperButton(
+    label: String,
+    contentDesc: String,
+    enabled: Boolean,
+    onTap: () -> Unit,
+    onLongPress: () -> Unit,
 ) {
-    val columns = 3
-    val rows = (options.size + columns - 1) / columns
-
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        for (row in 0 until rows) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                for (col in 0 until columns) {
-                    val index = row * columns + col
-                    if (index < options.size) {
-                        val goal = options[index]
-                        val isSelected = goal == selectedGoal
-                        GoalCell(
-                            goal = goal,
-                            isSelected = isSelected,
-                            onSelect = { onSelect(goal) },
-                            modifier = Modifier.weight(1f),
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** Cellule individuelle du picker d'objectif. */
-@Composable
-private fun GoalCell(
-    goal: Int,
-    isSelected: Boolean,
-    onSelect: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val label = goal.formatSteps()
     Box(
         contentAlignment = Alignment.Center,
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
             .background(
-                if (isSelected) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.surface,
+                if (enabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
             )
-            .clickable(onClickLabel = "Objectif $label pas") { onSelect() }
-            .padding(vertical = 10.dp)
-            .semantics { contentDescription = "Objectif $label pas${if (isSelected) ", sélectionné" else ""}" },
+            .then(
+                if (enabled) Modifier.pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = { onTap() },
+                        onLongPress = { onLongPress() },
+                    )
+                } else Modifier
+            )
+            .semantics {
+                contentDescription = contentDesc
+                role = Role.Button
+            },
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
-            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Medium,
+            color = if (enabled) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
         )
     }
 }
