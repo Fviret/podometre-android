@@ -54,6 +54,7 @@ class JourneyListScreenTest {
         viewModel = JourneyListViewModel(
             journeyProgressRepository = journeyProgressRepository,
             userPreferencesRepository = TestFactories.userPreferencesRepository(),
+            healthConnectRepository = TestFactories.healthConnectRepository(context),
         )
     }
 
