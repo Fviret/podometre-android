@@ -467,7 +467,7 @@ private fun RingColorRow(
                             .clickable(
                                 onClickLabel = "Définit la couleur de l'anneau sur $name",
                             ) {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onColorSelected(id)
                             }
                             .semantics {
@@ -501,6 +501,7 @@ private fun DarkModeRow(
     isDarkMode: Boolean,
     onToggle: (Boolean) -> Unit,
 ) {
+    val haptic = LocalHapticFeedback.current
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
@@ -521,7 +522,10 @@ private fun DarkModeRow(
             )
             Switch(
                 checked = isDarkMode,
-                onCheckedChange = onToggle,
+                onCheckedChange = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onToggle(it)
+                },
                 modifier = Modifier.semantics {
                     contentDescription = if (isDarkMode) "Mode sombre activé" else "Mode sombre désactivé"
                 },
@@ -613,6 +617,7 @@ private fun ModuleToggleRow(
     checked: Boolean,
     onToggle: (Boolean) -> Unit,
 ) {
+    val haptic = LocalHapticFeedback.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -626,7 +631,10 @@ private fun ModuleToggleRow(
         )
         Switch(
             checked = checked,
-            onCheckedChange = onToggle,
+            onCheckedChange = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onToggle(it)
+            },
             modifier = Modifier.semantics {
                 contentDescription = "$label : ${if (checked) "activé" else "désactivé"}"
             },
