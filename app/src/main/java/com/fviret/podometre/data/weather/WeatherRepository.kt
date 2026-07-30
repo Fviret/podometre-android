@@ -2,6 +2,8 @@ package com.fviret.podometre.data.weather
 
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -73,6 +75,7 @@ class WeatherRepository @Inject constructor(
     private val okHttpClient: OkHttpClient,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
+    private val mutex = Mutex()
 
     private var cachedState: WeatherState? = null
     private var cachedForecasts: List<DailyForecast> = emptyList()
@@ -105,9 +108,9 @@ class WeatherRepository @Inject constructor(
         return cachedData
     }
 
-    private suspend fun ensureFresh(latitude: Double, longitude: Double) {
+    private suspend fun ensureFresh(latitude: Double, longitude: Double) = mutex.withLock {
         val now = System.currentTimeMillis()
-        if (cachedState != null && now - lastFetchMs < CACHE_DURATION_MS) return
+        if (cachedState != null && now - lastFetchMs < CACHE_DURATION_MS) return@withLock
         fetch(latitude, longitude)
     }
 

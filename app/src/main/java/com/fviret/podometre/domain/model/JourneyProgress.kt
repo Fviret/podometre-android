@@ -17,6 +17,7 @@ import java.util.UUID
  * @property unlockedMilestoneIds UUIDs des jalons débloqués
  * @property startDate Date de début du trajet (référence pour la requête HK idempotente)
  * @property lastUpdatedDate Dernière mise à jour depuis Health Connect
+ * @property completionDateMs Timestamp (ms) de complétion du trajet, null si non terminé
  */
 @Serializable
 data class JourneyProgress(

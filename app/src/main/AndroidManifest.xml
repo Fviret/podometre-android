@@ -46,6 +46,11 @@
             android:exported="true"
             tools:ignore="Instantiatable" />
 
+        <!-- Receiver AlarmManager pour la pensée du jour à midi — exporté=false (intent explicite) -->
+        <receiver
+            android:name=".worker.AphorismNoonReceiver"
+            android:exported="false" />
+
         <!-- WorkManager : initialisation on-demand via PodoMetreApplication.workManagerConfiguration -->
         <provider
             android:name="androidx.startup.InitializationProvider"
