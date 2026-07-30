@@ -3,6 +3,7 @@ package com.fviret.podometre.ui.activity
 import android.graphics.Paint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -59,7 +60,8 @@ fun WeeklyChartView(
     /** Vrai quand aucune donnée n'est disponible pour les deux semaines. */
     val allZero = currentWeek.all { it == 0L } && previousWeek.all { it == 0L }
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    val tapModifier = if (onTap != null) Modifier.clickable(onClick = onTap) else Modifier
+    Column(modifier = modifier.fillMaxWidth().then(tapModifier)) {
         // ── En-tête : titre + légende ──────────────────────────────────────────
         Row(
             modifier = Modifier
