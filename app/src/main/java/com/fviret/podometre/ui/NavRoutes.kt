@@ -9,6 +9,7 @@ object NavRoutes {
     const val JOURNEYS = "journeys"
     const val SETTINGS = "settings"
 
+    const val HISTORY = "history"
     const val JOURNEY_DETAIL = "journey_detail/{journeyId}"
 
     /** Construit la route de navigation vers le détail d'un trajet. */

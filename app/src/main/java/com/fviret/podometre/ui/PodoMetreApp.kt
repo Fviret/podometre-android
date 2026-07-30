@@ -28,6 +28,7 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.fviret.podometre.R
 import com.fviret.podometre.ui.activity.ActivityScreen
+import com.fviret.podometre.ui.history.HistoryScreen
 import com.fviret.podometre.ui.journey.JourneyDetailScreen
 import com.fviret.podometre.ui.journey.JourneyListScreen
 import com.fviret.podometre.ui.onboarding.OnboardingScreen
@@ -123,7 +124,12 @@ private fun MainContent() {
             startDestination = NavRoutes.ACTIVITY,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(NavRoutes.ACTIVITY) { ActivityScreen() }
+            composable(NavRoutes.ACTIVITY) {
+                ActivityScreen(onNavigateToHistory = { navController.navigate(NavRoutes.HISTORY) })
+            }
+            composable(NavRoutes.HISTORY) {
+                HistoryScreen(onBack = { navController.popBackStack() })
+            }
             composable(NavRoutes.JOURNEYS) {
                 JourneyListScreen(
                     onNavigateToDetail = { journeyId ->
