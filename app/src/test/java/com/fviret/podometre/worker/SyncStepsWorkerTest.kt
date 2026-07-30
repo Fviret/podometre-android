@@ -22,15 +22,20 @@ class SyncStepsWorkerTest {
     // ─── isStepsValueValid ───────────────────────────────────────────────────
 
     @Test
-    fun `quand readSteps retourne 0 le cache ne doit pas etre mis a jour et le worker doit retenter`() {
-        // isStepsValueValid(0L) == false → SyncStepsWorker retourne Result.retry()
-        assertFalse(isStepsValueValid(0L))
+    fun `quand readSteps retourne 0 la mise en cache est autorisee (debut de journee sans activite)`() {
+        // 0 est une valeur légitime — pas de retry
+        assertTrue(isStepsValueValid(0L))
     }
 
     @Test
     fun `quand readSteps retourne une valeur positive la mise en cache est autorisee`() {
         assertTrue(isStepsValueValid(1L))
         assertTrue(isStepsValueValid(8_500L))
+    }
+
+    @Test
+    fun `quand readSteps retourne une valeur negative HC est indisponible et le worker doit retenter`() {
+        assertFalse(isStepsValueValid(-1L))
     }
 
     // ─── shouldNotifyGoalReached ─────────────────────────────────────────────
