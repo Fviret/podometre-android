@@ -59,7 +59,8 @@ import com.fviret.podometre.ui.theme.AppColors
  */
 @Composable
 fun ActivityScreen(
-    viewModel: ActivityViewModel = hiltViewModel()
+    viewModel: ActivityViewModel = hiltViewModel(),
+    onNavigateToHistory: () -> Unit = {},
 ) {
     val prefs by viewModel.userPreferences.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -319,6 +320,7 @@ fun ActivityScreen(
                 todayIndex = uiState.weekTodayIndex,
                 accentColor = AppColors.colorForId(prefs.ringColorId),
                 modifier = Modifier.fillMaxWidth(),
+                onTap = onNavigateToHistory,
             )
         }
     }

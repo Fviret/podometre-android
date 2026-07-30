@@ -1,7 +1,10 @@
 package com.fviret.podometre.domain.model
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.UUID
 
 /**
@@ -14,6 +17,7 @@ import java.util.UUID
  * @property unlockedMilestoneIds UUIDs des jalons débloqués
  * @property startDate Date de début du trajet (référence pour la requête HK idempotente)
  * @property lastUpdatedDate Dernière mise à jour depuis Health Connect
+ * @property completionDateMs Timestamp (ms) de complétion du trajet, null si non terminé
  */
 @Serializable
 data class JourneyProgress(
@@ -21,5 +25,12 @@ data class JourneyProgress(
     val totalKm: Double = 0.0,
     val unlockedMilestoneIds: Set<String> = emptySet(),  // UUIDs sérialisés
     val startDateMs: Long = System.currentTimeMillis(),
-    val lastUpdatedMs: Long = System.currentTimeMillis()
-)
+    val lastUpdatedMs: Long = System.currentTimeMillis(),
+    val completionDateMs: Long? = null,
+) {
+    /** Date de complétion du trajet, dérivée de [completionDateMs]. Non sérialisée. */
+    @Transient
+    val completionDate: LocalDate? = completionDateMs?.let {
+        Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
+    }
+}

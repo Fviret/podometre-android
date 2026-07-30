@@ -1,10 +1,16 @@
 package com.fviret.podometre.ui.journey
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -23,6 +29,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -46,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.invisibleToUser
 import androidx.compose.ui.semantics.semantics
@@ -62,6 +70,7 @@ import com.fviret.podometre.domain.model.formatKm
 import com.fviret.podometre.domain.model.progressPercent
 import androidx.compose.ui.res.stringResource
 import com.fviret.podometre.R
+import com.fviret.podometre.ui.theme.rememberReduceMotion
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -92,6 +101,17 @@ fun JourneyListScreen(
         }
     }
 
+    val reduceMotion = rememberReduceMotion()
+
+    // Catégories dépliées par défaut : celle contenant le trajet en cours
+    val defaultExpanded = remember(activeJourneyId) {
+        journeysByCategory
+            .filter { (_, journeys) -> journeys.any { it.id.toString() == activeJourneyId } }
+            .map { it.first }
+            .toSet()
+    }
+    var expandedCategories by rememberSaveable { mutableStateOf(defaultExpanded) }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(0.dp)
@@ -117,36 +137,77 @@ fun JourneyListScreen(
             }
         }
 
+        // KAN-128 : card d'incitation quand aucun trajet n'est en cours
+        if (activeJourneyCard == null) {
+            item(key = "empty_state_card") {
+                EmptyJourneyCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+
+        // KAN-129 : catégories en accordéon
         journeysByCategory.forEach { (category, journeys) ->
-            // Filtrer le trajet en cours de cette section
             val filteredJourneys = journeys.filter { it.id.toString() != activeJourneyId }
             if (filteredJourneys.isEmpty()) return@forEach
 
-            item(key = category.name) {
-                Text(
-                    text = category.displayName.uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            val completed = filteredJourneys.filter { it.id.toString() in preferences.completedJourneyIds }
+            val notCompleted = filteredJourneys.filter { it.id.toString() !in preferences.completedJourneyIds }
+            val remainingCount = notCompleted.size
+            val isExpanded = category in expandedCategories
+
+            item(key = "${category.name}_header") {
+                CategoryHeader(
+                    displayName = category.displayName,
+                    remainingCount = remainingCount,
+                    isExpanded = isExpanded,
+                    reduceMotion = reduceMotion,
+                    onClick = {
+                        expandedCategories = if (isExpanded)
+                            expandedCategories - category
+                        else
+                            expandedCategories + category
+                    }
                 )
             }
-            items(filteredJourneys, key = { it.id.toString() }) { journey ->
-                val progress = progressMap[journey.id.toString()]
-                val isCompleted = journey.id.toString() in preferences.completedJourneyIds
-                val isInProgress = progress != null && !isCompleted
-                JourneyCard(
-                    journey = journey,
-                    progress = progress,
-                    isCompleted = isCompleted,
-                    onPreview = { selectedJourney = journey },
-                    onDetail = if (isInProgress) {
-                        { onNavigateToDetail(journey.id.toString()) }
-                    } else null,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                )
+
+            if (isExpanded) {
+                // KAN-130 : grille des badges terminés en tête
+                if (completed.isNotEmpty()) {
+                    item(key = "${category.name}_completed_label") {
+                        Text(
+                            text = "TERMINÉS",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 16.dp, top = 4.dp, end = 16.dp, bottom = 2.dp)
+                        )
+                    }
+                    item(key = "${category.name}_badges") {
+                        CompletedBadgesGrid(
+                            journeys = completed,
+                            progressMap = progressMap,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
+                items(notCompleted, key = { it.id.toString() }) { journey ->
+                    val progress = progressMap[journey.id.toString()]
+                    val isInProgress = progress != null
+                    JourneyCard(
+                        journey = journey,
+                        progress = progress,
+                        isCompleted = false,
+                        onPreview = { selectedJourney = journey },
+                        onDetail = if (isInProgress) {
+                            { onNavigateToDetail(journey.id.toString()) }
+                        } else null,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    )
+                }
             }
+
             item(key = "${category.name}_spacer") {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
             }
         }
 
@@ -189,6 +250,218 @@ fun JourneyListScreen(
             )
         }
     }
+}
+
+/**
+ * Card d'incitation affichée quand aucun trajet n'est en cours (KAN-128).
+ * Même gabarit que [ActiveJourneyCard] pour une mise en page stable entre les états.
+ * Purement informatif — aucune action au tap.
+ */
+@Composable
+private fun EmptyJourneyCard(modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = "🗺️", style = MaterialTheme.typography.titleLarge)
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = "Aucun trajet en cours",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "Choisissez votre prochain trajet ci-dessous.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+/**
+ * En-tête de catégorie cliquable pour l'accordéon (KAN-129).
+ * Affiche le nom, le nombre de trajets restants, et un chevron qui pivote.
+ */
+@Composable
+private fun CategoryHeader(
+    displayName: String,
+    remainingCount: Int,
+    isExpanded: Boolean,
+    reduceMotion: Boolean,
+    onClick: () -> Unit,
+) {
+    val rotation by animateFloatAsState(
+        targetValue = if (isExpanded) 90f else 0f,
+        label = "chevron_rotation",
+        animationSpec = if (reduceMotion) snap() else spring()
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = displayName.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+        if (remainingCount > 0) {
+            Text(
+                text = "$remainingCount",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+            contentDescription = if (isExpanded) "Replier $displayName" else "Déplier $displayName",
+            modifier = Modifier
+                .size(12.dp)
+                .graphicsLayer { rotationZ = rotation },
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/**
+ * Grille fluide des trajets terminés dans une catégorie (KAN-130).
+ * Chaque badge ouvre une popup de complétion au tap.
+ */
+@OptIn(ExperimentalLayoutApi::class, ExperimentalComposeUiApi::class)
+@Composable
+private fun CompletedBadgesGrid(
+    journeys: List<Journey>,
+    progressMap: Map<String, JourneyProgress>,
+    modifier: Modifier = Modifier
+) {
+    var popupJourney by remember { mutableStateOf<Journey?>(null) }
+
+    FlowRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        journeys.forEach { journey ->
+            CompletedBadgeChip(
+                journey = journey,
+                onClick = { popupJourney = journey }
+            )
+        }
+    }
+
+    popupJourney?.let { journey ->
+        CompletedJourneyPopup(
+            journey = journey,
+            progress = progressMap[journey.id.toString()],
+            onDismiss = { popupJourney = null }
+        )
+    }
+}
+
+/** Chip compacte représentant un trajet terminé : emoji + nom. */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
+@Composable
+private fun CompletedBadgeChip(
+    journey: Journey,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        modifier = Modifier.semantics {
+            contentDescription = "${journey.name}, terminé. Appuyer pour les détails."
+        }
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = journey.emoji,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.semantics { invisibleToUser() }
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = journey.name,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+/**
+ * Popup de complétion d'un trajet terminé.
+ * Affiche : emoji, nom, sous-titre, date de complétion, distance totale, nombre d'étapes.
+ */
+@Composable
+private fun CompletedJourneyPopup(
+    journey: Journey,
+    progress: JourneyProgress?,
+    onDismiss: () -> Unit,
+) {
+    val completionDate = progress?.completionDate
+    val formatter = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.FRENCH)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(journey.emoji, style = MaterialTheme.typography.headlineMedium)
+                Spacer(Modifier.width(12.dp))
+                Text(journey.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    journey.subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(8.dp))
+                if (completionDate != null) {
+                    Text(
+                        text = "Terminé le ${completionDate.format(formatter)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Text(
+                    text = "Distance : ${formatKm(journey.totalKm)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "${journey.milestones.size} étapes",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Fermer") }
+        }
+    )
 }
 
 /**
