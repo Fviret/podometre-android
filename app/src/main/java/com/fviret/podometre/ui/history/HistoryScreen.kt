@@ -497,7 +497,7 @@ private fun LongestStreakCard(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text = "🔥", style = MaterialTheme.typography.headlineMedium)
+            Text(text = "🔥", style = MaterialTheme.typography.displaySmall)
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(

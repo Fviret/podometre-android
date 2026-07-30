@@ -26,9 +26,10 @@ data class JourneyProgress(
     val unlockedMilestoneIds: Set<String> = emptySet(),  // UUIDs sérialisés
     val startDateMs: Long = System.currentTimeMillis(),
     val lastUpdatedMs: Long = System.currentTimeMillis(),
+    /** Timestamp de complétion du trajet (null si non terminé). */
     val completionDateMs: Long? = null,
 ) {
-    /** Date de complétion du trajet, dérivée de [completionDateMs]. Non sérialisée. */
+    /** Date de complétion sous forme [LocalDate], calculée depuis [completionDateMs]. */
     @Transient
     val completionDate: LocalDate? = completionDateMs?.let {
         Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
