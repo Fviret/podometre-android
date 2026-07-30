@@ -6,7 +6,7 @@ import com.fviret.podometre.domain.model.Milestone
 import java.util.UUID
 
 /**
- * Catalogue des 19 trajets virtuels de l'application.
+ * Catalogue des 27 trajets virtuels de l'application.
  * Équivalent iOS : JourneyData.swift
  *
  * Chaque trajet dispose de jalons kilométriques répartis sur sa distance totale.
@@ -84,6 +84,77 @@ object JourneyData {
                     Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000017"), 30.0, "Tour Eiffel", "Tu passes au pied de la Dame de Fer. Les jambes chauffent, mais Paris te porte."),
                     Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000018"), 37.0, "Avenue Foch", "La montée finale vers l'Arc de Triomphe commence. Plus que 5 km !"),
                     Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000019"), 42.0, "Arc de Triomphe", "Tu traverses la ligne d'arrivée sur les Champs-Élysées. Paris t'acclame !"),
+                )
+            ),
+            // ── KAN-141 : Promenades cinéma ─────────────────────────────────
+            Journey(
+                id = UUID.fromString("a0000000-0000-0000-0000-000000000006"),
+                name = "Amélie Poulain — Montmartre",
+                subtitle = "Sur les pas d'Amélie dans la Butte",
+                totalKm = 4.0,
+                category = JourneyCategory.WALK,
+                emoji = "🎞️",
+                milestones = listOf(
+                    Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000020"), 1.0, "Café des Deux Moulins", "Le café d'Amélie, ses lampes rouges et son comptoir de zinc. C'est ici qu'elle rêve de changer le monde en petites actions."),
+                    Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000021"), 2.0, "Épicerie Collignon", "La boutique du grincheux, où Amélie organise en secret sa malicieuse petite vengeance."),
+                    Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000022"), 3.0, "Parvis du Sacré-Cœur", "Le dôme blanc domine Paris. Amélie s'y assoit, regarde la ville scintiller et compte ses bonheurs discrets."),
+                    Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000023"), 4.0, "Canal Saint-Martin", "Ricochets sur l'eau verte, écluses et péniches. La fin de la balade d'Amélie, là où tout recommence."),
+                )
+            ),
+            Journey(
+                id = UUID.fromString("a0000000-0000-0000-0000-000000000007"),
+                name = "Before Sunrise — Vienne de nuit",
+                subtitle = "La nuit romantique de Jesse et Céline",
+                totalKm = 7.0,
+                category = JourneyCategory.WALK,
+                emoji = "🌙",
+                milestones = listOf(
+                    Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000024"), 1.5, "Gare de Vienne", "Jesse et Céline descendent du train. Une conversation en wagon, et voilà une nuit entière à inventer."),
+                    Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000025"), 3.0, "Café Sperl", "Le café viennois au bois sombre où ils parlent de tout et de rien. Les mots remplissent le temps qu'il reste."),
+                    Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000026"), 5.0, "Grande roue du Prater", "La roue tourne lentement au-dessus de Vienne illuminée. En cabin suspendue, le silence dit l'essentiel."),
+                    Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000027"), 7.0, "Pont sur le Danube", "L'aube blanchit le fleuve. Ils se séparent sans numéro de téléphone. Dans six mois, même endroit."),
+                )
+            ),
+            Journey(
+                id = UUID.fromString("a0000000-0000-0000-0000-000000000008"),
+                name = "Notting Hill — Portobello Road",
+                subtitle = "La balade de William et Anna Scott",
+                totalKm = 3.0,
+                category = JourneyCategory.WALK,
+                emoji = "🌹",
+                milestones = listOf(
+                    Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000028"), 0.5, "Librairie de voyage", "La boutique de William, spécialisée en voyages. C'est ici qu'une actrice célèbre entre par accident et change tout."),
+                    Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000029"), 1.5, "Portobello Market", "Le marché aux puces du samedi envahit la rue de couleurs et de bric-à-brac. Touristes et habitués se frôlent."),
+                    Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000030"), 2.5, "Jardin communal secret", "Derrière une porte discrète, un jardin s'ouvre sur la ville. William et Anna y trouvent un moment hors du temps."),
+                    Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000031"), 3.0, "La porte bleue", "La porte bleue de William, emblème du film. Elle ouvre sur une vie ordinaire, soudain extraordinaire."),
+                )
+            ),
+            Journey(
+                id = UUID.fromString("a0000000-0000-0000-0000-000000000009"),
+                name = "Rocky — Les marches du musée",
+                subtitle = "L'entraînement de Rocky Balboa à Philadelphie",
+                totalKm = 3.0,
+                category = JourneyCategory.WALK,
+                emoji = "🥊",
+                milestones = listOf(
+                    Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000032"), 0.8, "Marché de South Philly", "Les rues résidentielles de South Philadelphia, où Rocky court à l'aube dans le froid, saluant poissonniers et marchands."),
+                    Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000033"), 1.8, "Fontaine de Logan Square", "La fontaine monumentale de Ben Franklin Parkway. Rocky la contourne au petit trot, son souffle visible dans l'air froid."),
+                    Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000034"), 3.0, "Escaliers du Philadelphia Museum of Art", "Les 72 marches que Rocky gravit en courant, poings levés, au son de la fanfare. La statue de bronze l'attend en bas."),
+                )
+            ),
+            Journey(
+                id = UUID.fromString("a0000000-0000-0000-0000-000000000010"),
+                name = "Lost in Translation — Tokyo de nuit",
+                subtitle = "La dérive de Bob et Charlotte dans la ville lumière",
+                totalKm = 6.0,
+                category = JourneyCategory.WALK,
+                emoji = "🌆",
+                milestones = listOf(
+                    Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000035"), 1.0, "Bar du Park Hyatt Tokyo", "Au 52e étage, Bob et Charlotte se croisent parmi les néons flottants. La ville scintille 200 mètres en dessous."),
+                    Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000036"), 2.5, "Croisement de Shibuya", "Des centaines de piétons se croisent en silence au plus grand carrefour du monde. Personne ne se regarde."),
+                    Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000037"), 4.0, "Golden Gai — Shinjuku", "Le labyrinthe de ruelles et de minuscules bars de Shinjuku. Bob et Charlotte commandent une bière dans un couloir."),
+                    Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000038"), 5.0, "Temple bouddhiste", "Un temple silencieux au milieu de la ville infinie. Charlotte s'y arrête, cherche quelque chose qu'elle ne sait pas nommer."),
+                    Milestone(UUID.fromString("b0000000-0000-0000-0000-000000000039"), 6.0, "Départ du Park Hyatt", "Bob murmure quelque chose à l'oreille de Charlotte dans la rue. On n'entend pas. On n'a pas besoin d'entendre."),
                 )
             ),
 
@@ -206,6 +277,53 @@ object JourneyData {
                 )
             ),
 
+            // ── KAN-141 : Nouveaux sentiers ─────────────────────────────────
+            Journey(
+                id = UUID.fromString("c0000000-0000-0000-0000-000000000007"),
+                name = "Sentier des Douaniers",
+                subtitle = "Cap Fréhel → Dahouet, la Côte d'Émeraude",
+                totalKm = 65.0,
+                category = JourneyCategory.TRAIL,
+                emoji = "🌊",
+                milestones = listOf(
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000048"), 8.0, "Cap Fréhel", "Les falaises de grès rose plongent à 70 m dans la Manche. Le phare veille depuis 1847, visible à 110 km par temps clair."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000049"), 22.0, "Fort La Latte", "La forteresse médiévale surgit sur un éperon rocheux. Les douaniers y guettaient les contrebandiers de sel au XVIIIe siècle."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000050"), 38.0, "Erquy", "Le port de pêche aux coquilles Saint-Jacques, encadré de landes roses à bruyère. Une pause méritée face à la baie."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000051"), 52.0, "Cap d'Erquy", "La lande sauvage au bout du cap offre un panorama à 360° sur la Manche. Tu entends le vent avant de le voir."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000052"), 65.0, "Dahouet", "Le petit port breton à marée basse, ses bateaux échoués sur la vase dorée. La Côte d'Émeraude s'est laissé apprivoiser."),
+                )
+            ),
+            Journey(
+                id = UUID.fromString("c0000000-0000-0000-0000-000000000008"),
+                name = "Chemin de Stevenson",
+                subtitle = "Le Puy-en-Velay → La Bastide-Puylaurent, GR70",
+                totalKm = 75.0,
+                category = JourneyCategory.TRAIL,
+                emoji = "🐴",
+                milestones = listOf(
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000053"), 8.0, "Le Puy-en-Velay", "Robert Louis Stevenson part d'ici en 1878 avec son ânesse Modestine. Son récit donnera le GR70, 145 ans plus tard."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000054"), 22.0, "Bouchet-Saint-Nicolas", "Le lac de cratère volcanique scintille dans la lumière du soir. Stevenson y campa sous la pluie, fidèle à son ânesse récalcitrante."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000055"), 38.0, "Pradelles", "Village médiéval perché dont les remparts dominent l'Allier. L'air de Haute-Loire est vif et piquant comme ses habitants."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000056"), 55.0, "Langogne", "Le bourg de marché au bord de l'Allier. Stevenson y vendit Modestine après 12 jours de voyage ensemble."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000057"), 75.0, "La Bastide-Puylaurent", "Le premier tronçon du GR70 s'achève. Les Cévennes s'annoncent à l'horizon. La suite est encore plus sauvage."),
+                )
+            ),
+            Journey(
+                id = UUID.fromString("c0000000-0000-0000-0000-000000000009"),
+                name = "GR20 Nord",
+                subtitle = "Calenzana → Vizzavona, la moitié nord du GR20",
+                totalKm = 90.0,
+                category = JourneyCategory.TRAIL,
+                emoji = "⛰️",
+                milestones = listOf(
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000058"), 16.0, "Refuge de Carrozzu", "Premier refuge après Calenzana, niché au cœur des aiguilles de Bonifatu. Le pont de singe sur le torrent reste gravé à jamais."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000059"), 33.0, "Refuge de Tighjettu", "Perché à 1 683 m entre lacs et crêtes, il domine la Corse du Nord. D'ici tu vois les deux versants de l'île."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000060"), 49.0, "Refuge de Ciottulu di i Mori", "Les premières pozzines de haute Corse s'étalent en tapis vert autour des lacs d'altitude. Le silence est total."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000061"), 66.0, "Col de Vergio", "Point culminant du GR20 Nord, 1 477 m. La descente vers Vizzavona débute sous les pins laricio centenaires."),
+                    Milestone(UUID.fromString("d0000000-0000-0000-0000-000000000062"), 90.0, "Vizzavona", "La forêt de pins laricio offre une fraîcheur bienvenue. Tu atteins le cœur de la Corse — la moitié nord du GR20 est derrière toi."),
+                )
+            ),
+
             // ── HISTOIRE ────────────────────────────────────────────────────
             Journey(
                 id = UUID.fromString("e0000000-0000-0000-0000-000000000001"),
@@ -320,6 +438,30 @@ object JourneyData {
                     Milestone(UUID.fromString("f0000000-0000-0000-0000-000000000064"), 10500.0, "Shangdu", "La capitale d'été de Kublai Khan, immortalisée par Coleridge : « Xanadu ». Marco est reçu en audience."),
                     Milestone(UUID.fromString("f0000000-0000-0000-0000-000000000065"), 11200.0, "Le Grand Canal", "L'œuvre hydraulique des Song : 1 800 km de canaux reliant Pékin au Yangtsé. Marco n'en croit pas ses yeux."),
                     Milestone(UUID.fromString("f0000000-0000-0000-0000-000000000028"), 12000.0, "Khanbaliq (Pékin)", "Marco Polo arrive à la cour de Kublai Khan après 4 ans de voyage. Il y restera 17 ans. La légende commence."),
+                )
+            ),
+
+            // ── KAN-141 : Nouveau trajet Histoire ───────────────────────────
+            Journey(
+                id = UUID.fromString("e0000000-0000-0000-0000-000000000006"),
+                name = "Hannibal — Traversée des Alpes",
+                subtitle = "Carthagène → Bataille de la Trébie, 218 av. J.-C.",
+                totalKm = 1500.0,
+                category = JourneyCategory.HISTORY,
+                emoji = "🐘",
+                milestones = listOf(
+                    Milestone(UUID.fromString("f0000000-0000-0000-0000-000000000066"), 50.0, "Carthagène (Nouvelle-Carthage)", "Hannibal rassemble 90 000 fantassins, 12 000 cavaliers et 37 éléphants de guerre. La campagne qui changera Rome commence ici."),
+                    Milestone(UUID.fromString("f0000000-0000-0000-0000-000000000067"), 200.0, "Passage de l'Èbre", "Le traité de l'Èbre délimite les sphères d'influence. Hannibal le franchit, violant sciemment l'accord avec Rome."),
+                    Milestone(UUID.fromString("f0000000-0000-0000-0000-000000000068"), 350.0, "Pyrénées franchies", "Hannibal laisse 10 000 soldats en Espagne et force le passage des Pyrénées. Des tribus locales résistent — il les écarte."),
+                    Milestone(UUID.fromString("f0000000-0000-0000-0000-000000000069"), 500.0, "Gaule narbonnaise", "La traversée de la Gaule du Sud permet de recruter des Gaulois alliés. Rome tente d'intercepter l'armée — trop tard."),
+                    Milestone(UUID.fromString("f0000000-0000-0000-0000-000000000070"), 650.0, "Passage du Rhône", "Hannibal franchit le Rhône en quatre jours sur des radeaux. Les éléphants traversent sur des pontons camouflés en berges."),
+                    Milestone(UUID.fromString("f0000000-0000-0000-0000-000000000071"), 800.0, "Contreforts alpins", "L'armée s'élève vers les Alpes. Allobroges embusqués dans les défilés : Hannibal les contourne de nuit par les crêtes."),
+                    Milestone(UUID.fromString("f0000000-0000-0000-0000-000000000072"), 950.0, "Ascension du col", "La neige et le vertige ralentissent la colonne. Les éléphants paniquent sur les à-pics. Hannibal encourage ses hommes du pied des falaises."),
+                    Milestone(UUID.fromString("f0000000-0000-0000-0000-000000000073"), 1050.0, "Sommet du col", "15 jours pour franchir les Alpes. Du sommet, Hannibal désigne l'Italie à ses soldats épuisés : « Vous franchissez les murs de Rome. »"),
+                    Milestone(UUID.fromString("f0000000-0000-0000-0000-000000000074"), 1150.0, "Descente périlleuse", "La descente est plus meurtrière encore que la montée. Éboulements, pistes étroites, fatigue. Il reste 26 000 hommes sur 90 000."),
+                    Milestone(UUID.fromString("f0000000-0000-0000-0000-000000000075"), 1280.0, "Sortie des Alpes", "L'armée débouche dans la plaine du Pô. Les Celtes cisalpins rejoignent Hannibal en masse : ils haïssent Rome autant que lui."),
+                    Milestone(UUID.fromString("f0000000-0000-0000-0000-000000000076"), 1400.0, "Siège de Turin", "La première ville romaine de la plaine tombe en deux jours. Le message est clair : Hannibal est en Italie pour rester."),
+                    Milestone(UUID.fromString("f0000000-0000-0000-0000-000000000077"), 1500.0, "Bataille de la Trébie", "Hannibal détruit deux légions romaines en tendant un piège de cavalerie. Rome tremble. Aucun général romain ne l'arrêtera ainsi."),
                 )
             ),
 

@@ -34,8 +34,8 @@ class JourneyDataIntegrityTest {
     // ── Nombre de trajets ────────────────────────────────────────────────────
 
     @Test
-    fun `le catalogue contient exactement 19 trajets`() {
-        assertEquals(19, allJourneys.size)
+    fun `le catalogue contient exactement 28 trajets`() {
+        assertEquals(28, allJourneys.size)
     }
 
     // ── Cohérence des jalons ─────────────────────────────────────────────────
