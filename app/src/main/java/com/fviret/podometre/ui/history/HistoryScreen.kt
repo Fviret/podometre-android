@@ -638,5 +638,43 @@ private fun MetricChip(label: String, value: String) {
 }
 
 /** Formate un nombre de pas en français avec séparateur d'espace. */
-private fun formatSteps(steps: Long): String =
+internal fun formatSteps(steps: Long): String =
     "%,d".format(steps).replace(',', ' ')
+
+/**
+ * Calcule le pourcentage du tour du monde accompli (0.0–1.0, plafonné).
+ * Base : circonférence terrestre [EARTH_CIRCUMFERENCE_KM] = 40 075 km.
+ */
+internal fun worldTourPercent(totalKm: Double): Double =
+    (totalKm / EARTH_CIRCUMFERENCE_KM * 100.0).coerceIn(0.0, 100.0)
+
+/**
+ * Calcule la distance restante pour faire le tour du monde.
+ * Toujours >= 0 — plafonnée à 0 si [totalKm] dépasse la circonférence.
+ */
+internal fun kmRemaining(totalKm: Double): Double =
+    (EARTH_CIRCUMFERENCE_KM - totalKm).coerceAtLeast(0.0)
+
+/**
+ * Calcule la moyenne journalière d'une semaine depuis son total de pas.
+ * Retourne 0 si [totalSteps] est nul ou négatif.
+ */
+internal fun weekAverage(totalSteps: Long): Long =
+    if (totalSteps > 0L) totalSteps / 7L else 0L
+
+/**
+ * Détermine si un mois est dans le futur pour l'année affichée.
+ * Utilisé pour griser les barres de mois non encore échus dans [MonthlyBarChart].
+ */
+internal fun isFutureMonth(
+    displayedYear: Int,
+    month: Month,
+    today: LocalDate = LocalDate.now(),
+): Boolean = displayedYear == today.year && month.value > today.monthValue
+
+/**
+ * Calcule le ratio de hauteur d'une barre par rapport au maximum (0f–1f).
+ * Retourne 0f si [maxVal] est nul pour éviter toute division par zéro.
+ */
+internal fun trendBarHeightRatio(total: Long, maxVal: Long): Float =
+    if (maxVal > 0L) (total.toFloat() / maxVal.toFloat()).coerceIn(0f, 1f) else 0f
