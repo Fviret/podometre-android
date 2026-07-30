@@ -21,6 +21,8 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -191,13 +193,25 @@ class JourneyProgressRepository @Inject constructor(
     // ── Persistance ─────────────────────────────────────────────────────────
 
     /**
-     * Écrit la map complète dans [FILE_NAME] de manière atomique (fichier temp + rename).
+     * Écrit la map complète dans [FILE_NAME] de manière atomique (write temp + Files.move).
+     * [Files.move] avec [StandardCopyOption.ATOMIC_MOVE] garantit que le fichier final est
+     * soit l'ancienne version soit la nouvelle — jamais un état intermédiaire corrompu.
+     * Lève [IOException] si le rename échoue (contrairement à [File.renameTo] qui est silencieux).
      */
     @Throws(IOException::class)
     private fun persist(map: Map<String, JourneyProgress>) {
         val tmp = File(context.filesDir, "$FILE_NAME.tmp")
         tmp.writeText(json.encodeToString(map))
-        tmp.renameTo(file)
+        try {
+            Files.move(
+                tmp.toPath(), file.toPath(),
+                StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.ATOMIC_MOVE,
+            )
+        } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
+            // Fallback non-atomique si le système de fichiers ne supporte pas ATOMIC_MOVE.
+            Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        }
     }
 
     companion object {

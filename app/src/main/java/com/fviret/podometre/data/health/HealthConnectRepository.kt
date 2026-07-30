@@ -452,6 +452,30 @@ class HealthConnectRepository @Inject constructor(
     }
 
     /**
+     * Retourne l'année du plus ancien enregistrement de pas dans Health Connect.
+     * Utilisé par [com.fviret.podometre.ui.history.HistoryViewModel] pour borner
+     * la navigation par année en arrière.
+     * Sur émulateur, retourne l'année courante moins 2.
+     */
+    suspend fun readEarliestDataYear(): Int {
+        if (isEmulator()) return LocalDate.now().year - 2
+        val zone = ZoneId.systemDefault()
+        val from = LocalDate.of(2015, 1, 1).atStartOfDay(zone).toInstant()
+        val to = ZonedDateTime.now(zone).toInstant()
+        val request = ReadRecordsRequest(
+            recordType = StepsRecord::class,
+            timeRangeFilter = TimeRangeFilter.between(from, to)
+        )
+        return runCatching {
+            client.get().readRecords(request).records
+                .minOfOrNull { it.startTime }
+                ?.atZone(zone)?.toLocalDate()?.year
+                ?: LocalDate.now().year
+        }.onFailure { Log.w(TAG, "readEarliestDataYear a échoué, retour à l'année courante", it) }
+            .getOrDefault(LocalDate.now().year)
+    }
+
+    /**
      * Lit le total cumulé de tous les pas dans Health Connect (depuis 2020).
      * Sur émulateur, retourne une valeur mock (1 234 567 pas).
      */

@@ -18,15 +18,6 @@ import java.util.Locale
 import javax.inject.Inject
 
 /**
- * Données d'un état de chargement.
- */
-sealed class LoadState<out T> {
-    object Loading : LoadState<Nothing>()
-    data class Success<T>(val data: T) : LoadState<T>()
-    data class Error(val message: String) : LoadState<Nothing>()
-}
-
-/**
  * Modèle d'état UI pour l'écran Historique.
  */
 data class HistoryUiState(
@@ -90,12 +81,13 @@ class HistoryViewModel @Inject constructor(
             val longestStreakDef = async { healthRepo.readLongestStreak(goal) }
             val totalStepsDef = async { healthRepo.readTotalCumulativeSteps() }
             val totalKmDef = async { healthRepo.readTotalCumulativeDistance() }
+            val oldestYearDef = async { healthRepo.readEarliestDataYear() }
 
             _uiState.value = HistoryUiState(
                 weeklyTotals = weeklyDef.await(),
                 monthlyTotals = monthlyDef.await(),
                 displayedYear = LocalDate.now().year,
-                oldestYear = 2020,
+                oldestYear = oldestYearDef.await(),
                 bestDay = bestDayDef.await(),
                 bestWeek = bestWeekDef.await(),
                 bestMonth = bestMonthDef.await(),
