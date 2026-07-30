@@ -24,7 +24,6 @@ import javax.inject.Singleton
  * Équivalent iOS : WeatherData dans WeatherService.swift
  */
 data class WeatherData(
-    val temperatureCelsius: Double,
     val weatherCode: Int,
     val timestampMs: Long = System.currentTimeMillis()
 )
@@ -79,7 +78,6 @@ class WeatherRepository @Inject constructor(
 
     private var cachedState: WeatherState? = null
     private var cachedForecasts: List<DailyForecast> = emptyList()
-    private var cachedData: WeatherData? = null
     private var lastFetchMs: Long = 0L
 
     /**
@@ -98,14 +96,6 @@ class WeatherRepository @Inject constructor(
     suspend fun getDailyForecasts(latitude: Double, longitude: Double): List<DailyForecast> {
         ensureFresh(latitude, longitude)
         return cachedForecasts
-    }
-
-    /**
-     * Retourne les données météo brutes (code WMO) pour les coordonnées données.
-     */
-    suspend fun getWeather(latitude: Double, longitude: Double): WeatherData? {
-        ensureFresh(latitude, longitude)
-        return cachedData
     }
 
     private suspend fun ensureFresh(latitude: Double, longitude: Double) = mutex.withLock {
@@ -135,8 +125,6 @@ class WeatherRepository @Inject constructor(
                 nextHourCode(current.time, hourly)?.let { isRainCode(it) } == true -> WeatherState.RAIN_SOON
                 else -> WeatherState.NO_RAIN
             }
-
-            cachedData = WeatherData(temperatureCelsius = 0.0, weatherCode = current.weatherCode)
 
             // Indexer les créneaux horaires par date
             val hourlyFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")

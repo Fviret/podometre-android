@@ -64,23 +64,16 @@ class SettingsViewModel @Inject constructor(
      * Chargé une seule fois au démarrage du ViewModel.
      * Map seuil (Long) → nombre de jours (Int).
      */
-    val stepBadgeCounts: StateFlow<Map<Long, Int>> = MutableStateFlow<Map<Long, Int>>(emptyMap()).also { flow ->
-        viewModelScope.launch {
-            flow.value = healthConnectRepository.readStepBadgeCounts(STEP_BADGE_THRESHOLDS)
-        }
-    }.asStateFlow()
+    private val _stepBadgeCounts = MutableStateFlow<Map<Long, Int>>(emptyMap())
+    val stepBadgeCounts: StateFlow<Map<Long, Int>> = _stepBadgeCounts.asStateFlow()
 
     /**
      * Première date à laquelle chaque seuil de pas a été atteint.
      * Null pour les seuils jamais atteints.
      * Chargé une seule fois au démarrage.
      */
-    val stepBadgeFirstDates: StateFlow<Map<Long, java.time.LocalDate?>> =
-        MutableStateFlow<Map<Long, java.time.LocalDate?>>(emptyMap()).also { flow ->
-            viewModelScope.launch {
-                flow.value = healthConnectRepository.readStepBadgeFirstEarnedDates(STEP_BADGE_THRESHOLDS)
-            }
-        }.asStateFlow()
+    private val _stepBadgeFirstDates = MutableStateFlow<Map<Long, java.time.LocalDate?>>(emptyMap())
+    val stepBadgeFirstDates: StateFlow<Map<Long, java.time.LocalDate?>> = _stepBadgeFirstDates.asStateFlow()
 
     /**
      * IDs des trajets entièrement complétés (totalKm >= Journey.totalKm).
@@ -109,10 +102,6 @@ class SettingsViewModel @Inject constructor(
             initialValue = 0,
         )
 
-    /**
-     * Persiste le nouvel objectif quotidien de pas dans DataStore.
-     * Déclenche une mise à jour réactive dans tous les ViewModels qui observent les préférences.
-     */
     /**
      * Persiste le nouvel objectif quotidien de pas dans DataStore.
      * Déclenche une mise à jour réactive dans tous les ViewModels qui observent les préférences.
@@ -196,4 +185,13 @@ class SettingsViewModel @Inject constructor(
 
     /** L'aphorisme du jour, chargé une seule fois au démarrage. */
     val todayAphorism: Aphorism = aphorismRepository.todayAphorism()
+
+    init {
+        viewModelScope.launch {
+            _stepBadgeCounts.value = healthConnectRepository.readStepBadgeCounts(STEP_BADGE_THRESHOLDS)
+        }
+        viewModelScope.launch {
+            _stepBadgeFirstDates.value = healthConnectRepository.readStepBadgeFirstEarnedDates(STEP_BADGE_THRESHOLDS)
+        }
+    }
 }

@@ -8,11 +8,11 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.location.Geocoder
+import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.work.WorkManager
 import com.fviret.podometre.data.aphorism.Aphorism
 import com.fviret.podometre.data.aphorism.AphorismRepository
 import com.fviret.podometre.data.health.HealthConnectRepository
@@ -23,7 +23,6 @@ import com.fviret.podometre.data.weather.HourlyForecast
 import com.fviret.podometre.data.weather.WeatherRepository
 import com.fviret.podometre.data.weather.WeatherState
 import com.fviret.podometre.util.isEmulator
-import com.fviret.podometre.worker.SyncStepsWorker
 import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -271,7 +270,6 @@ class ActivityViewModel @Inject constructor(
         loadCalendarMonth(YearMonth.now())
         loadWeeklyData()
         loadStreak()
-        SyncStepsWorker.schedule(WorkManager.getInstance(context))
         checkAphorismVisibility()
         // Ré-affiche la popup quand l'utilisateur réactive la feature depuis les Paramètres.
         viewModelScope.launch {
@@ -625,20 +623,37 @@ class ActivityViewModel @Inject constructor(
 
     /**
      * Reverse geocoding via Android [Geocoder] pour obtenir le nom de la ville.
+     * Utilise l'API callback (API 33+) ou l'API synchrone en fallback (API < 33).
      * Retourne null si le Geocoder est indisponible ou si aucun résultat n'est trouvé.
      */
-    @Suppress("DEPRECATION")
-    private suspend fun getCityName(lat: Double, lon: Double): String? =
-        withContext(Dispatchers.IO) {
-            runCatching {
-                if (!Geocoder.isPresent()) return@runCatching null
-                val geocoder = Geocoder(context, Locale.getDefault())
-                val addresses = geocoder.getFromLocation(lat, lon, 1)
-                addresses?.firstOrNull()?.locality
-                    ?: addresses?.firstOrNull()?.subAdminArea
-            }.onFailure { Log.w(TAG, "getCityName a échoué pour ($lat, $lon)", it) }
-                .getOrNull()
+    private suspend fun getCityName(lat: Double, lon: Double): String? {
+        if (!Geocoder.isPresent()) return null
+        val geocoder = Geocoder(context, Locale.getDefault())
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            suspendCancellableCoroutine { cont ->
+                runCatching {
+                    geocoder.getFromLocation(lat, lon, 1) { addresses ->
+                        val city = addresses.firstOrNull()?.locality
+                            ?: addresses.firstOrNull()?.subAdminArea
+                        cont.resume(city)
+                    }
+                }.onFailure { e ->
+                    Log.w(TAG, "getCityName a échoué pour ($lat, $lon)", e)
+                    cont.resume(null)
+                }
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val addresses = geocoder.getFromLocation(lat, lon, 1)
+                    addresses?.firstOrNull()?.locality
+                        ?: addresses?.firstOrNull()?.subAdminArea
+                }.onFailure { Log.w(TAG, "getCityName a échoué pour ($lat, $lon)", it) }
+                    .getOrNull()
+            }
         }
+    }
 
     companion object {
         private const val TAG = "ActivityViewModel"
