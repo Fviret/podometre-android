@@ -21,13 +21,19 @@ import org.junit.runner.RunWith
 import java.io.File
 
 /**
- * Test d'intégration : catalogue des trajets — liste affichée → tap preview → tap
- * commencer → détail affiché. Le [JourneyListViewModel] réel est utilisé, adossé à un
- * vrai [JourneyProgressRepository] (écrit dans le répertoire de fichiers de l'app de test,
- * nettoyé après chaque test) et à un [com.fviret.podometre.fakes.FakeDataStore] en mémoire.
- * "Détail affiché" est vérifié via l'invocation de `onNavigateToDetail` avec le bon
- * journeyId — c'est exactement ce que le NavHost réel utilise pour naviguer vers
+ * Test d'intégration : catalogue des trajets — liste affichée → dépli catégorie → tap
+ * preview → tap commencer → détail affiché. Le [JourneyListViewModel] réel est utilisé,
+ * adossé à un vrai [JourneyProgressRepository] (écrit dans le répertoire de fichiers de
+ * l'app de test, nettoyé après chaque test) et à un [com.fviret.podometre.fakes.FakeDataStore]
+ * en mémoire. "Détail affiché" est vérifié via l'invocation de `onNavigateToDetail` avec
+ * le bon journeyId — c'est exactement ce que le NavHost réel utilise pour naviguer vers
  * [JourneyDetailScreen].
+ *
+ * KAN-128 (accordion) : depuis KAN-128, les catégories du catalogue sont repliées par
+ * défaut lorsqu'aucun trajet n'est actif. Le test doit donc déplier "Promenades" avant
+ * d'interagir avec le premier trajet — c'est le comportement utilisateur attendu.
+ * La contentDescription du bouton d'accordéon est "Déplier Promenades" quand replié
+ * (cf. [com.fviret.podometre.ui.journey.JourneyListScreen] CategoryHeader).
  *
  * Note : le bouton "Commencer le trajet" (dans le `ModalBottomSheet`) n'est pas vérifié
  * via `assertIsDisplayed()` — dans l'hôte de test nu de `createComposeRule()` (sans le
@@ -77,8 +83,16 @@ class JourneyListScreenTest {
         }
         composeTestRule.waitForIdle()
 
-        // ── Liste affichée ──────────────────────────────────────────────
+        // ── Titre de la liste ────────────────────────────────────────────
         composeTestRule.onNodeWithText("Mes Trajets").assertIsDisplayed()
+
+        // ── Déplier "Promenades" (catégorie repliée par défaut, KAN-128) ─
+        // Sans trajet actif, toutes les catégories sont repliées à l'ouverture.
+        // Le bouton d'accordéon porte contentDescription = "Déplier Promenades".
+        composeTestRule.onNodeWithContentDescription("Déplier Promenades").performClick()
+        composeTestRule.waitForIdle()
+
+        // ── Premier trajet visible après dépli ──────────────────────────
         composeTestRule.onNodeWithText(firstJourney.name).assertIsDisplayed()
 
         // ── Tap preview (première carte) ──────────────────────────────
