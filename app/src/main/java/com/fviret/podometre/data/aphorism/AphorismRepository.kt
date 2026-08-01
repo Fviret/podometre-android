@@ -12,6 +12,13 @@ import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/** Retourne true si la langue préférée du système est l'anglais. */
+internal fun isSystemLanguageEnglish(context: Context): Boolean {
+    val locales = context.resources.configuration.locales
+    if (locales.isEmpty) return false
+    return locales[0].language == "en"
+}
+
 /**
  * Modèle d'un aphorisme issu du recueil CC0.
  * [category] est optionnel pour la compatibilité avec les anciens formats JSON
@@ -63,7 +70,14 @@ class AphorismRepository @Inject constructor(
     /** Fournisseur de date injectable — remplacé par une date fixe dans les tests. */
     internal var todayProvider: () -> LocalDate = LocalDate::now
 
-    private val aphorisms: List<Aphorism> by lazy { loadFromAssets() }
+    private val aphorisms: List<Aphorism> by lazy {
+        val assetFile = if (isSystemLanguageEnglish(context)) {
+            "aphorisms_humor_en.json"
+        } else {
+            "aphorisms_humor_400.json"
+        }
+        loadFromAssets(assetFile)
+    }
 
     /** Retourne l'aphorisme du jour (index = (quantième - 1) % taille du recueil). */
     fun todayAphorism(): Aphorism =
@@ -90,18 +104,28 @@ class AphorismRepository @Inject constructor(
         preferencesRepository.setLastAphorismDate(today)
     }
 
-    private fun loadFromAssets(): List<Aphorism> = runCatching {
-        val json = context.assets.open("aphorisms_humor_400.json").bufferedReader().readText()
+    private fun loadFromAssets(assetFile: String): List<Aphorism> = runCatching {
+        val json = context.assets.open(assetFile).bufferedReader().readText()
         parseAphorismsJson(json)
     }.getOrElse {
-        Log.w("AphorismRepository", "Échec du chargement des aphorismes", it)
+        Log.w("AphorismRepository", "Échec du chargement des aphorismes ($assetFile)", it)
         emptyList()
     }
 
-    private val fallback = Aphorism(
-        id = 0,
-        text = "Chaque matin, nous renaissons. Ce que nous faisons aujourd'hui compte le plus.",
-        author = "Bouddha",
-        category = "philosophie",
-    )
+    private val fallback: Aphorism
+        get() = if (isSystemLanguageEnglish(context)) {
+            Aphorism(
+                id = 0,
+                text = "Be yourself; everyone else is already taken.",
+                author = "Oscar Wilde",
+                category = "humor",
+            )
+        } else {
+            Aphorism(
+                id = 0,
+                text = "Chaque matin, nous renaissons. Ce que nous faisons aujourd'hui compte le plus.",
+                author = "Bouddha",
+                category = "philosophie",
+            )
+        }
 }
