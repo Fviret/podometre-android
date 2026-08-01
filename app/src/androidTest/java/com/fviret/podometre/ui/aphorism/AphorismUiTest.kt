@@ -135,7 +135,6 @@ class AphorismUiTest {
         composeTestRule.waitForIdle()
 
         // Toggle "Pensée du jour" présent dans la section dédiée
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
         composeTestRule.onNodeWithText(context.getString(R.string.settings_toggle_aphorism))
             .performScrollTo()
             .assertIsDisplayed()
