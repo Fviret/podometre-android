@@ -332,7 +332,10 @@ private fun CategoryHeader(
         }
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-            contentDescription = if (isExpanded) "Replier $displayName" else "Déplier $displayName",
+            contentDescription = if (isExpanded)
+                stringResource(R.string.journey_category_collapse, displayName)
+            else
+                stringResource(R.string.journey_category_expand, displayName),
             modifier = Modifier
                 .size(12.dp)
                 .graphicsLayer { rotationZ = rotation },

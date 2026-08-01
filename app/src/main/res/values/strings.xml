@@ -127,4 +127,8 @@
     <string name="journey_category_trail">Sentiers</string>
     <string name="journey_category_history">Histoire</string>
     <string name="journey_category_myth">Mythes &amp; Épopées</string>
+
+    <!-- Accordéon catégories — accessibilité (KAN-148) -->
+    <string name="journey_category_expand">Déplier %1$s</string>
+    <string name="journey_category_collapse">Replier %1$s</string>
 </resources>

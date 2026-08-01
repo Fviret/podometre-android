@@ -135,4 +135,8 @@
     <string name="journey_category_trail">Trails</string>
     <string name="journey_category_history">History</string>
     <string name="journey_category_myth">Myths &amp; Epics</string>
+
+    <!-- Category accordion — accessibility (KAN-148) -->
+    <string name="journey_category_expand">Expand %1$s</string>
+    <string name="journey_category_collapse">Collapse %1$s</string>
 </resources>

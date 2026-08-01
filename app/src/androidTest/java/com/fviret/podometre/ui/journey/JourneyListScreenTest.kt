@@ -88,10 +88,13 @@ class JourneyListScreenTest {
         // ── Titre de la liste ────────────────────────────────────────────
         composeTestRule.onNodeWithText(context.getString(R.string.journey_screen_title)).assertIsDisplayed()
 
-        // ── Déplier "Promenades" (catégorie repliée par défaut, KAN-128) ─
-        // Sans trajet actif, toutes les catégories sont repliées à l'ouverture.
-        // Le bouton d'accordéon porte contentDescription = "Déplier Promenades".
-        composeTestRule.onNodeWithContentDescription("Déplier Promenades").performClick()
+        // ── Déplier la première catégorie (repliée par défaut, KAN-128) ─
+        // Le contentDescription est localisé : "Déplier Promenades" en FR, "Expand Walks" en EN.
+        val expandDesc = context.getString(
+            R.string.journey_category_expand,
+            context.getString(R.string.journey_category_walk)
+        )
+        composeTestRule.onNodeWithContentDescription(expandDesc).performClick()
         composeTestRule.waitForIdle()
 
         // ── Premier trajet visible après dépli ──────────────────────────
