@@ -1,13 +1,92 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     English translations — KAN-144.
-    This file is intentionally empty: the infrastructure is in place (KAN-143),
-    translations will be added in KAN-144.
+    Source: iOS PR #88 (feature/localization-journey-content).
 
     Known limitation: journey names, subtitles and milestone descriptions are
     defined as Kotlin constants in JourneyData.kt and cannot be resolved via
-    stringResource() automatically. A runtime locale-switch mechanism is
-    required for that data-driven content (tracked in KAN-144).
+    stringResource() automatically. A separate locale-aware data layer would
+    be required for that data-driven content (out of scope for this ticket).
 -->
 <resources>
+    <string name="app_name">Pedometer</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_start">Get started</string>
+    <string name="onboarding_step_label">Step %1$d / %2$d</string>
+
+    <string name="onboarding_slide1_title">Your daily steps,\nin real time</string>
+    <string name="onboarding_slide1_subtitle">Live progress ring, distance, local weather, streak 🔥 and monthly calendar — everything you need to stay motivated.</string>
+
+    <string name="onboarding_slide2_title">Walk toward\nlegendary destinations</string>
+    <string name="onboarding_slide2_subtitle">Your real-life kilometers unlock milestones across 19 routes — from the GR20 to the Odyssey of Ulysses — and completion badges.</string>
+
+    <string name="onboarding_slide3_title">Data that\nbelongs to you</string>
+    <string name="onboarding_slide3_subtitle">Pedometer reads your health data directly from Health Connect. Nothing is sent to any server.</string>
+    <string name="onboarding_slide3_perm_steps">Daily step count</string>
+    <string name="onboarding_slide3_perm_distance">Distance walked</string>
+    <string name="onboarding_slide3_perm_location">Location (local weather)</string>
+    <string name="onboarding_slide3_privacy">This data never leaves your phone</string>
+    <string name="onboarding_slide3_permission_timing">Health Connect permission will be requested when the app opens</string>
+
+    <string name="onboarding_slide4_title">What is your\ndaily goal?</string>
+    <string name="onboarding_slide4_subtitle">You can change this at any time in Settings.</string>
+    <string name="onboarding_slide4_goal_label">%1$s steps / day</string>
+    <string name="onboarding_goal_5000_desc">Great to start with</string>
+    <string name="onboarding_goal_8000_desc">Recommended by WHO</string>
+    <string name="onboarding_goal_10000_desc">Classic goal</string>
+    <string name="onboarding_goal_15000_desc">Active lifestyle</string>
+    <string name="onboarding_goal_20000_desc">I walk a lot</string>
+    <string name="onboarding_goal_selected_desc">Selected goal</string>
+
+    <!-- Activity screen — progress ring -->
+    <string name="activity_ring_steps_label">steps</string>
+    <string name="activity_ring_goal_label">Goal: %1$s steps</string>
+    <string name="activity_ring_accessibility_label">%1$s steps out of %2$s, %3$d%%</string>
+    <string name="activity_ring_streak_label">🔥 %1$d day in a row</string>
+    <string name="activity_ring_streak_label_plural">🔥 %1$d days in a row</string>
+    <string name="activity_ring_streak_label_days">%1$d day in a row</string>
+    <string name="activity_ring_streak_label_days_plural">%1$d days in a row</string>
+    <string name="activity_ring_streak_accessibility">Streak of %1$d consecutive day</string>
+    <string name="activity_ring_streak_accessibility_plural">Streak of %1$d consecutive days</string>
+    <string name="activity_ring_percent_label">%1$d%%</string>
+    <string name="activity_ring_empty_state">Start your day!</string>
+
+    <!-- Activity screen — weather banner -->
+    <string name="weather_forecast_section_title">Weather · 7 days</string>
+    <string name="weather_rain_now">Rain in progress</string>
+    <string name="weather_rain_soon">Rain in less than an hour</string>
+    <string name="weather_no_rain">No rain expected</string>
+
+    <!-- Activity screen — chevron navigation -->
+    <string name="activity_chevron_prev_desc">Previous day</string>
+    <string name="activity_chevron_next_desc">Next day</string>
+
+    <!-- Tab navigation -->
+    <string name="nav_tab_activity">Activity</string>
+    <string name="nav_tab_journeys">Journeys</string>
+    <string name="nav_tab_settings">Settings</string>
+    <string name="nav_tab_activity_desc">View my daily activity</string>
+    <string name="nav_tab_journeys_desc">Explore virtual routes</string>
+    <string name="nav_tab_settings_desc">Manage my settings</string>
+
+    <!-- Today\'s metrics -->
+    <string name="metrics_distance_label">Distance</string>
+    <string name="metrics_distance_unit">km</string>
+    <string name="metrics_active_time_label">Active time</string>
+    <string name="metrics_calories_label">Calories</string>
+    <string name="metrics_calories_unit">kcal</string>
+    <string name="metrics_distance_accessibility">Distance: %1$s km</string>
+    <string name="metrics_active_time_accessibility">Active time: %1$s</string>
+    <string name="metrics_calories_accessibility">Active calories: %1$d kcal</string>
+
+    <!-- Weather detail bottom sheet -->
+    <string name="weather_detail_no_data">Hourly detail not available</string>
+    <string name="weather_detail_today">Today</string>
+    <string name="weather_detail_tomorrow">Tomorrow</string>
+    <string name="weather_detail_precip_mm">💧 %1$s mm expected</string>
+    <string name="weekly_chart_no_data">No data this week</string>
+    <string name="journey_timeline_end">Finish</string>
+    <string name="activity_calendar_total">Total %1$s: %2$s steps</string>
 </resources>
