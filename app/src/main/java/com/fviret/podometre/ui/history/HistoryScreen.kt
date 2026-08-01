@@ -2,7 +2,9 @@ package com.fviret.podometre.ui.history
 
 import android.graphics.Paint
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -38,16 +40,22 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -488,40 +496,63 @@ private fun LongestStreakCard(
     accentColor: Color,
 ) {
     val (days, startDate) = longestStreak
+
+    // Animation d'entrée : la flamme bondit depuis 0.4 jusqu'à 1.0 (spring, comme iOS)
+    val scaleAnim = remember { Animatable(0.4f) }
+    LaunchedEffect(Unit) {
+        scaleAnim.animateTo(
+            targetValue = 1f,
+            animationSpec = spring(dampingRatio = 0.45f, stiffness = 300f),
+        )
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFF9F1A).copy(alpha = 0.08f))
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFF9F1A).copy(alpha = 0.08f)),
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 24.dp, horizontal = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(text = "🔥", style = MaterialTheme.typography.headlineMedium)
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Plus longue série",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                if (startDate != null) {
-                    Text(
-                        text = "depuis le ${startDate.format(SHORT_DATE_FMT)}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+            // Flamme volontairement grande — récompense la plus symbolique de l'app (KAN-140)
             Text(
-                text = "$days j",
-                style = MaterialTheme.typography.headlineSmall,
-                color = Color(0xFFFF9F1A),
+                text = "🔥",
+                fontSize = 80.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.graphicsLayer(
+                    scaleX = scaleAnim.value,
+                    scaleY = scaleAnim.value,
+                ),
             )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = if (days == 0) "—" else "$days",
+                style = MaterialTheme.typography.displayLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFFF9F1A),
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = if (days <= 1) "jour consécutif" else "jours consécutifs",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            if (startDate != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "depuis le ${startDate.format(SHORT_DATE_FMT)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
     }
 }
-
 // ──────────────────────────────────────────────────────────────────────────────
 // KAN-139 : Total cumulé + tour du monde
 // ──────────────────────────────────────────────────────────────────────────────
