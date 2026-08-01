@@ -82,25 +82,20 @@
     <string name="journey_timeline_end">Arrivée</string>
     <string name="activity_calendar_total">Total %1$s : %2$s pas</string>
 
-    <!-- Écran Paramètres (KAN-147) -->
-    <string name="settings_title">Paramètres</string>
-    <string name="settings_section_activity">Activité</string>
-    <string name="settings_step_unit">pas / jour</string>
-    <string name="settings_section_appearance">Apparence</string>
-    <string name="ring_color_green">Forêt</string>
-    <string name="ring_color_blue">Océan</string>
-    <string name="ring_color_orange">Soleil</string>
-    <string name="ring_color_red">Braise</string>
-    <string name="ring_color_purple">Lavande</string>
-    <string name="ring_color_teal">Lagon</string>
-    <string name="settings_dark_mode">Mode sombre</string>
-    <string name="settings_section_display">Mon écran principal</string>
-    <string name="settings_toggle_weather">Météo &amp; prévisions</string>
-    <string name="settings_toggle_calendar">Calendrier mensuel</string>
-    <string name="settings_toggle_chart">Graphe hebdomadaire</string>
-    <string name="settings_toggle_metrics">Métriques du jour</string>
-    <string name="settings_section_notifications">Notifications</string>
-    <string name="settings_notif_daily_goal">Objectif journalier</string>
-    <string name="settings_section_aphorism">Pensée du jour</string>
-    <string name="settings_toggle_aphorism">Afficher la pensée du jour</string>
+    <!-- Écran Trajets — UI (KAN-148) -->
+    <string name="journey_screen_title">Mes Trajets</string>
+    <string name="journey_active_label">Trajet en cours · %1$d %%</string>
+    <string name="journey_next_milestone_distance">%1$.1f km jusqu\'à la prochaine étape</string>
+    <string name="journey_estimated_arrival">Arrivée ~%1$s</string>
+    <string name="journey_start_button">Commencer le trajet</string>
+    <string name="journey_continue_button">Continuer</string>
+    <string name="journey_change_dialog_title">Changer de trajet ?</string>
+    <string name="journey_abandon_button">Abandonner le trajet</string>
+    <string name="journey_completed_label">Trajet terminé !</string>
+
+    <!-- Catégories de trajets (KAN-148) -->
+    <string name="journey_category_walk">Promenades</string>
+    <string name="journey_category_trail">Sentiers</string>
+    <string name="journey_category_history">Histoire</string>
+    <string name="journey_category_myth">Mythes &amp; Épopées</string>
 </resources>
