@@ -2,11 +2,10 @@ package com.fviret.podometre.ui.settings
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.fviret.podometre.R
 import com.fviret.podometre.data.aphorism.AphorismRepository
 import com.fviret.podometre.fakes.TestFactories
 import com.fviret.podometre.util.formatSteps
@@ -22,6 +21,9 @@ import org.junit.runner.RunWith
  *
  * Ces tests vérifient les éléments statiques (toujours visibles, indépendants des données
  * Health Connect) : titre, sections, toggles, couleur de l'anneau par défaut.
+ *
+ * Les strings sont résolues via context.getString(R.string.xxx) pour rester
+ * indépendants de la locale de l'émulateur CI.
  */
 @RunWith(AndroidJUnit4::class)
 class SettingsScreenTest {
@@ -30,10 +32,10 @@ class SettingsScreenTest {
     val composeTestRule = createComposeRule()
 
     private lateinit var viewModel: SettingsViewModel
+    private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
 
     @Before
     fun setup() {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
         viewModel = SettingsViewModel(
             userPreferencesRepository = TestFactories.userPreferencesRepository(),
             healthConnectRepository = TestFactories.healthConnectRepository(context),
@@ -48,46 +50,44 @@ class SettingsScreenTest {
         }
     }
 
-    /** Le titre "Paramètres" est affiché en haut de l'écran. */
+    /** Le titre de l'écran est affiché en haut. */
     @Test
     fun titrePrincipale_estAffiche() {
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Paramètres").assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.settings_title)).assertIsDisplayed()
     }
 
     /**
      * L'objectif de pas par défaut (10 000) est affiché dans la ligne StepGoalRow.
-     * SectionHeader affiche "ACTIVITÉ" (uppercase du titre "Activité").
+     * SectionHeader affiche le titre de la section Activité en majuscules.
      */
     @Test
     fun sectionActivite_etObjectifDefaut_sontAffiches() {
         composeTestRule.waitForIdle()
-        // SectionHeader appelle title.uppercase() → "ACTIVITÉ"
-        composeTestRule.onNodeWithText("ACTIVITÉ").assertIsDisplayed()
-        // KAN-124 : le stepper affiche la valeur formatée et "pas / jour" en deux Text séparés.
+        // SectionHeader appelle title.uppercase() sur la valeur de la string resource
+        composeTestRule.onNodeWithText(context.getString(R.string.settings_section_activity).uppercase()).assertIsDisplayed()
         composeTestRule.onNodeWithText(10_000.formatSteps()).assertIsDisplayed()
-        composeTestRule.onNodeWithText("pas / jour").assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.settings_step_unit)).assertIsDisplayed()
     }
 
     /**
-     * La section "Apparence" est visible et le nom de la couleur par défaut
-     * ("Forêt" pour l'id "green") est affiché dans RingColorRow.
+     * La section "Apparence" est visible et le nom de la couleur par défaut est affiché
+     * dans RingColorRow (couleur "green" → R.string.ring_color_green).
      */
     @Test
     fun sectionApparence_etCouleurDefaut_sontAffichees() {
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("APPARENCE").assertIsDisplayed()
-        // Couleur par défaut = "green" → nom affiché = "Forêt"
-        composeTestRule.onNodeWithText("Forêt").assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.settings_section_appearance).uppercase()).assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.ring_color_green)).assertIsDisplayed()
     }
 
     /**
      * Au moins un toggle de module (Switch) est visible.
-     * Le label "Météo & prévisions" est affiché dans ModuleToggleCard.
+     * Le label du toggle météo est affiché dans ModuleToggleCard.
      */
     @Test
     fun toggleMeteo_estVisible() {
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Météo & prévisions").assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.settings_toggle_weather)).assertIsDisplayed()
     }
 }
