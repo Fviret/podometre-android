@@ -9,22 +9,16 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.Month
 import java.time.format.TextStyle
 import java.util.Locale
 import javax.inject.Inject
-
-/**
- * Données d'un état de chargement.
- */
-sealed class LoadState<out T> {
-    object Loading : LoadState<Nothing>()
-    data class Success<T>(val data: T) : LoadState<T>()
-    data class Error(val message: String) : LoadState<Nothing>()
-}
 
 /**
  * Modèle d'état UI pour l'écran Historique.
@@ -61,6 +55,9 @@ data class HistoryUiState(
 /**
  * ViewModel de l'écran Historique (KAN-135–139).
  * Charge les données d'historique depuis [HealthConnectRepository].
+ *
+ * KAN-142 : observe les changements d'objectif de pas et recalcule
+ * [HistoryUiState.longestStreak] à la volée sans relancer le chargement complet.
  */
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
@@ -73,9 +70,10 @@ class HistoryViewModel @Inject constructor(
 
     init {
         loadAll()
+        observeGoalChanges()
     }
 
-    /** Charge toutes les données en parallèle. */
+    /** Charge toutes les données en parallèle au premier affichage. */
     private fun loadAll() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
@@ -103,9 +101,27 @@ class HistoryViewModel @Inject constructor(
                 totalCumulativeSteps = totalStepsDef.await(),
                 totalCumulativeKm = totalKmDef.await(),
                 dailyGoal = prefs.dailyStepGoal,
-
                 isLoading = false,
             )
+        }
+    }
+
+    /**
+     * KAN-142 : réagit aux changements d'objectif journalier sans recharger toutes les données.
+     * La série (longestStreak) dépend de l'objectif ; les autres métriques n'en dépendent pas.
+     * On saute la première valeur car [loadAll] la traite déjà au démarrage.
+     */
+    private fun observeGoalChanges() {
+        viewModelScope.launch {
+            prefsRepo.userPreferences
+                .map { it.dailyStepGoal }
+                .distinctUntilChanged()
+                .drop(1)
+                .collect { newGoal ->
+                    _uiState.value = _uiState.value.copy(dailyGoal = newGoal)
+                    val streak = healthRepo.readLongestStreak(newGoal.toLong())
+                    _uiState.value = _uiState.value.copy(longestStreak = streak)
+                }
         }
     }
 
