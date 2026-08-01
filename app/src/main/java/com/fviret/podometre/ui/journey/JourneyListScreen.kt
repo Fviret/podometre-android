@@ -68,8 +68,10 @@ import com.fviret.podometre.domain.model.JourneyCategory
 import com.fviret.podometre.domain.model.JourneyProgress
 import com.fviret.podometre.domain.model.formatKm
 import com.fviret.podometre.domain.model.progressPercent
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.fviret.podometre.R
+import com.fviret.podometre.domain.model.displayName
 import com.fviret.podometre.ui.theme.rememberReduceMotion
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -102,6 +104,7 @@ fun JourneyListScreen(
     }
 
     val reduceMotion = rememberReduceMotion()
+    val context = LocalContext.current
 
     // Catégories dépliées par défaut : celle contenant le trajet en cours
     val defaultExpanded = remember(activeJourneyId) {
@@ -118,7 +121,7 @@ fun JourneyListScreen(
     ) {
         item {
             Text(
-                text = "Mes Trajets",
+                text = stringResource(R.string.journey_screen_title),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
@@ -157,7 +160,7 @@ fun JourneyListScreen(
 
             item(key = "${category.name}_header") {
                 CategoryHeader(
-                    displayName = category.displayName,
+                    displayName = category.displayName(context),
                     remainingCount = remainingCount,
                     isExpanded = isExpanded,
                     reduceMotion = reduceMotion,
@@ -524,7 +527,7 @@ private fun ActiveJourneyCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "Trajet en cours · $globalPct %",
+                        text = stringResource(R.string.journey_active_label, globalPct),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
                     )
@@ -554,13 +557,13 @@ private fun ActiveJourneyCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "${formatKm(cardData.kmToNextMilestone)} jusqu'à la prochaine étape",
+                    text = stringResource(R.string.journey_next_milestone_distance, cardData.kmToNextMilestone),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
                 etaText?.let {
                     Text(
-                        text = "Arrivée ~$it",
+                        text = stringResource(R.string.journey_estimated_arrival, it),
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -915,7 +918,7 @@ private fun JourneyPreviewSheet(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 MetaBadge(text = formatKm(journey.totalKm))
                 MetaBadge(text = "${journey.milestones.size} étapes")
-                MetaBadge(text = journey.category.displayName)
+                MetaBadge(text = journey.category.displayName(LocalContext.current))
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -958,9 +961,9 @@ private fun JourneyPreviewSheet(
             ) {
                 Text(
                     text = when {
-                        isCompleted -> "Trajet terminé ✓"
-                        isActive -> "Trajet en cours"
-                        else -> "Commencer le trajet"
+                        isCompleted -> stringResource(R.string.journey_completed_label)
+                        isActive -> stringResource(R.string.journey_continue_button)
+                        else -> stringResource(R.string.journey_start_button)
                     }
                 )
             }
@@ -1109,10 +1112,10 @@ private fun AbandonJourneyDialog(
 ) {
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Changer de trajet ?") },
+        title = { Text(stringResource(R.string.journey_change_dialog_title)) },
         text = { Text("Tu as un trajet en cours. Veux-tu l'abandonner et commencer celui-ci ? Ta progression actuelle sera perdue.") },
         confirmButton = {
-            Button(onClick = onConfirm) { Text("Abandonner et démarrer") }
+            Button(onClick = onConfirm) { Text(stringResource(R.string.journey_abandon_button)) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Annuler") }

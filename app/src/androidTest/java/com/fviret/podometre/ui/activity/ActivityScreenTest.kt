@@ -50,6 +50,7 @@ class ActivityScreenTest {
         .around(composeTestRule)
 
     private lateinit var viewModel: ActivityViewModel
+    private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
 
     /** Reproduit le format de `activity_ring_accessibility_label` (contentDescription fusionnée de l'anneau).
      *  Utilise formatSteps() pour reproduire le séparateur de milliers français (espace fine insécable). */
@@ -81,7 +82,7 @@ class ActivityScreenTest {
     fun anneauAffiche_avecDonneesMockEmulateur() {
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("Aujourd'hui").assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.activity_day_today)).assertIsDisplayed()
 
         // loadStepsForOffset(0) est async : waitUntil garantit que les 7 430 pas mock sont chargés.
         val expectedDesc = ringContentDescription(steps = 7_430L, goal = 10_000)
@@ -98,7 +99,6 @@ class ActivityScreenTest {
     @Test
     fun navigationJourPrecedent_changeLeLabelEtLesPas() {
         composeTestRule.waitForIdle()
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
 
         composeTestRule
             .onNodeWithContentDescription(context.getString(R.string.activity_chevron_prev_desc))
@@ -106,7 +106,7 @@ class ActivityScreenTest {
         composeTestRule.waitForIdle()
 
         assertEquals(-1, viewModel.uiState.value.selectedDayOffset)
-        composeTestRule.onNodeWithText("Hier").assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.activity_day_yesterday)).assertIsDisplayed()
 
         // loadStepsForOffset est async : waitUntil garantit que les 6 200 pas mock sont chargés
         // avant de tester la contentDescription fusionnée de l'anneau.
