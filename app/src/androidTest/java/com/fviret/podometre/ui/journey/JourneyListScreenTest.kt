@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.fviret.podometre.R
 import com.fviret.podometre.data.journey.JourneyProgressRepository
 import com.fviret.podometre.domain.JourneyData
 import com.fviret.podometre.fakes.TestFactories
@@ -52,6 +53,7 @@ class JourneyListScreenTest {
     private lateinit var journeyProgressRepository: JourneyProgressRepository
     private lateinit var viewModel: JourneyListViewModel
     private val firstJourney = JourneyData.all.first { it.name.contains("Tuileries") }
+    private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
 
     @Before
     fun setup() {
@@ -84,7 +86,7 @@ class JourneyListScreenTest {
         composeTestRule.waitForIdle()
 
         // ── Titre de la liste ────────────────────────────────────────────
-        composeTestRule.onNodeWithText("Mes Trajets").assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.journey_screen_title)).assertIsDisplayed()
 
         // ── Déplier "Promenades" (catégorie repliée par défaut, KAN-128) ─
         // Sans trajet actif, toutes les catégories sont repliées à l'ouverture.
@@ -104,7 +106,7 @@ class JourneyListScreenTest {
         }
         composeTestRule.onNodeWithContentDescription(firstJourney.name, substring = true).performClick()
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Commencer le trajet").performClick()
+        composeTestRule.onNodeWithText(context.getString(R.string.journey_start_button)).performClick()
         composeTestRule.waitForIdle()
 
         // ── Détail affiché : après startJourney (KAN-120), le trajet passe en ActiveJourneyCard
