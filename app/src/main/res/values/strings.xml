@@ -131,4 +131,12 @@
     <!-- Accordéon catégories — accessibilité (KAN-148) -->
     <string name="journey_category_expand">Déplier %1$s</string>
     <string name="journey_category_collapse">Replier %1$s</string>
+
+    <!-- Carte trajet actif — accessibilité -->
+    <string name="journey_active_card_a11y">Trajet en cours : %1$s, %2$d %%.</string>
+    <string name="journey_active_card_milestone">Prochaine étape : %1$s dans %2$s.</string>
+    <string name="journey_active_card_eta">Arrivée estimée %1$s.</string>
+
+    <!-- Popup pensée du jour -->
+    <string name="aphorism_popup_title">Pensée du jour</string>
 </resources>

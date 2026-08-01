@@ -3,8 +3,10 @@ package com.fviret.podometre.ui.journey
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -113,14 +115,13 @@ class JourneyListScreenTest {
         composeTestRule.waitForIdle()
 
         // ── Détail affiché : après startJourney (KAN-120), le trajet passe en ActiveJourneyCard
-        //    épinglée en haut de la liste. Sa contentDescription commence par "Trajet en cours :".
+        //    épinglée en haut de la liste. Identifiée via testTag "active_journey_card" (locale-indépendant).
         //    Un tap dessus déclenche directement onNavigateToDetail.
-        val activeCardDesc = "Trajet en cours :"
         composeTestRule.waitUntil(timeoutMillis = 15_000) {
-            composeTestRule.onAllNodesWithContentDescription(activeCardDesc, substring = true)
+            composeTestRule.onAllNodesWithTag("active_journey_card")
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        composeTestRule.onNodeWithContentDescription(activeCardDesc, substring = true).performClick()
+        composeTestRule.onNodeWithTag("active_journey_card").performClick()
         composeTestRule.waitForIdle()
 
         assertEquals(firstJourney.id.toString(), navigatedToJourneyId)

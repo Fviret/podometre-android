@@ -54,6 +54,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.invisibleToUser
 import androidx.compose.ui.semantics.semantics
@@ -491,16 +492,21 @@ private fun ActiveJourneyCard(
         "le ${date.format(DateTimeFormatter.ofPattern("d MMM", Locale.FRENCH))}"
     }
 
+    val activeDesc = stringResource(R.string.journey_active_card_a11y, journey.name, globalPct)
+    val milestoneDesc = stringResource(R.string.journey_active_card_milestone, cardData.nextMilestoneLabel, formatKm(cardData.kmToNextMilestone))
+    val etaDesc = etaText?.let { stringResource(R.string.journey_active_card_eta, it) }
     val a11yDescription = buildString {
-        append("Trajet en cours : ${journey.name}, $globalPct %. ")
-        append("Prochaine étape : ${cardData.nextMilestoneLabel} dans ${formatKm(cardData.kmToNextMilestone)}. ")
-        etaText?.let { append("Arrivée estimée $it.") }
+        append(activeDesc)
+        append(" ")
+        append(milestoneDesc)
+        etaDesc?.let { append(" "); append(it) }
     }
 
     Card(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
+            .testTag("active_journey_card")
             .semantics { contentDescription = a11yDescription },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
