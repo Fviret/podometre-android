@@ -299,7 +299,7 @@ private fun formatDayTitle(date: LocalDate, todayLabel: String, tomorrowLabel: S
     return when (date) {
         today -> todayLabel
         today.plusDays(1) -> tomorrowLabel
-        else -> date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRENCH))
+        else -> date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.getDefault()))
             .replaceFirstChar { it.uppercaseChar() }
     }
 }

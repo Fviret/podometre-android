@@ -13,6 +13,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.fviret.podometre.R
 import com.fviret.podometre.data.aphorism.Aphorism
 import com.fviret.podometre.data.aphorism.AphorismRepository
 import com.fviret.podometre.fakes.TestFactories
@@ -134,7 +135,8 @@ class AphorismUiTest {
         composeTestRule.waitForIdle()
 
         // Toggle "Pensée du jour" présent dans la section dédiée
-        composeTestRule.onNodeWithText("Afficher la pensée du jour")
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        composeTestRule.onNodeWithText(context.getString(R.string.settings_toggle_aphorism))
             .performScrollTo()
             .assertIsDisplayed()
 
