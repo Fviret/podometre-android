@@ -81,4 +81,26 @@
     <string name="weekly_chart_no_data">Pas de données cette semaine</string>
     <string name="journey_timeline_end">Arrivée</string>
     <string name="activity_calendar_total">Total %1$s : %2$s pas</string>
+
+    <!-- Écran Paramètres (KAN-147) -->
+    <string name="settings_title">Paramètres</string>
+    <string name="settings_section_activity">Activité</string>
+    <string name="settings_step_unit">pas / jour</string>
+    <string name="settings_section_appearance">Apparence</string>
+    <string name="ring_color_green">Forêt</string>
+    <string name="ring_color_blue">Océan</string>
+    <string name="ring_color_orange">Soleil</string>
+    <string name="ring_color_red">Braise</string>
+    <string name="ring_color_purple">Lavande</string>
+    <string name="ring_color_teal">Lagon</string>
+    <string name="settings_dark_mode">Mode sombre</string>
+    <string name="settings_section_display">Mon écran principal</string>
+    <string name="settings_toggle_weather">Météo &amp; prévisions</string>
+    <string name="settings_toggle_calendar">Calendrier mensuel</string>
+    <string name="settings_toggle_chart">Graphe hebdomadaire</string>
+    <string name="settings_toggle_metrics">Métriques du jour</string>
+    <string name="settings_section_notifications">Notifications</string>
+    <string name="settings_notif_daily_goal">Objectif journalier</string>
+    <string name="settings_section_aphorism">Pensée du jour</string>
+    <string name="settings_toggle_aphorism">Afficher la pensée du jour</string>
 </resources>

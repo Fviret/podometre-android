@@ -83,6 +83,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
@@ -90,6 +91,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import kotlin.math.pow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fviret.podometre.BuildConfig
+import com.fviret.podometre.R
 import com.fviret.podometre.domain.JourneyData
 import com.fviret.podometre.ui.theme.AppColors
 import com.fviret.podometre.util.formatSteps
@@ -118,14 +120,14 @@ fun SettingsScreen(
             .padding(horizontal = 16.dp, vertical = 24.dp),
     ) {
         Text(
-            text = "Paramètres",
+            text = stringResource(R.string.settings_title),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 24.dp),
         )
 
         // ── Section : Objectif quotidien ──────────────────────────────────────
-        SectionHeader(title = "Activité")
+        SectionHeader(title = stringResource(R.string.settings_section_activity))
 
         StepGoalRow(
             currentGoal = prefs.dailyStepGoal,
@@ -135,7 +137,7 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         // ── Section : Apparence ───────────────────────────────────────────────
-        SectionHeader(title = "Apparence")
+        SectionHeader(title = stringResource(R.string.settings_section_appearance))
 
         RingColorRow(
             selectedColorId = prefs.ringColorId,
@@ -152,29 +154,29 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         // ── Section : Mon écran principal ─────────────────────────────────────
-        SectionHeader(title = "Mon écran principal")
+        SectionHeader(title = stringResource(R.string.settings_section_display))
 
         ModuleToggleCard {
             ModuleToggleRow(
-                label = "Météo & prévisions",
+                label = stringResource(R.string.settings_toggle_weather),
                 checked = prefs.showWeatherForecast,
                 onToggle = { viewModel.updateShowWeatherForecast(it) },
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
             ModuleToggleRow(
-                label = "Calendrier mensuel",
+                label = stringResource(R.string.settings_toggle_calendar),
                 checked = prefs.showMonthCalendar,
                 onToggle = { viewModel.updateShowMonthCalendar(it) },
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
             ModuleToggleRow(
-                label = "Graphe hebdomadaire",
+                label = stringResource(R.string.settings_toggle_chart),
                 checked = prefs.showWeeklyChart,
                 onToggle = { viewModel.updateShowWeeklyChart(it) },
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
             ModuleToggleRow(
-                label = "Métriques du jour",
+                label = stringResource(R.string.settings_toggle_metrics),
                 checked = prefs.showTodayMetrics,
                 onToggle = { viewModel.updateShowTodayMetrics(it) },
             )
@@ -182,7 +184,7 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        SectionHeader(title = "Notifications")
+        SectionHeader(title = stringResource(R.string.settings_section_notifications))
 
         NotificationsCard(
             notificationsEnabled = prefs.notificationsEnabled,
@@ -194,11 +196,11 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         // ── Section : Pensée du jour ──────────────────────────────────────────
-        SectionHeader(title = "Pensée du jour")
+        SectionHeader(title = stringResource(R.string.settings_section_aphorism))
 
         ModuleToggleCard {
             ModuleToggleRow(
-                label = "Afficher la pensée du jour",
+                label = stringResource(R.string.settings_toggle_aphorism),
                 checked = prefs.aphorismEnabled,
                 onToggle = { viewModel.updateAphorismEnabled(it) },
             )
@@ -358,7 +360,7 @@ private fun StepGoalRow(
                         modifier = Modifier.scale(if (reduceMotion) 1f else scaleAnim.value),
                     )
                     Text(
-                        text = "pas / jour",
+                        text = stringResource(R.string.settings_step_unit),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -444,14 +446,18 @@ private fun StepperButton(
     }
 }
 
-/** Noms français des couleurs de l'anneau, dans le même ordre qu'[AppColors.ringColorOptions]. */
-private val ringColorNames: Map<String, String> = mapOf(
-    "green"  to "Forêt",
-    "blue"   to "Océan",
-    "orange" to "Soleil",
-    "red"    to "Corail",
-    "purple" to "Violet",
-    "teal"   to "Glace",
+/**
+ * Retourne la map des noms localisés des couleurs de l'anneau.
+ * Appelé depuis un Composable pour bénéficier de [stringResource].
+ */
+@Composable
+private fun ringColorNames(): Map<String, String> = mapOf(
+    "green"  to stringResource(R.string.ring_color_green),
+    "blue"   to stringResource(R.string.ring_color_blue),
+    "orange" to stringResource(R.string.ring_color_orange),
+    "red"    to stringResource(R.string.ring_color_red),
+    "purple" to stringResource(R.string.ring_color_purple),
+    "teal"   to stringResource(R.string.ring_color_teal),
 )
 
 /**
@@ -464,8 +470,9 @@ private fun RingColorRow(
     selectedColorId: String,
     onColorSelected: (String) -> Unit,
 ) {
+    val colorNames = ringColorNames()
     val selectedColor = AppColors.colorForId(selectedColorId)
-    val selectedName = ringColorNames[selectedColorId] ?: selectedColorId
+    val selectedName = colorNames[selectedColorId] ?: selectedColorId
     val haptic = LocalHapticFeedback.current
 
     Card(
@@ -500,7 +507,7 @@ private fun RingColorRow(
             ) {
                 AppColors.ringColorOptions.forEach { (id, color) ->
                     val isSelected = id == selectedColorId
-                    val name = ringColorNames[id] ?: id
+                    val name = colorNames[id] ?: id
                     // contentDescription verbeux : nom + état pour TalkBack
                     val a11yLabel = if (isSelected) "$name — sélectionnée" else name
                     Box(
@@ -567,7 +574,7 @@ private fun DarkModeRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "Mode sombre",
+                text = stringResource(R.string.settings_dark_mode),
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.weight(1f),
             )
@@ -631,7 +638,7 @@ private fun NotificationsCard(
 
     ModuleToggleCard {
         ModuleToggleRow(
-            label = "Objectif journalier",
+            label = stringResource(R.string.settings_notif_daily_goal),
             checked = notificationsEnabled,
             onToggle = { requestIfNeeded(it) { granted -> onToggleGoal(granted) } },
         )

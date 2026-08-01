@@ -89,4 +89,26 @@
     <string name="weekly_chart_no_data">No data this week</string>
     <string name="journey_timeline_end">Finish</string>
     <string name="activity_calendar_total">Total %1$s: %2$s steps</string>
+
+    <!-- Settings screen (KAN-147) -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_activity">Activity</string>
+    <string name="settings_step_unit">steps / day</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="ring_color_green">Forest</string>
+    <string name="ring_color_blue">Ocean</string>
+    <string name="ring_color_orange">Sun</string>
+    <string name="ring_color_red">Ember</string>
+    <string name="ring_color_purple">Lavender</string>
+    <string name="ring_color_teal">Lagoon</string>
+    <string name="settings_dark_mode">Dark mode</string>
+    <string name="settings_section_display">My home screen</string>
+    <string name="settings_toggle_weather">Weather &amp; forecast</string>
+    <string name="settings_toggle_calendar">Monthly calendar</string>
+    <string name="settings_toggle_chart">Weekly chart</string>
+    <string name="settings_toggle_metrics">Today\'s metrics</string>
+    <string name="settings_section_notifications">Notifications</string>
+    <string name="settings_notif_daily_goal">Daily goal</string>
+    <string name="settings_section_aphorism">Thought of the day</string>
+    <string name="settings_toggle_aphorism">Show thought of the day</string>
 </resources>
