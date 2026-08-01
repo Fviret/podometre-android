@@ -58,6 +58,10 @@ fun WeeklyForecastBanner(
     if (forecasts.isEmpty()) return
 
     val today = LocalDate.now()
+    val todayShort = stringResource(R.string.activity_day_today_short)
+    val tomorrowShort = stringResource(R.string.activity_day_tomorrow_short)
+    val todayFull = stringResource(R.string.activity_day_today)
+    val tomorrowFull = stringResource(R.string.activity_day_tomorrow)
 
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
@@ -76,9 +80,9 @@ fun WeeklyForecastBanner(
             itemsIndexed(forecasts) { index, forecast ->
                 DayCell(
                     forecast = forecast,
-                    dayLabel = dayLabel(forecast.date, today),
+                    dayLabel = dayLabel(forecast.date, today, todayShort, tomorrowShort),
                     isToday = index == 0,
-                    accessibilityLabel = accessibilityLabel(forecast, today),
+                    accessibilityLabel = accessibilityLabel(forecast, today, todayFull, tomorrowFull),
                     onClick = onDayClick?.let { cb -> { cb(forecast) } },
                 )
             }
@@ -179,10 +183,15 @@ private fun DayCell(
  * Label court du jour : "Auj." pour aujourd'hui, "Dem." pour demain,
  * puis abréviation du jour de la semaine en français ("Lun.", "Mar.", etc.).
  */
-private fun dayLabel(date: LocalDate, today: LocalDate): String = when (date) {
-    today -> "Auj."
-    today.plusDays(1) -> "Dem."
-    else -> date.format(DateTimeFormatter.ofPattern("EEE", Locale.FRENCH))
+private fun dayLabel(
+    date: LocalDate,
+    today: LocalDate,
+    todayShort: String,
+    tomorrowShort: String,
+): String = when (date) {
+    today -> todayShort
+    today.plusDays(1) -> tomorrowShort
+    else -> date.format(DateTimeFormatter.ofPattern("EEE", Locale.getDefault()))
         .replaceFirstChar { it.uppercaseChar() }
 }
 
@@ -190,11 +199,16 @@ private fun dayLabel(date: LocalDate, today: LocalDate): String = when (date) {
  * Construit le contentDescription TalkBack pour une cellule de prévision.
  * Ex. : "Mardi 1 juillet, pluie, 18° max, 12° min, 4mm de pluie"
  */
-private fun accessibilityLabel(forecast: DailyForecast, today: LocalDate): String {
+private fun accessibilityLabel(
+    forecast: DailyForecast,
+    today: LocalDate,
+    todayFull: String,
+    tomorrowFull: String,
+): String {
     val dayName = when (forecast.date) {
-        today -> "Aujourd'hui"
-        today.plusDays(1) -> "Demain"
-        else -> forecast.date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRENCH))
+        today -> todayFull
+        today.plusDays(1) -> tomorrowFull
+        else -> forecast.date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.getDefault()))
     }
     val emoji = emojiForWeatherCode(forecast.weatherCode)
     val max = forecast.tempMaxCelsius.roundToInt()

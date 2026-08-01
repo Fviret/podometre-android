@@ -22,39 +22,44 @@ class ActivityViewModelTest {
 
     // ── Navigation par jour — labelForOffset ─────────────────────────────────
 
+    // Les libellés "Aujourd'hui" / "Hier" viennent désormais des ressources (KAN-146).
+    // Les tests passent des chaînes explicites pour rester indépendants du contexte Android.
+    private val TODAY_LABEL = "Aujourd'hui"
+    private val YESTERDAY_LABEL = "Hier"
+
     @Test
-    fun `offset 0 retourne Aujourd hui`() {
-        assertEquals("Aujourd'hui", ActivityViewModel.labelForOffset(0))
+    fun `offset 0 retourne le label aujourd hui fourni en parametre`() {
+        assertEquals(TODAY_LABEL, ActivityViewModel.labelForOffset(0, TODAY_LABEL, YESTERDAY_LABEL))
     }
 
     @Test
-    fun `offset -1 retourne Hier`() {
-        assertEquals("Hier", ActivityViewModel.labelForOffset(-1))
+    fun `offset -1 retourne le label hier fourni en parametre`() {
+        assertEquals(YESTERDAY_LABEL, ActivityViewModel.labelForOffset(-1, TODAY_LABEL, YESTERDAY_LABEL))
     }
 
     @Test
-    fun `offset -2 retourne une date formatee en francais`() {
+    fun `offset -2 retourne une date formatee selon la locale systeme`() {
         val date = LocalDate.now().plusDays(-2L)
-        val formatter = DateTimeFormatter.ofPattern("EEE d MMMM", Locale.FRENCH)
+        val formatter = DateTimeFormatter.ofPattern("EEE d MMMM", Locale.getDefault())
         val expected = date.format(formatter).replaceFirstChar { it.uppercaseChar() }
-        assertEquals(expected, ActivityViewModel.labelForOffset(-2))
+        assertEquals(expected, ActivityViewModel.labelForOffset(-2, TODAY_LABEL, YESTERDAY_LABEL))
     }
 
     @Test
     fun `offset positif produit une date dans le futur (labelForOffset ne bloque pas)`() {
         // goToNextDay ignore les offsets positifs, mais labelForOffset est une fonction pure.
-        // Vérification : le résultat n'est pas "Aujourd'hui" ni "Hier" pour offset +1.
-        val label = ActivityViewModel.labelForOffset(1)
-        assertFalse(label == "Aujourd'hui")
-        assertFalse(label == "Hier")
+        // Vérification : le résultat n'est pas le label aujourd'hui ni hier pour offset +1.
+        val label = ActivityViewModel.labelForOffset(1, TODAY_LABEL, YESTERDAY_LABEL)
+        assertFalse(label == TODAY_LABEL)
+        assertFalse(label == YESTERDAY_LABEL)
     }
 
     @Test
     fun `offset -30 genere un label de date non vide`() {
-        val label = ActivityViewModel.labelForOffset(-30)
+        val label = ActivityViewModel.labelForOffset(-30, TODAY_LABEL, YESTERDAY_LABEL)
         assertTrue(label.isNotBlank())
-        assertFalse(label == "Aujourd'hui")
-        assertFalse(label == "Hier")
+        assertFalse(label == TODAY_LABEL)
+        assertFalse(label == YESTERDAY_LABEL)
     }
 
     // ── État par défaut (objectif, streak, métriques) ─────────────────────────
