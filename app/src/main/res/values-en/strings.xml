@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    English translations — KAN-144.
+    This file is intentionally empty: the infrastructure is in place (KAN-143),
+    translations will be added in KAN-144.
+
+    Known limitation: journey names, subtitles and milestone descriptions are
+    defined as Kotlin constants in JourneyData.kt and cannot be resolved via
+    stringResource() automatically. A runtime locale-switch mechanism is
+    required for that data-driven content (tracked in KAN-144).
+-->
+<resources>
+</resources>
