@@ -2,6 +2,9 @@ package com.fviret.podometre.ui.activity
 
 import android.graphics.Paint
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,8 +14,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,13 +53,15 @@ fun WeeklyChartView(
     todayIndex: Int,
     accentColor: Color,
     modifier: Modifier = Modifier,
+    onTap: (() -> Unit)? = null,
 ) {
     val a11yLabel = buildA11yLabel(currentWeek, previousWeek, dayLabels)
     val prevColor = Color(0xFFAAAAAA)
     /** Vrai quand aucune donnée n'est disponible pour les deux semaines. */
     val allZero = currentWeek.all { it == 0L } && previousWeek.all { it == 0L }
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    val tapModifier = if (onTap != null) Modifier.clickable(onClick = onTap) else Modifier
+    Column(modifier = modifier.fillMaxWidth().then(tapModifier)) {
         // ── En-tête : titre + légende ──────────────────────────────────────────
         Row(
             modifier = Modifier
@@ -267,6 +274,47 @@ fun WeeklyChartView(
             )
         }
         } // fin Box
+
+        // ── KAN-134 : Pastille de tendance ────────────────────────────────────
+        val currentAvg = if (currentWeek.any { it > 0 })
+            currentWeek.filter { it > 0 }.average() else 0.0
+        val prevAvg = if (previousWeek.any { it > 0 })
+            previousWeek.filter { it > 0 }.average() else 0.0
+
+        if (currentAvg > 0 && prevAvg > 0) {
+            val diff = currentAvg - prevAvg
+            val (trendColor, trendArrow, trendLabel) = when {
+                diff > 500  -> Triple(accentColor, "↑", "en hausse")
+                diff < -500 -> Triple(Color(0xFFF23F4C), "↓", "en baisse")
+                else        -> Triple(MaterialTheme.colorScheme.onSurfaceVariant, "—", "stable")
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(trendColor.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = trendArrow,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = trendColor,
+                    )
+                }
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Moyenne $trendLabel vs sem. précédente",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }
 

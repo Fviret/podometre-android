@@ -1,5 +1,6 @@
 package com.fviret.podometre.ui.activity
 
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -56,7 +59,8 @@ import com.fviret.podometre.ui.theme.AppColors
  */
 @Composable
 fun ActivityScreen(
-    viewModel: ActivityViewModel = hiltViewModel()
+    viewModel: ActivityViewModel = hiltViewModel(),
+    onNavigateToHistory: () -> Unit = {},
 ) {
     val prefs by viewModel.userPreferences.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -178,8 +182,43 @@ fun ActivityScreen(
             modifier = Modifier.padding(bottom = 12.dp)
         )
 
+        val density = LocalDensity.current
+        /** Seuil minimal en pixels pour valider un swipe horizontal sur l'anneau (~44 dp). */
+        val swipeThresholdPx = with(density) { 44.dp.toPx() }
+
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .pointerInput(uiState.selectedDayOffset) {
+                    var totalDx = 0f
+                    var totalDy = 0f
+                    detectHorizontalDragGestures(
+                        onDragStart = {
+                            totalDx = 0f
+                            totalDy = 0f
+                        },
+                        onHorizontalDrag = { change, dragAmount ->
+                            // Consomme l'événement seulement si la dominance horizontale est confirmée
+                            totalDx += dragAmount
+                            change.consume()
+                        },
+                        onDragEnd = {
+                            // Déclenche la navigation uniquement si le swipe dépasse le seuil
+                            when {
+                                totalDx > swipeThresholdPx -> {
+                                    // Swipe vers la droite → jour précédent
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    viewModel.goToPreviousDay()
+                                }
+                                totalDx < -swipeThresholdPx && uiState.selectedDayOffset < 0 -> {
+                                    // Swipe vers la gauche → jour suivant, bloqué sur aujourd'hui
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    viewModel.goToNextDay()
+                                }
+                            }
+                        }
+                    )
+                },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
@@ -281,6 +320,7 @@ fun ActivityScreen(
                 todayIndex = uiState.weekTodayIndex,
                 accentColor = AppColors.colorForId(prefs.ringColorId),
                 modifier = Modifier.fillMaxWidth(),
+                onTap = onNavigateToHistory,
             )
         }
     }

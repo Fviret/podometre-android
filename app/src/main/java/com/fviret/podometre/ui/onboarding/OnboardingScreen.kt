@@ -24,11 +24,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.snapshotFlow
 import com.fviret.podometre.ui.theme.rememberReduceMotion
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -54,13 +59,22 @@ fun OnboardingScreen(
         contract = HealthConnectRepository.requestPermissionsContract()
     ) { granted -> viewModel.onHealthPermissionsResult(granted) }
 
-    // Synchronise le pager avec l'état du ViewModel.
+    // Synchronise le pager avec l'état du ViewModel (navigation programmatique via bouton).
     // Si "Réduire les animations" est actif, saut instantané sans transition.
     LaunchedEffect(uiState.currentPage) {
-        if (reduceMotion) {
-            pagerState.scrollToPage(uiState.currentPage)
-        } else {
-            pagerState.animateScrollToPage(uiState.currentPage)
+        if (pagerState.currentPage != uiState.currentPage) {
+            if (reduceMotion) {
+                pagerState.scrollToPage(uiState.currentPage)
+            } else {
+                pagerState.animateScrollToPage(uiState.currentPage)
+            }
+        }
+    }
+
+    // Synchronise le ViewModel depuis le pager quand l'utilisateur swipe manuellement.
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.currentPage }.collect { page ->
+            viewModel.syncPage(page)
         }
     }
 
@@ -72,6 +86,13 @@ fun OnboardingScreen(
     // Bloquer le bouton retour — onboarding non dismissable
     BackHandler { /* intentionnellement vide */ }
 
+    // Couleur de fond : surface (blanc) pour les 2 premières slides, surfaceVariant pour les suivantes.
+    // La barre du bas reprend cette même couleur pour se fondre sans démarcation.
+    val slideBackground = if (uiState.currentPage < 2)
+        MaterialTheme.colorScheme.surface
+    else
+        MaterialTheme.colorScheme.surfaceVariant
+
     Scaffold { innerPadding ->
         Column(
             modifier = Modifier
@@ -82,8 +103,10 @@ fun OnboardingScreen(
             // ── Carrousel ────────────────────────────────────────────────
             HorizontalPager(
                 state = pagerState,
-                userScrollEnabled = false,
-                modifier = Modifier.weight(1f)
+                userScrollEnabled = true,
+                modifier = Modifier
+                    .weight(1f)
+                    .background(slideBackground)
             ) { page ->
                 when (page) {
                     0 -> OnboardingSlide1()
@@ -97,36 +120,60 @@ fun OnboardingScreen(
                 }
             }
 
-            // ── Indicateurs de page ───────────────────────────────────────
-            PageIndicators(
-                pageCount = OnboardingViewModel.TOTAL_PAGES,
-                currentPage = uiState.currentPage,
-                modifier = Modifier.padding(vertical = 16.dp)
-            )
-
-            // ── Bouton navigation ─────────────────────────────────────────
-            val isLastPage = uiState.currentPage == OnboardingViewModel.TOTAL_PAGES - 1
-            val isPermissionsPage = uiState.currentPage == OnboardingViewModel.PERMISSIONS_PAGE_INDEX
-            Button(
-                onClick = {
-                    when {
-                        isLastPage -> viewModel.completeOnboarding()
-                        isPermissionsPage && viewModel.isHealthConnectAvailable() ->
-                            healthPermissionLauncher.launch(HealthConnectRepository.PERMISSIONS)
-                        else -> viewModel.nextPage()
-                    }
-                },
+            // ── Barre du bas — fond raccord avec la slide ─────────────────
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 32.dp)
-                    .padding(bottom = 32.dp)
+                    .background(slideBackground),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = stringResource(
-                        if (isLastPage) R.string.onboarding_start
-                        else R.string.onboarding_next
-                    )
+                // ── Indicateurs de page ───────────────────────────────────────
+                PageIndicators(
+                    pageCount = OnboardingViewModel.TOTAL_PAGES,
+                    currentPage = uiState.currentPage,
+                    modifier = Modifier.padding(top = 16.dp)
                 )
+
+                // ── Texte de progression accessible ──────────────────────────
+                val stepLabel = stringResource(
+                    R.string.onboarding_step_label,
+                    uiState.currentPage + 1,
+                    OnboardingViewModel.TOTAL_PAGES
+                )
+                Text(
+                    text = stepLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .padding(top = 4.dp, bottom = 12.dp)
+                        .semantics { contentDescription = stepLabel }
+                )
+
+                // ── Bouton navigation ─────────────────────────────────────────
+                val isLastPage = uiState.currentPage == OnboardingViewModel.TOTAL_PAGES - 1
+                val isPermissionsPage = uiState.currentPage == OnboardingViewModel.PERMISSIONS_PAGE_INDEX
+                Button(
+                    onClick = {
+                        when {
+                            isLastPage -> viewModel.completeOnboarding()
+                            isPermissionsPage && viewModel.isHealthConnectAvailable() ->
+                                healthPermissionLauncher.launch(HealthConnectRepository.PERMISSIONS)
+                            else -> viewModel.nextPage()
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 32.dp)
+                        .padding(bottom = 32.dp)
+                ) {
+                    Text(
+                        text = stringResource(
+                            if (isLastPage) R.string.onboarding_start
+                            else R.string.onboarding_next
+                        )
+                    )
+                }
             }
         }
     }
@@ -134,6 +181,8 @@ fun OnboardingScreen(
 
 /**
  * Indicateurs de page animés (points Material 3).
+ * Les dots sont décoratifs pour TalkBack — la progression est portée par
+ * le texte « Étape X / 4 » affiché en dessous (évite le doublon vocal).
  */
 @Composable
 private fun PageIndicators(
@@ -160,6 +209,8 @@ private fun PageIndicators(
                     .size(size)
                     .clip(CircleShape)
                     .background(color)
+                    // Dot purement décoratif : le texte de progression porte l'info TalkBack
+                    .clearAndSetSemantics {}
             )
         }
     }

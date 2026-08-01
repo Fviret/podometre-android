@@ -2,6 +2,7 @@ package com.fviret.podometre.worker
 
 import android.content.Context
 import androidx.hilt.work.HiltWorker
+import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
@@ -20,10 +21,19 @@ import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
 /**
- * Worker périodique (1h) qui lit le nombre de pas du jour via Health Connect
+ * Worker périodique (15 min) qui lit le nombre de pas du jour via Health Connect
  * et le met en cache dans DataStore pour que l'UI puisse se rafraîchir sans requête HC synchrone.
  * Ne stocke pas de données HC de manière définitive — le cache est invalidé chaque jour.
  * Équivalent iOS : HKObserverQuery + enableBackgroundDelivery.
+ *
+ * Limites connues (Android) :
+ * - Doze mode : WorkManager respecte les fenêtres Doze ; les exécutions peuvent être regroupées
+ *   et retardées de plusieurs heures si l'appareil est immobile et non branché.
+ * - Quota d'exécution en arrière-plan (API 26+) : le système limite le temps CPU disponible
+ *   pour les apps en arrière-plan ; un worker trop long peut être tué.
+ * - App fermée par l'utilisateur (Force Stop) : WorkManager ne peut plus s'exécuter jusqu'à
+ *   la prochaine ouverture manuelle de l'app.
+ * - Intervalle minimum Android : 15 minutes (WorkManager ignore les intervalles plus courts).
  */
 @HiltWorker
 class SyncStepsWorker @AssistedInject constructor(
@@ -43,6 +53,9 @@ class SyncStepsWorker @AssistedInject constructor(
             val startOfDay = today.atStartOfDay(ZoneId.systemDefault()).toInstant()
             healthConnectRepository.readSteps(from = startOfDay, to = Instant.now())
         }
+        // Guard : si HC est indisponible, readSteps() renvoie 0L.
+        // On retente plus tard plutôt que d'écraser un cache valide avec 0.
+        if (!isStepsValueValid(steps)) return Result.retry()
         userPreferencesRepository.updateCachedSteps(steps, todayStr)
         checkAndNotifyGoalReached(steps, today)
         return Result.success()
@@ -68,18 +81,28 @@ class SyncStepsWorker @AssistedInject constructor(
     }
 
     companion object {
-        private const val WORK_NAME = "sync_steps_hourly"
+        private const val WORK_NAME = "sync_steps_periodic"
         private const val EMULATOR_MOCK_STEPS = 7_430L
 
         /**
-         * Planifie (ou maintient) le worker périodique horaire de synchronisation des pas.
-         * Utilise [ExistingPeriodicWorkPolicy.KEEP] pour ne pas réinitialiser le timer si déjà actif.
+         * Planifie (ou met à jour) le worker périodique de synchronisation des pas.
+         * Intervalle : 15 minutes (minimum Android WorkManager).
+         * Utilise [ExistingPeriodicWorkPolicy.UPDATE] pour appliquer immédiatement tout changement
+         * d'intervalle ou de contraintes sans attendre l'expiration du cycle en cours.
+         * Les contraintes désactivent explicitement les prérequis batterie/charge pour que le
+         * worker s'exécute même en mode économie d'énergie (hors Doze complet).
          */
         fun schedule(workManager: WorkManager) {
-            val request = PeriodicWorkRequestBuilder<SyncStepsWorker>(1, TimeUnit.HOURS).build()
+            val constraints = Constraints.Builder()
+                .setRequiresBatteryNotLow(false)
+                .setRequiresCharging(false)
+                .build()
+            val request = PeriodicWorkRequestBuilder<SyncStepsWorker>(15, TimeUnit.MINUTES)
+                .setConstraints(constraints)
+                .build()
             workManager.enqueueUniquePeriodicWork(
                 WORK_NAME,
-                ExistingPeriodicWorkPolicy.KEEP,
+                ExistingPeriodicWorkPolicy.UPDATE,
                 request
             )
         }
@@ -112,3 +135,10 @@ fun shouldNotifyGoalReached(
     }
     return lastNotifiedDay != today
 }
+
+/**
+ * Retourne true si la valeur de pas lue depuis Health Connect est exploitable (non nulle).
+ * Lorsque HC est temporairement indisponible, [HealthConnectRepository.readSteps] renvoie 0L —
+ * dans ce cas [SyncStepsWorker] doit replanifier plutôt qu'écraser le cache existant.
+ */
+internal fun isStepsValueValid(steps: Long): Boolean = steps > 0L

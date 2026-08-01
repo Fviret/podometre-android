@@ -282,10 +282,197 @@ class HealthConnectRepository @Inject constructor(
                 count = steps,
                 startZoneOffset = ZoneOffset.systemDefault().rules.getOffset(startOfDay),
                 endZoneOffset = ZoneOffset.systemDefault().rules.getOffset(now),
-                metadata = Metadata(clientRecordId = "podometre-steps-$today")
+                metadata = Metadata.Companion.unknownRecordingMethod()
             )
             client.get().insertRecords(listOf(record))
         }.onFailure { Log.w(TAG, "writeStepsToday a échoué", it) }
+    }
+
+    /**
+     * Calcule la moyenne de pas quotidiens sur les 6 jours pleins précédant aujourd'hui
+     * (le jour en cours est exclu car il est partiel).
+     * Retourne null si aucune donnée n'est disponible (historique vide) — dans ce cas,
+     * l'ETA ne doit pas être affiché pour éviter une estimation trompeuse.
+     * Sur émulateur, retourne une valeur mock réaliste (8 500 pas/jour).
+     */
+    suspend fun readAverageDailyStepsLast6Days(): Long? {
+        if (isEmulator()) return 8_500L
+
+        val zone = ZoneId.systemDefault()
+        val today = LocalDate.now(zone)
+        val from = today.minusDays(6).atStartOfDay(zone).toInstant()
+        val to = today.atStartOfDay(zone).toInstant()
+
+        val stepsByDay = readStepsByDay(from, to)
+        if (stepsByDay.isEmpty()) return null
+        return stepsByDay.values.sum() / stepsByDay.size
+    }
+
+    /**
+     * Lit les totaux de pas par semaine ISO sur les [nWeeks] dernières semaines.
+     * Retourne une liste de paires (lundi de la semaine, total de pas).
+     * Sur émulateur, retourne des données mock réalistes.
+     */
+    suspend fun readWeeklyStepTotals(nWeeks: Int = 10): List<Pair<LocalDate, Long>> {
+        if (isEmulator()) {
+            val today = LocalDate.now()
+            val monday = today.with(java.time.DayOfWeek.MONDAY)
+            return (0 until nWeeks).map { i ->
+                val weekStart = monday.minusWeeks(i.toLong())
+                val mockSteps = when (i) {
+                    0 -> 42_000L; 1 -> 58_000L; 2 -> 51_000L; 3 -> 63_000L; 4 -> 47_000L
+                    5 -> 55_000L; 6 -> 44_000L; 7 -> 60_000L; 8 -> 38_000L; else -> 52_000L
+                }
+                weekStart to mockSteps
+            }.reversed()
+        }
+        val zone = ZoneId.systemDefault()
+        val today = LocalDate.now(zone)
+        val monday = today.with(java.time.DayOfWeek.MONDAY)
+        val from = monday.minusWeeks(nWeeks.toLong()).atStartOfDay(zone).toInstant()
+        val to = ZonedDateTime.now(zone).toInstant()
+        val stepsByDay = readStepsByDay(from, to)
+        return (0 until nWeeks).map { i ->
+            val weekStart = monday.minusWeeks(i.toLong())
+            val weekTotal = (0..6).sumOf { d ->
+                stepsByDay[weekStart.plusDays(d.toLong())] ?: 0L
+            }
+            weekStart to weekTotal
+        }.reversed()
+    }
+
+    /**
+     * Lit les totaux mensuels pour une [year] donnée (janvier à décembre).
+     * Retourne une map Month → total (0L pour les mois sans données ou futurs).
+     * Sur émulateur, retourne des données mock.
+     */
+    suspend fun readMonthlyStepsByYear(year: Int): Map<java.time.Month, Long> {
+        if (isEmulator()) {
+            val today = LocalDate.now()
+            return java.time.Month.values().associate { month ->
+                val ym = java.time.YearMonth.of(year, month)
+                val isFuture = year == today.year && month.value > today.monthValue
+                val mockVal = if (isFuture) 0L else {
+                    val base = 200_000L + (month.value * 17_000L)
+                    if (ym.year == today.year && ym.monthValue == today.monthValue)
+                        base / 3 else base
+                }
+                month to mockVal
+            }
+        }
+        val zone = ZoneId.systemDefault()
+        val from = LocalDate.of(year, 1, 1).atStartOfDay(zone).toInstant()
+        val to = LocalDate.of(year + 1, 1, 1).atStartOfDay(zone).toInstant()
+        val stepsByDay = readStepsByDay(from, to)
+        return java.time.Month.values().associate { month ->
+            val total = stepsByDay.entries
+                .filter { it.key.year == year && it.key.month == month }
+                .sumOf { it.value }
+            month to total
+        }
+    }
+
+    /**
+     * Lit le meilleur jour de tout l'historique Health Connect.
+     * Retourne une paire (nombre de pas, date) ou null si aucune donnée.
+     * Sur émulateur, retourne une valeur mock.
+     */
+    suspend fun readBestDay(): Pair<Long, LocalDate?> {
+        if (isEmulator()) return 24_853L to LocalDate.now().minusDays(45)
+        val zone = ZoneId.systemDefault()
+        val from = LocalDate.of(2020, 1, 1).atStartOfDay(zone).toInstant()
+        val to = ZonedDateTime.now(zone).toInstant()
+        val stepsByDay = readStepsByDay(from, to)
+        val best = stepsByDay.maxByOrNull { it.value } ?: return 0L to null
+        return best.value to best.key
+    }
+
+    /**
+     * Lit la meilleure semaine ISO de tout l'historique.
+     * Retourne une paire (total de la semaine, lundi de la semaine) ou null.
+     * Sur émulateur, retourne une valeur mock.
+     */
+    suspend fun readBestWeek(): Pair<Long, LocalDate?> {
+        if (isEmulator()) return 112_400L to LocalDate.now().minusWeeks(8).with(java.time.DayOfWeek.MONDAY)
+        val zone = ZoneId.systemDefault()
+        val from = LocalDate.of(2020, 1, 1).atStartOfDay(zone).toInstant()
+        val to = ZonedDateTime.now(zone).toInstant()
+        val stepsByDay = readStepsByDay(from, to)
+        // Grouper par semaine ISO (lundi)
+        val byWeek = stepsByDay.entries.groupBy { entry ->
+            entry.key.with(java.time.DayOfWeek.MONDAY)
+        }.mapValues { (_, days) -> days.sumOf { it.value } }
+        val best = byWeek.maxByOrNull { it.value } ?: return 0L to null
+        return best.value to best.key
+    }
+
+    /**
+     * Lit le meilleur mois de tout l'historique.
+     * Retourne une paire (total du mois, premier jour du mois) ou null.
+     * Sur émulateur, retourne une valeur mock.
+     */
+    suspend fun readBestMonth(): Pair<Long, LocalDate?> {
+        if (isEmulator()) return 385_000L to LocalDate.now().minusMonths(3).withDayOfMonth(1)
+        val zone = ZoneId.systemDefault()
+        val from = LocalDate.of(2020, 1, 1).atStartOfDay(zone).toInstant()
+        val to = ZonedDateTime.now(zone).toInstant()
+        val stepsByDay = readStepsByDay(from, to)
+        val byMonth = stepsByDay.entries.groupBy { entry ->
+            entry.key.withDayOfMonth(1)
+        }.mapValues { (_, days) -> days.sumOf { it.value } }
+        val best = byMonth.maxByOrNull { it.value } ?: return 0L to null
+        return best.value to best.key
+    }
+
+    /**
+     * Calcule la plus longue série de jours consécutifs où les pas >= [goalSteps].
+     * Retourne une paire (nombre de jours, premier jour de la série).
+     * Sur émulateur, retourne une valeur mock.
+     */
+    suspend fun readLongestStreak(goalSteps: Long): Pair<Int, LocalDate?> {
+        if (isEmulator()) return 21 to LocalDate.now().minusDays(60)
+        val zone = ZoneId.systemDefault()
+        val from = LocalDate.of(2020, 1, 1).atStartOfDay(zone).toInstant()
+        val to = ZonedDateTime.now(zone).toInstant()
+        val stepsByDay = readStepsByDay(from, to)
+        if (stepsByDay.isEmpty()) return 0 to null
+        val sortedDays = stepsByDay.keys.sorted()
+        var best = 0
+        var bestStart: LocalDate? = null
+        var current = 0
+        var currentStart: LocalDate? = null
+        for (day in sortedDays) {
+            if ((stepsByDay[day] ?: 0L) >= goalSteps) {
+                if (current == 0) currentStart = day
+                current++
+                if (current > best) { best = current; bestStart = currentStart }
+            } else { current = 0; currentStart = null }
+        }
+        return best to bestStart
+    }
+
+    /**
+     * Lit le total cumulé de tous les pas dans Health Connect (depuis 2020).
+     * Sur émulateur, retourne une valeur mock (1 234 567 pas).
+     */
+    suspend fun readTotalCumulativeSteps(): Long {
+        if (isEmulator()) return 1_234_567L
+        val zone = ZoneId.systemDefault()
+        val from = LocalDate.of(2020, 1, 1).atStartOfDay(zone).toInstant()
+        val to = ZonedDateTime.now(zone).toInstant()
+        return readSteps(from, to)
+    }
+
+    /**
+     * Lit la distance totale cumulée dans Health Connect (en km, depuis 2020).
+     * Sur émulateur, retourne une valeur mock (987.6 km).
+     */
+    suspend fun readTotalCumulativeDistance(): Double {
+        if (isEmulator()) return 987.6
+        val zone = ZoneId.systemDefault()
+        val from = LocalDate.of(2020, 1, 1).atStartOfDay(zone).toInstant()
+        val to = ZonedDateTime.now(zone).toInstant()
+        return readDistance(from, to)
     }
 
     /** Retourne true si Health Connect est installé et disponible sur cet appareil. */

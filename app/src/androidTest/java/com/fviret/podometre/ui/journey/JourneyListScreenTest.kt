@@ -2,7 +2,9 @@ package com.fviret.podometre.ui.journey
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -19,13 +21,19 @@ import org.junit.runner.RunWith
 import java.io.File
 
 /**
- * Test d'intégration : catalogue des trajets — liste affichée → tap preview → tap
- * commencer → détail affiché. Le [JourneyListViewModel] réel est utilisé, adossé à un
- * vrai [JourneyProgressRepository] (écrit dans le répertoire de fichiers de l'app de test,
- * nettoyé après chaque test) et à un [com.fviret.podometre.fakes.FakeDataStore] en mémoire.
- * "Détail affiché" est vérifié via l'invocation de `onNavigateToDetail` avec le bon
- * journeyId — c'est exactement ce que le NavHost réel utilise pour naviguer vers
+ * Test d'intégration : catalogue des trajets — liste affichée → dépli catégorie → tap
+ * preview → tap commencer → détail affiché. Le [JourneyListViewModel] réel est utilisé,
+ * adossé à un vrai [JourneyProgressRepository] (écrit dans le répertoire de fichiers de
+ * l'app de test, nettoyé après chaque test) et à un [com.fviret.podometre.fakes.FakeDataStore]
+ * en mémoire. "Détail affiché" est vérifié via l'invocation de `onNavigateToDetail` avec
+ * le bon journeyId — c'est exactement ce que le NavHost réel utilise pour naviguer vers
  * [JourneyDetailScreen].
+ *
+ * KAN-128 (accordion) : depuis KAN-128, les catégories du catalogue sont repliées par
+ * défaut lorsqu'aucun trajet n'est actif. Le test doit donc déplier "Promenades" avant
+ * d'interagir avec le premier trajet — c'est le comportement utilisateur attendu.
+ * La contentDescription du bouton d'accordéon est "Déplier Promenades" quand replié
+ * (cf. [com.fviret.podometre.ui.journey.JourneyListScreen] CategoryHeader).
  *
  * Note : le bouton "Commencer le trajet" (dans le `ModalBottomSheet`) n'est pas vérifié
  * via `assertIsDisplayed()` — dans l'hôte de test nu de `createComposeRule()` (sans le
@@ -52,6 +60,7 @@ class JourneyListScreenTest {
         viewModel = JourneyListViewModel(
             journeyProgressRepository = journeyProgressRepository,
             userPreferencesRepository = TestFactories.userPreferencesRepository(),
+            healthConnectRepository = TestFactories.healthConnectRepository(context),
         )
     }
 
@@ -74,18 +83,39 @@ class JourneyListScreenTest {
         }
         composeTestRule.waitForIdle()
 
-        // ── Liste affichée ──────────────────────────────────────────────
+        // ── Titre de la liste ────────────────────────────────────────────
         composeTestRule.onNodeWithText("Mes Trajets").assertIsDisplayed()
+
+        // ── Déplier "Promenades" (catégorie repliée par défaut, KAN-128) ─
+        // Sans trajet actif, toutes les catégories sont repliées à l'ouverture.
+        // Le bouton d'accordéon porte contentDescription = "Déplier Promenades".
+        composeTestRule.onNodeWithContentDescription("Déplier Promenades").performClick()
+        composeTestRule.waitForIdle()
+
+        // ── Premier trajet visible après dépli ──────────────────────────
         composeTestRule.onNodeWithText(firstJourney.name).assertIsDisplayed()
 
-        // ── Tap preview (première carte : Tour des Tuileries) ──────────
-        composeTestRule.onAllNodesWithText("Voir le trajet")[0].performClick()
+        // ── Tap preview (première carte) ──────────────────────────────
+        // La carte est cliquable via contentDescription = journey.name (sémantique fusionnée).
+        // "Voir le trajet" n'existe pas dans le UI — c'est le contentDescription qui est l'ancre.
+        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+            composeTestRule.onAllNodesWithContentDescription(firstJourney.name, substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithContentDescription(firstJourney.name, substring = true).performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Commencer le trajet").performClick()
         composeTestRule.waitForIdle()
 
-        // ── Détail affiché : la carte bascule sur "Voir mes étapes", qui déclenche la navigation ──
-        composeTestRule.onAllNodesWithText("Voir mes étapes")[0].performClick()
+        // ── Détail affiché : après startJourney (KAN-120), le trajet passe en ActiveJourneyCard
+        //    épinglée en haut de la liste. Sa contentDescription commence par "Trajet en cours :".
+        //    Un tap dessus déclenche directement onNavigateToDetail.
+        val activeCardDesc = "Trajet en cours :"
+        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+            composeTestRule.onAllNodesWithContentDescription(activeCardDesc, substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithContentDescription(activeCardDesc, substring = true).performClick()
         composeTestRule.waitForIdle()
 
         assertEquals(firstJourney.id.toString(), navigatedToJourneyId)
