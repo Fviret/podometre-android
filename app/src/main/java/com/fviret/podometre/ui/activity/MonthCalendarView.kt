@@ -36,13 +36,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import com.fviret.podometre.R
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
 import java.util.Locale
-
-private val DAY_HEADERS = listOf("L", "M", "M", "J", "V", "S", "D")
-private val MONTH_FORMATTER = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.FRENCH)
 
 /**
  * Grille calendrier mensuel avec indicateurs de progression journalière.
@@ -66,6 +65,10 @@ fun MonthCalendarView(
     val today = LocalDate.now()
     val currentMonth = YearMonth.now()
     val canGoNext = month < currentMonth
+    // En-têtes de jours et formateur de mois dérivés de la locale système (L-D pour FR, M-S pour EN…)
+    val locale = Locale.getDefault()
+    val dayHeaders = (1..7).map { DayOfWeek.of(it).getDisplayName(TextStyle.NARROW, locale) }
+    val monthFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", locale)
 
     Column(modifier = modifier.fillMaxWidth()) {
         // En-tête : chevron gauche — nom du mois — chevron droit (ghost si mois courant)
@@ -82,7 +85,7 @@ fun MonthCalendarView(
                 )
             }
             Text(
-                text = month.format(MONTH_FORMATTER).replaceFirstChar { it.uppercaseChar() },
+                text = month.format(monthFormatter).replaceFirstChar { it.uppercaseChar() },
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,
@@ -104,7 +107,7 @@ fun MonthCalendarView(
 
         // Ligne d'en-têtes des jours : L M M J V S D
         Row(modifier = Modifier.fillMaxWidth()) {
-            DAY_HEADERS.forEach { label ->
+            dayHeaders.forEach { label ->
                 Text(
                     text = label,
                     modifier = Modifier.weight(1f),
@@ -155,7 +158,7 @@ fun MonthCalendarView(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Total mensuel avec le nom du mois et l'année
-        val monthLabel = month.format(MONTH_FORMATTER).replaceFirstChar { it.uppercase() }
+        val monthLabel = month.format(monthFormatter).replaceFirstChar { it.uppercase() }
         Text(
             text = stringResource(R.string.activity_calendar_total, monthLabel, "%,d".format(total).replace(',', ' ')),
             style = MaterialTheme.typography.titleSmall,
@@ -245,7 +248,7 @@ private fun CalendarDayCell(
 }
 
 private fun buildA11yLabel(date: LocalDate, steps: Long, goal: Int, isFuture: Boolean): String {
-    val dayStr = date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRENCH))
+    val dayStr = date.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.getDefault()))
     return when {
         isFuture -> "$dayStr, jour à venir"
         steps == 0L -> "$dayStr, aucun pas"

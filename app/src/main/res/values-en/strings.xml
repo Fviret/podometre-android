@@ -89,4 +89,12 @@
     <string name="weekly_chart_no_data">No data this week</string>
     <string name="journey_timeline_end">Finish</string>
     <string name="activity_calendar_total">Total %1$s: %2$s steps</string>
+
+    <!-- Day labels — Activity screen (KAN-146) -->
+    <string name="activity_day_today">Today</string>
+    <string name="activity_day_yesterday">Yesterday</string>
+    <string name="activity_day_tomorrow">Tomorrow</string>
+    <!-- Short forms for the 7-day weather banner -->
+    <string name="activity_day_today_short">Today</string>
+    <string name="activity_day_tomorrow_short">Tmrw.</string>
 </resources>

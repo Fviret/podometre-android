@@ -81,4 +81,12 @@
     <string name="weekly_chart_no_data">Pas de données cette semaine</string>
     <string name="journey_timeline_end">Arrivée</string>
     <string name="activity_calendar_total">Total %1$s : %2$s pas</string>
+
+    <!-- Labels de jour — écran Activité (KAN-146) -->
+    <string name="activity_day_today">Aujourd\'hui</string>
+    <string name="activity_day_yesterday">Hier</string>
+    <string name="activity_day_tomorrow">Demain</string>
+    <!-- Formes abrégées pour la bannière météo 7 jours -->
+    <string name="activity_day_today_short">Auj.</string>
+    <string name="activity_day_tomorrow_short">Dem.</string>
 </resources>

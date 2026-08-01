@@ -22,6 +22,7 @@ import com.fviret.podometre.data.weather.DailyForecast
 import com.fviret.podometre.data.weather.HourlyForecast
 import com.fviret.podometre.data.weather.WeatherRepository
 import com.fviret.podometre.data.weather.WeatherState
+import com.fviret.podometre.R
 import com.fviret.podometre.util.isEmulator
 import com.fviret.podometre.worker.SyncStepsWorker
 import com.google.android.gms.location.LocationServices
@@ -100,8 +101,8 @@ data class ActivityUiState(
     val isHealthConnectAvailable: Boolean = false,
     /** Décalage en jours par rapport à aujourd'hui (0 = aujourd'hui, -1 = hier, etc.). */
     val selectedDayOffset: Int = 0,
-    /** Label affiché au-dessus de l'anneau : "Aujourd'hui" / "Hier" / "Lun. 23 juin". */
-    val selectedDateLabel: String = "Aujourd'hui",
+    /** Label affiché au-dessus de l'anneau : résolu depuis les ressources selon la locale. */
+    val selectedDateLabel: String = "",
     /** Mois affiché dans le calendrier. */
     val calendarMonth: YearMonth = YearMonth.now(),
     /** Pas par jour pour le mois affiché (absents de la map = aucun pas). */
@@ -152,7 +153,10 @@ class ActivityViewModel @Inject constructor(
         )
 
     private val _uiState = MutableStateFlow(
-        ActivityUiState(isHealthConnectAvailable = healthConnectRepository.isAvailable())
+        ActivityUiState(
+            isHealthConnectAvailable = healthConnectRepository.isAvailable(),
+            selectedDateLabel = labelForOffset(0),
+        )
     )
 
     /** État complet de l'écran. */
@@ -472,7 +476,7 @@ class ActivityViewModel @Inject constructor(
     private fun loadWeeklyData() {
         viewModelScope.launch {
             val today = LocalDate.now()
-            val dayFmt = DateTimeFormatter.ofPattern("EEE", Locale.FRENCH)
+            val dayFmt = DateTimeFormatter.ofPattern("EEE", Locale.getDefault())
 
             // Lundi de la semaine ISO courante
             val weekStart = today.with(java.time.DayOfWeek.MONDAY)
@@ -640,21 +644,38 @@ class ActivityViewModel @Inject constructor(
                 .getOrNull()
         }
 
+    /**
+     * Construit le label de date affiché au-dessus de l'anneau selon le décalage en jours.
+     * Résout les libellés "Aujourd'hui" / "Hier" depuis les ressources pour respecter la locale.
+     * Délègue le formatage des dates passées à [labelForOffset] (companion).
+     */
+    internal fun labelForOffset(offset: Int): String =
+        labelForOffset(
+            offset = offset,
+            todayLabel = context.getString(R.string.activity_day_today),
+            yesterdayLabel = context.getString(R.string.activity_day_yesterday),
+        )
+
     companion object {
         private const val TAG = "ActivityViewModel"
 
         /**
-         * Construit le label de date affiché au-dessus de l'anneau selon le décalage en jours.
-         * Exemples : 0 → "Aujourd'hui", -1 → "Hier", -5 → "Lun. 23 juin".
+         * Version testable de labelForOffset sans dépendance au contexte Android.
+         * Exemples : 0 → [todayLabel], -1 → [yesterdayLabel], -5 → "Lun. 23 juin" (locale système).
+         *
+         * @param offset Décalage en jours par rapport à aujourd'hui (0, -1, -2…).
+         * @param todayLabel Libellé localisé pour aujourd'hui (ex. "Aujourd'hui", "Today").
+         * @param yesterdayLabel Libellé localisé pour hier (ex. "Hier", "Yesterday").
          */
-        fun labelForOffset(offset: Int): String = when (offset) {
-            0 -> "Aujourd'hui"
-            -1 -> "Hier"
-            else -> {
-                val date = LocalDate.now().plusDays(offset.toLong())
-                val formatter = DateTimeFormatter.ofPattern("EEE d MMMM", Locale.FRENCH)
-                date.format(formatter).replaceFirstChar { it.uppercaseChar() }
+        internal fun labelForOffset(offset: Int, todayLabel: String, yesterdayLabel: String): String =
+            when (offset) {
+                0 -> todayLabel
+                -1 -> yesterdayLabel
+                else -> {
+                    val date = LocalDate.now().plusDays(offset.toLong())
+                    val formatter = DateTimeFormatter.ofPattern("EEE d MMMM", Locale.getDefault())
+                    date.format(formatter).replaceFirstChar { it.uppercaseChar() }
+                }
             }
-        }
     }
 }
