@@ -135,4 +135,16 @@
     <string name="journey_category_trail">Trails</string>
     <string name="journey_category_history">History</string>
     <string name="journey_category_myth">Myths &amp; Epics</string>
+
+    <!-- Category accordion — accessibility (KAN-148) -->
+    <string name="journey_category_expand">Expand %1$s</string>
+    <string name="journey_category_collapse">Collapse %1$s</string>
+
+    <!-- Active journey card — accessibility -->
+    <string name="journey_active_card_a11y">Active route: %1$s, %2$d%%.</string>
+    <string name="journey_active_card_milestone">Next milestone: %1$s in %2$s.</string>
+    <string name="journey_active_card_eta">Estimated arrival %1$s.</string>
+
+    <!-- Thought of the day popup -->
+    <string name="aphorism_popup_title">Thought of the day</string>
 </resources>

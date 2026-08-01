@@ -3,8 +3,10 @@ package com.fviret.podometre.ui.journey
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -88,10 +90,13 @@ class JourneyListScreenTest {
         // ── Titre de la liste ────────────────────────────────────────────
         composeTestRule.onNodeWithText(context.getString(R.string.journey_screen_title)).assertIsDisplayed()
 
-        // ── Déplier "Promenades" (catégorie repliée par défaut, KAN-128) ─
-        // Sans trajet actif, toutes les catégories sont repliées à l'ouverture.
-        // Le bouton d'accordéon porte contentDescription = "Déplier Promenades".
-        composeTestRule.onNodeWithContentDescription("Déplier Promenades").performClick()
+        // ── Déplier la première catégorie (repliée par défaut, KAN-128) ─
+        // Le contentDescription est localisé : "Déplier Promenades" en FR, "Expand Walks" en EN.
+        val expandDesc = context.getString(
+            R.string.journey_category_expand,
+            context.getString(R.string.journey_category_walk)
+        )
+        composeTestRule.onNodeWithContentDescription(expandDesc).performClick()
         composeTestRule.waitForIdle()
 
         // ── Premier trajet visible après dépli ──────────────────────────
@@ -110,14 +115,13 @@ class JourneyListScreenTest {
         composeTestRule.waitForIdle()
 
         // ── Détail affiché : après startJourney (KAN-120), le trajet passe en ActiveJourneyCard
-        //    épinglée en haut de la liste. Sa contentDescription commence par "Trajet en cours :".
+        //    épinglée en haut de la liste. Identifiée via testTag "active_journey_card" (locale-indépendant).
         //    Un tap dessus déclenche directement onNavigateToDetail.
-        val activeCardDesc = "Trajet en cours :"
         composeTestRule.waitUntil(timeoutMillis = 15_000) {
-            composeTestRule.onAllNodesWithContentDescription(activeCardDesc, substring = true)
+            composeTestRule.onAllNodesWithTag("active_journey_card")
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        composeTestRule.onNodeWithContentDescription(activeCardDesc, substring = true).performClick()
+        composeTestRule.onNodeWithTag("active_journey_card").performClick()
         composeTestRule.waitForIdle()
 
         assertEquals(firstJourney.id.toString(), navigatedToJourneyId)

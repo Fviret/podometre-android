@@ -52,8 +52,9 @@ class AphorismUiTest {
             AphorismPopup(aphorism = TEST_APHORISM, onDismiss = {})
         }
 
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         composeTestRule.onNodeWithTag("aphorism_popup").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Pensée du jour").assertIsDisplayed()
+        composeTestRule.onNodeWithText(context.getString(R.string.aphorism_popup_title)).assertIsDisplayed()
     }
 
     /** Appui sur "Make my day" déclenche [onDismiss] et fait disparaître la popup. */
