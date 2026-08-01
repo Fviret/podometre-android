@@ -2,6 +2,9 @@ package com.fviret.podometre.data.aphorism
 
 import android.content.Context
 import android.content.res.AssetManager
+import android.content.res.Configuration
+import android.content.res.Resources
+import android.os.LocaleList
 import com.fviret.podometre.data.preferences.UserPreferences
 import com.fviret.podometre.data.preferences.UserPreferencesRepository
 import io.mockk.coEvery
@@ -20,6 +23,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
+import java.util.Locale
 
 /**
  * Tests unitaires de [AphorismRepository], [parseAphorismsJson] et [selectAphorismForDay].
@@ -41,11 +45,23 @@ class AphorismRepositoryTest {
         json: String = SAMPLE_JSON,
         prefs: UserPreferences = UserPreferences(),
         date: LocalDate = FIXED_DATE,
+        locale: Locale = Locale.FRENCH,
     ): AphorismRepository {
         val assetManager = mockk<AssetManager>()
         every { assetManager.open("aphorisms_humor_400.json") } returns json.byteInputStream()
+        every { assetManager.open("aphorisms_humor_en.json") } returns json.byteInputStream()
+
+        val localeList = mockk<LocaleList>()
+        every { localeList.isEmpty } returns false
+        every { localeList[0] } returns locale
+        val configuration = mockk<Configuration>()
+        every { configuration.locales } returns localeList
+        val resources = mockk<Resources>()
+        every { resources.configuration } returns configuration
+
         val context = mockk<Context>()
         every { context.assets } returns assetManager
+        every { context.resources } returns resources
 
         val preferencesRepository = mockk<UserPreferencesRepository>()
         every { preferencesRepository.userPreferences } returns flowOf(prefs)
