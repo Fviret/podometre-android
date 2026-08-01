@@ -81,4 +81,21 @@
     <string name="weekly_chart_no_data">Pas de données cette semaine</string>
     <string name="journey_timeline_end">Arrivée</string>
     <string name="activity_calendar_total">Total %1$s : %2$s pas</string>
+
+    <!-- Écran Trajets — UI (KAN-148) -->
+    <string name="journey_screen_title">Mes Trajets</string>
+    <string name="journey_active_label">Trajet en cours · %1$d %%</string>
+    <string name="journey_next_milestone_distance">%1$.1f km jusqu\'à la prochaine étape</string>
+    <string name="journey_estimated_arrival">Arrivée ~%1$s</string>
+    <string name="journey_start_button">Commencer le trajet</string>
+    <string name="journey_continue_button">Continuer</string>
+    <string name="journey_change_dialog_title">Changer de trajet ?</string>
+    <string name="journey_abandon_button">Abandonner le trajet</string>
+    <string name="journey_completed_label">Trajet terminé !</string>
+
+    <!-- Catégories de trajets (KAN-148) -->
+    <string name="journey_category_walk">Promenades</string>
+    <string name="journey_category_trail">Sentiers</string>
+    <string name="journey_category_history">Histoire</string>
+    <string name="journey_category_myth">Mythes &amp; Épopées</string>
 </resources>

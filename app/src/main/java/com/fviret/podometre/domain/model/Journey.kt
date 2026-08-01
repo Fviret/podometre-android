@@ -1,5 +1,7 @@
 package com.fviret.podometre.domain.model
 
+import android.content.Context
+import com.fviret.podometre.R
 import java.util.UUID
 
 /** Constante de conversion : 1 pas = 0,8 m = 0,0008 km */
@@ -43,12 +45,27 @@ data class Milestone(
 /**
  * Catégories des 19 trajets disponibles.
  * Équivalent iOS : enum JourneyCategory dans JourneyModels.swift
+ *
+ * [displayName] conserve la valeur française par défaut (utilisée comme fallback
+ * et dans les contextes sans [Context]).
+ * Préférer [displayName(Context)] dans les Composables pour obtenir la traduction locale.
  */
 enum class JourneyCategory(val displayName: String) {
     WALK("Promenades"),
     TRAIL("Sentiers"),
     HISTORY("Histoire"),
     MYTH("Mythes & Épopées")
+}
+
+/**
+ * Retourne le nom de la catégorie localisé via les ressources string.
+ * À utiliser dans les Composables avec [LocalContext.current].
+ */
+fun JourneyCategory.displayName(context: Context): String = when (this) {
+    JourneyCategory.WALK    -> context.getString(R.string.journey_category_walk)
+    JourneyCategory.TRAIL   -> context.getString(R.string.journey_category_trail)
+    JourneyCategory.HISTORY -> context.getString(R.string.journey_category_history)
+    JourneyCategory.MYTH    -> context.getString(R.string.journey_category_myth)
 }
 
 /**

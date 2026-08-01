@@ -89,4 +89,21 @@
     <string name="weekly_chart_no_data">No data this week</string>
     <string name="journey_timeline_end">Finish</string>
     <string name="activity_calendar_total">Total %1$s: %2$s steps</string>
+
+    <!-- Journey screen — UI (KAN-148) -->
+    <string name="journey_screen_title">My Routes</string>
+    <string name="journey_active_label">Active route · %1$d%%</string>
+    <string name="journey_next_milestone_distance">%1$.1f km to next milestone</string>
+    <string name="journey_estimated_arrival">Est. arrival ~%1$s</string>
+    <string name="journey_start_button">Start route</string>
+    <string name="journey_continue_button">Continue</string>
+    <string name="journey_change_dialog_title">Change route?</string>
+    <string name="journey_abandon_button">Abandon route</string>
+    <string name="journey_completed_label">Route completed!</string>
+
+    <!-- Journey categories (KAN-148) -->
+    <string name="journey_category_walk">Walks</string>
+    <string name="journey_category_trail">Trails</string>
+    <string name="journey_category_history">History</string>
+    <string name="journey_category_myth">Myths &amp; Epics</string>
 </resources>
