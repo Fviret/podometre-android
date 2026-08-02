@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Version monochrome de l'icône (Android 13+, thèmes dynamiques Material You).
+    Même composition que ic_launcher_foreground mais sans gradient ni couleurs.
+    Le système applique sa propre teinte (ex. blanc sur fond coloré du thème).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Anneau 300° -->
+    <path
+        android:pathData="M 38,81.7 A 32,32 0 1 1 70,81.7"
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="8"
+        android:strokeLineCap="round" />
+
+    <!-- Montagne -->
+    <path
+        android:pathData="M 54,30 L 32,60 L 76,60 Z"
+        android:fillColor="#FFFFFFFF" />
+
+    <!-- Pas -->
+    <path
+        android:pathData="M 41.5,77 a 2.5,2.5 0 1,0 5,0 a 2.5,2.5 0 1,0 -5,0"
+        android:fillColor="#FFFFFFFF" />
+    <path
+        android:pathData="M 59.5,73 a 2.5,2.5 0 1,0 5,0 a 2.5,2.5 0 1,0 -5,0"
+        android:fillColor="#FFFFFFFF" />
+    <path
+        android:pathData="M 43.5,67 a 2.5,2.5 0 1,0 5,0 a 2.5,2.5 0 1,0 -5,0"
+        android:fillColor="#FFFFFFFF" />
+    <path
+        android:pathData="M 57.5,63 a 2.5,2.5 0 1,0 5,0 a 2.5,2.5 0 1,0 -5,0"
+        android:fillColor="#FFFFFFFF" />
+</vector>
