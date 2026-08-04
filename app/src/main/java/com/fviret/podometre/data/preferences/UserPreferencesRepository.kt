@@ -43,6 +43,7 @@ class UserPreferencesRepository @Inject constructor(
             aphorismEnabled = prefs[PreferenceKeys.APHORISM_ENABLED] ?: true,
             lastAphorismDate = prefs[PreferenceKeys.LAST_APHORISM_DATE] ?: "",
             showTodayMetrics = prefs[PreferenceKeys.SHOW_TODAY_METRICS] ?: true,
+            sectionOrder = HomeSection.fromCsv(prefs[PreferenceKeys.SECTION_ORDER] ?: ""),
         )
     }
 
@@ -120,6 +121,11 @@ class UserPreferencesRepository @Inject constructor(
     /** Afficher ou masquer la rangée de métriques sous l'anneau. */
     suspend fun setShowTodayMetrics(show: Boolean) {
         dataStore.edit { it[PreferenceKeys.SHOW_TODAY_METRICS] = show }
+    }
+
+    /** Persiste l'ordre des sections de l'écran principal choisi par l'utilisateur. */
+    suspend fun setSectionOrder(order: List<HomeSection>) {
+        dataStore.edit { it[PreferenceKeys.SECTION_ORDER] = HomeSection.toCsv(order) }
     }
 
     /** Active ou désactive la popup "Pensée du jour". */

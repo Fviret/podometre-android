@@ -29,4 +29,6 @@ data class UserPreferences(
     val lastAphorismDate: String = "",
     /** Afficher ou masquer la rangée de métriques (distance, temps actif, calories) sous l'anneau. */
     val showTodayMetrics: Boolean = true,
+    /** Ordre d'affichage des sections de l'écran principal, défini par l'utilisateur. */
+    val sectionOrder: List<HomeSection> = HomeSection.defaultOrder,
 )
