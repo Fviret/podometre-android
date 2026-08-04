@@ -1,5 +1,6 @@
 package com.fviret.podometre.data.weather
 
+import android.content.Context
 import android.util.Log
 import io.mockk.every
 import io.mockk.mockk
@@ -30,6 +31,7 @@ import java.time.LocalDate
  */
 class WeatherRepositoryTest {
 
+    private val context = mockk<Context>(relaxed = true)
     private val okHttpClient = mockk<OkHttpClient>()
     private val call = mockk<Call>()
     private lateinit var repository: WeatherRepository
@@ -39,7 +41,9 @@ class WeatherRepositoryTest {
         mockkStatic(Log::class)
         every { Log.w(any<String>(), any<String>(), any<Throwable>()) } returns 0
         every { okHttpClient.newCall(any()) } returns call
-        repository = WeatherRepository(okHttpClient)
+        // Le cache disque utilise context.filesDir — on renvoie un répertoire temp valide.
+        every { context.filesDir } returns kotlin.io.path.createTempDirectory("weather_test").toFile()
+        repository = WeatherRepository(context, okHttpClient)
     }
 
     @AfterEach
