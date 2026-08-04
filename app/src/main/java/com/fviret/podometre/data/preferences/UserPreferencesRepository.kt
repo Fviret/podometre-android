@@ -44,6 +44,7 @@ class UserPreferencesRepository @Inject constructor(
             lastAphorismDate = prefs[PreferenceKeys.LAST_APHORISM_DATE] ?: "",
             showTodayMetrics = prefs[PreferenceKeys.SHOW_TODAY_METRICS] ?: true,
             sectionOrder = HomeSection.fromCsv(prefs[PreferenceKeys.SECTION_ORDER] ?: ""),
+            lastWeeklyRecapDate = prefs[PreferenceKeys.LAST_WEEKLY_RECAP_DATE] ?: "",
         )
     }
 
@@ -136,6 +137,11 @@ class UserPreferencesRepository @Inject constructor(
     /** Enregistre la date ISO du dernier affichage de la popup "Pensée du jour". */
     suspend fun setLastAphorismDate(date: String) {
         dataStore.edit { it[PreferenceKeys.LAST_APHORISM_DATE] = date }
+    }
+
+    /** Enregistre la date ISO du lundi pour lequel le récapitulatif hebdo a été affiché. */
+    suspend fun setLastWeeklyRecapDate(date: String) {
+        dataStore.edit { it[PreferenceKeys.LAST_WEEKLY_RECAP_DATE] = date }
     }
 
     /**

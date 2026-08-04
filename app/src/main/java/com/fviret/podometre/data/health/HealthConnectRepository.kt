@@ -173,6 +173,46 @@ class HealthConnectRepository @Inject constructor(
     }
 
     /**
+     * Somme les calories actives brûlées (en kcal) sur une plage [from] → [to].
+     * Sur émulateur, retourne une valeur mock réaliste (~250 kcal/jour).
+     */
+    suspend fun readActiveCaloriesForRange(from: Instant, to: Instant): Int {
+        if (isEmulator()) {
+            val days = ((to.toEpochMilli() - from.toEpochMilli()) / 86_400_000.0).toInt().coerceAtLeast(1)
+            return days * 255
+        }
+        val request = ReadRecordsRequest(
+            recordType = ActiveCaloriesBurnedRecord::class,
+            timeRangeFilter = TimeRangeFilter.between(from, to)
+        )
+        return runCatching {
+            client.get().readRecords(request).records.sumOf { it.energy.inKilocalories }.toInt()
+        }.onFailure { Log.w(TAG, "readActiveCaloriesForRange a échoué, retour à 0", it) }
+            .getOrDefault(0)
+    }
+
+    /**
+     * Somme le temps actif (en minutes) depuis les [ExerciseSessionRecord] sur [from] → [to].
+     * Sur émulateur, retourne une valeur mock réaliste (~55 min/jour).
+     */
+    suspend fun readActiveMinutesForRange(from: Instant, to: Instant): Int {
+        if (isEmulator()) {
+            val days = ((to.toEpochMilli() - from.toEpochMilli()) / 86_400_000.0).toInt().coerceAtLeast(1)
+            return days * 55
+        }
+        val request = ReadRecordsRequest(
+            recordType = ExerciseSessionRecord::class,
+            timeRangeFilter = TimeRangeFilter.between(from, to)
+        )
+        return runCatching {
+            client.get().readRecords(request).records.sumOf { record ->
+                (record.endTime.toEpochMilli() - record.startTime.toEpochMilli()) / 60_000L
+            }.toInt()
+        }.onFailure { Log.w(TAG, "readActiveMinutesForRange a échoué", it) }
+            .getOrDefault(0)
+    }
+
+    /**
      * Compte, pour chaque seuil de [thresholds], le nombre de jours dans tout l'historique
      * Health Connect où le nombre de pas a atteint ou dépassé ce seuil.
      * Retourne une map seuil → nombre de jours (0 si jamais atteint).

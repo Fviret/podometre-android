@@ -31,4 +31,6 @@ data class UserPreferences(
     val showTodayMetrics: Boolean = true,
     /** Ordre d'affichage des sections de l'écran principal, défini par l'utilisateur. */
     val sectionOrder: List<HomeSection> = HomeSection.defaultOrder,
+    /** Date ISO (yyyy-MM-dd) du lundi pour lequel le récapitulatif hebdo a été affiché (garde 1×/semaine). */
+    val lastWeeklyRecapDate: String = "",
 )

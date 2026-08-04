@@ -89,7 +89,7 @@ class PreferenceKeysTest {
     @Test
     fun `la liste all contient toutes les cles`() {
         // Vérification du nombre de clés déclarées — à mettre à jour si une clé est ajoutée
-        assertEquals(18, PreferenceKeys.all.size)
+        assertEquals(19, PreferenceKeys.all.size)
     }
 
     // ────────────────────────────────────────────────────────────────────────

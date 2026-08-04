@@ -125,7 +125,16 @@ private fun MainContent() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(NavRoutes.ACTIVITY) {
-                ActivityScreen(onNavigateToHistory = { navController.navigate(NavRoutes.HISTORY) })
+                ActivityScreen(
+                    onNavigateToHistory = { navController.navigate(NavRoutes.HISTORY) },
+                    onNavigateToJourneys = {
+                        navController.navigate(NavRoutes.JOURNEYS) {
+                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                )
             }
             composable(NavRoutes.HISTORY) {
                 HistoryScreen(onBack = { navController.popBackStack() })
