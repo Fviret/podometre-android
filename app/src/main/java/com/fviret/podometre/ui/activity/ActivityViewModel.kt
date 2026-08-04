@@ -550,12 +550,22 @@ class ActivityViewModel @Inject constructor(
             ) == PackageManager.PERMISSION_GRANTED
             if (!hasPermission) return@launch
 
+            // Afficher immédiatement le cache disque (chargé au démarrage du Repository)
+            weatherRepository.getCachedSnapshot()?.let { (state, forecasts, city) ->
+                _uiState.value = _uiState.value.copy(
+                    weatherState = state,
+                    dailyForecasts = forecasts,
+                    cityName = city,
+                )
+            }
+
             val coords = getLastKnownLocation()
             val (lat, lon) = coords ?: (EMULATOR_LATITUDE to EMULATOR_LONGITUDE)
 
             val state = weatherRepository.getWeatherState(lat, lon)
             val forecasts = weatherRepository.getDailyForecasts(lat, lon)
             val city = getCityName(lat, lon)
+            city?.let { weatherRepository.updateCachedCityName(it) }
 
             _uiState.value = _uiState.value.copy(
                 weatherState = state,
