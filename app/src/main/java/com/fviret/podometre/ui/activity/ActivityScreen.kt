@@ -26,6 +26,7 @@ import android.os.Build
 import android.view.HapticFeedbackConstants
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -57,14 +58,17 @@ import com.fviret.podometre.ui.theme.AppColors
  * Rafraîchit les données à chaque retour en foreground (ON_RESUME).
  * Équivalent iOS : ActivityView.swift.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActivityScreen(
     viewModel: ActivityViewModel = hiltViewModel(),
     onNavigateToHistory: () -> Unit = {},
+    onNavigateToJourneys: () -> Unit = {},
 ) {
     val prefs by viewModel.userPreferences.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val showAphorism by viewModel.showAphorismDialog.collectAsStateWithLifecycle()
+    val weeklyRecapData by viewModel.weeklyRecapData.collectAsStateWithLifecycle()
     val haptic = LocalHapticFeedback.current
     val view = LocalView.current
     val context = LocalContext.current
@@ -153,12 +157,23 @@ fun ActivityScreen(
         )
     }
 
+    weeklyRecapData?.let { recap ->
+        WeeklyRecapSheet(
+            data = recap,
+            accentColor = AppColors.colorForId(prefs.ringColorId),
+            onDismiss = viewModel::dismissWeeklyRecap,
+            onNavigateToJourneys = onNavigateToJourneys,
+        )
+    }
+
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.refreshSteps()
         viewModel.refreshWeather()
         viewModel.refreshCalendar()
         // Retente l'affichage à chaque retour en premier plan (garde 1×/jour conservée).
         viewModel.checkAphorismVisibility()
+        // Vérifie si le récapitulatif hebdo doit s'afficher (lundi, 1×/semaine).
+        viewModel.checkWeeklyRecap()
         // Démarre le capteur live pour aujourd'hui (permission vérifiée avant).
         startSensorIfAllowed()
     }

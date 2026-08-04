@@ -29,4 +29,6 @@ data class UserPreferences(
     val lastAphorismDate: String = "",
     /** Afficher ou masquer la rangée de métriques (distance, temps actif, calories) sous l'anneau. */
     val showTodayMetrics: Boolean = true,
+    /** Date ISO (yyyy-MM-dd) du lundi pour lequel le récapitulatif hebdo a été affiché (garde 1×/semaine). */
+    val lastWeeklyRecapDate: String = "",
 )

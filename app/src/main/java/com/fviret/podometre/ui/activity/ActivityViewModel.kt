@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -172,6 +173,13 @@ class ActivityViewModel @Inject constructor(
     private val _showAphorismDialog = MutableStateFlow(false)
     val showAphorismDialog: StateFlow<Boolean> = _showAphorismDialog.asStateFlow()
 
+    /**
+     * Données du récapitulatif hebdomadaire, non null si la sheet doit être affichée.
+     * Déclenché le lundi matin (garde 1×/semaine via DataStore).
+     */
+    private val _weeklyRecapData = MutableStateFlow<WeeklyRecapData?>(null)
+    val weeklyRecapData: StateFlow<WeeklyRecapData?> = _weeklyRecapData.asStateFlow()
+
     // ── Capteur de pas live ───────────────────────────────────────────────────
 
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
@@ -277,6 +285,7 @@ class ActivityViewModel @Inject constructor(
         loadStreak()
         SyncStepsWorker.schedule(WorkManager.getInstance(context))
         checkAphorismVisibility()
+        checkWeeklyRecap()
         // Ré-affiche la popup quand l'utilisateur réactive la feature depuis les Paramètres.
         viewModelScope.launch {
             userPreferences
@@ -295,6 +304,93 @@ class ActivityViewModel @Inject constructor(
         viewModelScope.launch {
             _showAphorismDialog.value = aphorismRepository.shouldShowPopup()
         }
+    }
+
+    /**
+     * Vérifie si le récapitulatif hebdomadaire doit être affiché.
+     * Condition : aujourd'hui est un lundi ET la garde DataStore ne contient pas ce lundi.
+     * Rendu [internal] pour être appelé depuis [ActivityScreen] sur ON_RESUME.
+     */
+    internal fun checkWeeklyRecap() {
+        val today = LocalDate.now()
+        if (today.dayOfWeek != DayOfWeek.MONDAY) return
+        val mondayIso = today.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        val lastShown = userPreferences.value.lastWeeklyRecapDate
+        if (lastShown == mondayIso) return
+        loadWeeklyRecapData(today)
+    }
+
+    /**
+     * Charge les données du récapitulatif pour la semaine commençant le [monday].
+     * Cumule les pas, distances, calories et minutes sur la semaine en cours et la précédente.
+     */
+    private fun loadWeeklyRecapData(monday: LocalDate) {
+        viewModelScope.launch {
+            val goal = userPreferences.value.dailyStepGoal
+            val today = LocalDate.now()
+            val zone = ZoneId.systemDefault()
+
+            // Semaine courante : lundi → aujourd'hui
+            val currentStart = monday.atStartOfDay(zone).toInstant()
+            val currentEnd = today.plusDays(1).atStartOfDay(zone).toInstant()
+
+            // Semaine précédente : lundi-7 → dimanche (-1)
+            val prevMonday = monday.minusWeeks(1)
+            val prevStart = prevMonday.atStartOfDay(zone).toInstant()
+            val prevEnd = monday.atStartOfDay(zone).toInstant()
+
+            // Pas par jour cette semaine
+            val stepsPerDay = mutableListOf<Long?>()
+            for (i in 0..6) {
+                val day = monday.plusDays(i.toLong())
+                if (day.isAfter(today)) {
+                    stepsPerDay.add(null)
+                } else {
+                    val dayStart = day.atStartOfDay(zone).toInstant()
+                    val dayEnd = day.plusDays(1).atStartOfDay(zone).toInstant()
+                    stepsPerDay.add(healthConnectRepository.readSteps(dayStart, dayEnd))
+                }
+            }
+
+            val currentSteps = stepsPerDay.filterNotNull().sum()
+            val previousSteps = healthConnectRepository.readSteps(prevStart, prevEnd)
+            val currentDistance = healthConnectRepository.readDistance(currentStart, currentEnd)
+            val currentCalories = healthConnectRepository.readActiveCaloriesForRange(currentStart, currentEnd)
+            val currentMinutes = healthConnectRepository.readActiveMinutesForRange(currentStart, currentEnd)
+
+            val daysGoalMet = stepsPerDay.count { (it ?: 0L) >= goal }
+
+            // Trajet actif
+            val activeId = userPreferences.value.activeJourneyId
+            val (activeTitle, progressKm, totalKm) = if (activeId != null) {
+                val journey = com.fviret.podometre.domain.JourneyData.findById(activeId)
+                Triple(journey?.name, null as Double?, journey?.totalKm)
+            } else Triple(null, null, null)
+
+            _weeklyRecapData.value = WeeklyRecapData(
+                currentWeekSteps = currentSteps,
+                previousWeekSteps = previousSteps,
+                currentWeekDistanceKm = currentDistance,
+                currentWeekCalories = currentCalories,
+                currentWeekActiveMinutes = currentMinutes,
+                daysGoalMet = daysGoalMet,
+                dailyGoal = goal,
+                stepsPerDay = stepsPerDay,
+                weekStart = monday,
+                activeJourneyTitle = activeTitle,
+                activeJourneyProgressKm = progressKm,
+                activeJourneyTotalKm = totalKm,
+            )
+
+            // Marquer comme affiché pour cette semaine
+            val mondayIso = monday.format(DateTimeFormatter.ISO_LOCAL_DATE)
+            userPreferencesRepository.setLastWeeklyRecapDate(mondayIso)
+        }
+    }
+
+    /** Ferme le récapitulatif hebdomadaire (bouton fermer ou tap extérieur). */
+    fun dismissWeeklyRecap() {
+        _weeklyRecapData.value = null
     }
 
     /**
