@@ -140,6 +140,7 @@ app/src/main/java/com/fviret/podometre/
 | `showTodayMetrics` | Boolean | true |
 | `aphorismEnabled` | Boolean | true |
 | `lastAphorismDate` | String (date ISO yyyy-MM-dd) | "" (vide) |
+| `sectionOrder` | String (CSV d'IDs) | "metrics,weather,calendar,chart" |
 
 Ne pas créer de nouvelles clés sans les ajouter ici.
 

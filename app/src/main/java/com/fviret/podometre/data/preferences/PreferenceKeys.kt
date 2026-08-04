@@ -34,6 +34,7 @@ object PreferenceKeys {
     val APHORISM_ENABLED = booleanPreferencesKey("aphorismEnabled")
     val LAST_APHORISM_DATE = stringPreferencesKey("lastAphorismDate")
     val SHOW_TODAY_METRICS = booleanPreferencesKey("showTodayMetrics")
+    val SECTION_ORDER = stringPreferencesKey("sectionOrder")
     /** Date ISO (yyyy-MM-dd) du lundi pour lequel le récapitulatif hebdo a été affiché. */
     val LAST_WEEKLY_RECAP_DATE = stringPreferencesKey("lastWeeklyRecapDate")
 
@@ -59,6 +60,7 @@ object PreferenceKeys {
         APHORISM_ENABLED,
         LAST_APHORISM_DATE,
         SHOW_TODAY_METRICS,
+        SECTION_ORDER,
         LAST_WEEKLY_RECAP_DATE,
     )
 }
