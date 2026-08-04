@@ -90,13 +90,24 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlin.math.pow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.unit.IntOffset
 import com.fviret.podometre.BuildConfig
 import com.fviret.podometre.R
+import com.fviret.podometre.data.preferences.HomeSection
 import com.fviret.podometre.domain.JourneyData
 import com.fviret.podometre.ui.theme.AppColors
 import com.fviret.podometre.util.formatSteps
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 /**
  * Écran Paramètres — section US-5.1 : objectif quotidien de pas.
@@ -156,31 +167,34 @@ fun SettingsScreen(
         // ── Section : Mon écran principal ─────────────────────────────────────
         SectionHeader(title = stringResource(R.string.settings_section_display))
 
-        ModuleToggleCard {
-            ModuleToggleRow(
-                label = stringResource(R.string.settings_toggle_weather),
-                checked = prefs.showWeatherForecast,
-                onToggle = { viewModel.updateShowWeatherForecast(it) },
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-            ModuleToggleRow(
-                label = stringResource(R.string.settings_toggle_calendar),
-                checked = prefs.showMonthCalendar,
-                onToggle = { viewModel.updateShowMonthCalendar(it) },
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-            ModuleToggleRow(
-                label = stringResource(R.string.settings_toggle_chart),
-                checked = prefs.showWeeklyChart,
-                onToggle = { viewModel.updateShowWeeklyChart(it) },
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-            ModuleToggleRow(
-                label = stringResource(R.string.settings_toggle_metrics),
-                checked = prefs.showTodayMetrics,
-                onToggle = { viewModel.updateShowTodayMetrics(it) },
-            )
-        }
+        ReorderableSectionCard(
+            order = prefs.sectionOrder,
+            onReorder = { viewModel.updateSectionOrder(it) },
+            sectionChecked = { section ->
+                when (section) {
+                    HomeSection.WEATHER -> prefs.showWeatherForecast
+                    HomeSection.CALENDAR -> prefs.showMonthCalendar
+                    HomeSection.CHART -> prefs.showWeeklyChart
+                    HomeSection.METRICS -> prefs.showTodayMetrics
+                }
+            },
+            onToggle = { section, checked ->
+                when (section) {
+                    HomeSection.WEATHER -> viewModel.updateShowWeatherForecast(checked)
+                    HomeSection.CALENDAR -> viewModel.updateShowMonthCalendar(checked)
+                    HomeSection.CHART -> viewModel.updateShowWeeklyChart(checked)
+                    HomeSection.METRICS -> viewModel.updateShowTodayMetrics(checked)
+                }
+            },
+            sectionLabel = { section ->
+                when (section) {
+                    HomeSection.WEATHER -> stringResource(R.string.settings_toggle_weather)
+                    HomeSection.CALENDAR -> stringResource(R.string.settings_toggle_calendar)
+                    HomeSection.CHART -> stringResource(R.string.settings_toggle_chart)
+                    HomeSection.METRICS -> stringResource(R.string.settings_toggle_metrics)
+                }
+            },
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -648,6 +662,138 @@ private fun NotificationsCard(
             checked = journeyNotificationsEnabled,
             onToggle = { requestIfNeeded(it) { granted -> onToggleJourney(granted) } },
         )
+    }
+}
+
+/**
+ * Carte de sections réorganisables par glisser-déposer (appui long).
+ * Affiche un handle ⠿ à gauche et un toggle à droite pour chaque section.
+ * L'ordre choisi est persisté via [onReorder] à chaque relâchement.
+ */
+@Composable
+private fun ReorderableSectionCard(
+    order: List<HomeSection>,
+    onReorder: (List<HomeSection>) -> Unit,
+    sectionChecked: (HomeSection) -> Boolean,
+    onToggle: (HomeSection, Boolean) -> Unit,
+    sectionLabel: @Composable (HomeSection) -> String,
+) {
+    val haptic = LocalHapticFeedback.current
+    // Liste locale mutable pour l'animation pendant le drag
+    val localOrder = remember(order) { mutableStateListOf(*order.toTypedArray()) }
+
+    // Hauteur de chaque ligne (estimée)
+    val rowHeightPx = remember { mutableFloatStateOf(0f) }
+    // Index de la ligne en cours de déplacement (-1 = aucun)
+    val draggingIndex = remember { mutableIntStateOf(-1) }
+    // Déplacement Y cumulé pendant le drag
+    val dragOffsetY = remember { mutableFloatStateOf(0f) }
+
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column {
+            localOrder.forEachIndexed { index, section ->
+                val isDragging = draggingIndex.intValue == index
+                val offsetY = if (isDragging) dragOffsetY.floatValue else 0f
+
+                val label = sectionLabel(section)
+
+                if (index > 0) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onGloballyPositioned { coords ->
+                            if (rowHeightPx.floatValue == 0f) {
+                                rowHeightPx.floatValue = coords.size.height.toFloat()
+                            }
+                        }
+                        .offset { IntOffset(0, offsetY.roundToInt()) }
+                        .then(
+                            if (isDragging) Modifier.background(
+                                MaterialTheme.colorScheme.surfaceVariant,
+                                RoundedCornerShape(12.dp)
+                            ) else Modifier
+                        )
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // Handle glisser-déposer
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .pointerInput(localOrder.toList()) {
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        draggingIndex.intValue = index
+                                        dragOffsetY.floatValue = 0f
+                                    },
+                                    onDrag = { change, dragAmount ->
+                                        change.consume()
+                                        dragOffsetY.floatValue += dragAmount.y
+                                        // Détecter si on dépasse la moitié d'une ligne pour permuter
+                                        val h = rowHeightPx.floatValue.takeIf { it > 0f } ?: 1f
+                                        val currentDrag = draggingIndex.intValue
+                                        if (dragOffsetY.floatValue > h / 2 && currentDrag < localOrder.lastIndex) {
+                                            localOrder.add(currentDrag + 1, localOrder.removeAt(currentDrag))
+                                            draggingIndex.intValue = currentDrag + 1
+                                            dragOffsetY.floatValue -= h
+                                        } else if (dragOffsetY.floatValue < -h / 2 && currentDrag > 0) {
+                                            localOrder.add(currentDrag - 1, localOrder.removeAt(currentDrag))
+                                            draggingIndex.intValue = currentDrag - 1
+                                            dragOffsetY.floatValue += h
+                                        }
+                                    },
+                                    onDragEnd = {
+                                        draggingIndex.intValue = -1
+                                        dragOffsetY.floatValue = 0f
+                                        onReorder(localOrder.toList())
+                                    },
+                                    onDragCancel = {
+                                        draggingIndex.intValue = -1
+                                        dragOffsetY.floatValue = 0f
+                                    },
+                                )
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "⠿",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f),
+                    )
+
+                    val checked = sectionChecked(section)
+                    Switch(
+                        checked = checked,
+                        onCheckedChange = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onToggle(section, it)
+                        },
+                        modifier = Modifier.semantics {
+                            contentDescription = "$label : ${if (checked) "activé" else "désactivé"}"
+                        },
+                    )
+                }
+            }
+        }
     }
 }
 

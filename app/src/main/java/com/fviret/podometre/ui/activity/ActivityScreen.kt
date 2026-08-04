@@ -26,6 +26,7 @@ import android.os.Build
 import android.view.HapticFeedbackConstants
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,6 +50,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fviret.podometre.R
+import com.fviret.podometre.data.preferences.HomeSection
 import com.fviret.podometre.data.weather.DailyForecast
 import com.fviret.podometre.ui.theme.AppColors
 
@@ -57,14 +59,17 @@ import com.fviret.podometre.ui.theme.AppColors
  * Rafraîchit les données à chaque retour en foreground (ON_RESUME).
  * Équivalent iOS : ActivityView.swift.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActivityScreen(
     viewModel: ActivityViewModel = hiltViewModel(),
     onNavigateToHistory: () -> Unit = {},
+    onNavigateToJourneys: () -> Unit = {},
 ) {
     val prefs by viewModel.userPreferences.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val showAphorism by viewModel.showAphorismDialog.collectAsStateWithLifecycle()
+    val weeklyRecapData by viewModel.weeklyRecapData.collectAsStateWithLifecycle()
     val haptic = LocalHapticFeedback.current
     val view = LocalView.current
     val context = LocalContext.current
@@ -153,12 +158,23 @@ fun ActivityScreen(
         )
     }
 
+    weeklyRecapData?.let { recap ->
+        WeeklyRecapSheet(
+            data = recap,
+            accentColor = AppColors.colorForId(prefs.ringColorId),
+            onDismiss = viewModel::dismissWeeklyRecap,
+            onNavigateToJourneys = onNavigateToJourneys,
+        )
+    }
+
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.refreshSteps()
         viewModel.refreshWeather()
         viewModel.refreshCalendar()
         // Retente l'affichage à chaque retour en premier plan (garde 1×/jour conservée).
         viewModel.checkAphorismVisibility()
+        // Vérifie si le récapitulatif hebdo doit s'afficher (lundi, 1×/semaine).
+        viewModel.checkWeeklyRecap()
         // Démarre le capteur live pour aujourd'hui (permission vérifiée avant).
         startSensorIfAllowed()
     }
@@ -265,63 +281,69 @@ fun ActivityScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // ── 2. Métriques du jour (distance · temps actif · calories) ──────────
-        if (prefs.showTodayMetrics) {
-            TodayMetricsView(
-                ringColor = AppColors.colorForId(prefs.ringColorId),
-                distanceKm = uiState.distanceKm,
-                activeMinutes = uiState.activeMinutes,
-                caloriesKcal = uiState.caloriesKcal,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+        // Sections optionnelles dans l'ordre choisi par l'utilisateur.
+        // Une section n'est rendue que si son toggle est actif ET qu'elle a du contenu réel.
+        val ringColor = AppColors.colorForId(prefs.ringColorId)
+        val visibleSections = prefs.sectionOrder.filter { section ->
+            when (section) {
+                HomeSection.METRICS -> prefs.showTodayMetrics
+                HomeSection.WEATHER -> prefs.showWeatherForecast
+                HomeSection.CALENDAR -> prefs.showMonthCalendar
+                HomeSection.CHART -> prefs.showWeeklyChart
+            }
         }
-
-        // ── 4. Bannière météo + prévisions 7 jours ────────────────────────────
-        if (prefs.showWeatherForecast) {
-            WeatherBanner(
-                state = uiState.weatherState,
-                modifier = Modifier.fillMaxWidth()
-            )
-            if (uiState.dailyForecasts.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                WeeklyForecastBanner(
-                    forecasts = uiState.dailyForecasts,
-                    cityName = uiState.cityName,
-                    modifier = Modifier.fillMaxWidth(),
-                    onDayClick = { forecast -> selectedForecast = forecast },
-                )
+        visibleSections.forEachIndexed { _, section ->
+            when (section) {
+                HomeSection.METRICS -> {
+                    TodayMetricsView(
+                        ringColor = ringColor,
+                        distanceKm = uiState.distanceKm,
+                        activeMinutes = uiState.activeMinutes,
+                        caloriesKcal = uiState.caloriesKcal,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                HomeSection.WEATHER -> {
+                    WeatherBanner(
+                        state = uiState.weatherState,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (uiState.dailyForecasts.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        WeeklyForecastBanner(
+                            forecasts = uiState.dailyForecasts,
+                            cityName = uiState.cityName,
+                            modifier = Modifier.fillMaxWidth(),
+                            onDayClick = { forecast -> selectedForecast = forecast },
+                        )
+                    }
+                }
+                HomeSection.CALENDAR -> {
+                    MonthCalendarView(
+                        month = uiState.calendarMonth,
+                        stepsPerDay = uiState.calendarSteps,
+                        goal = uiState.stepGoal,
+                        total = uiState.calendarTotal,
+                        accentColor = ringColor,
+                        onPreviousMonth = { viewModel.navigateCalendarPrevious() },
+                        onNextMonth = { viewModel.navigateCalendarNext() },
+                        onDayTap = { date -> viewModel.onCalendarDayTap(date) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                HomeSection.CHART -> {
+                    WeeklyChartView(
+                        currentWeek = uiState.currentWeekSteps,
+                        previousWeek = uiState.previousWeekSteps,
+                        dayLabels = uiState.weekDayLabels,
+                        todayIndex = uiState.weekTodayIndex,
+                        accentColor = ringColor,
+                        modifier = Modifier.fillMaxWidth(),
+                        onTap = onNavigateToHistory,
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        // ── 5. Calendrier mensuel ─────────────────────────────────────────────
-        if (prefs.showMonthCalendar) {
-            MonthCalendarView(
-                month = uiState.calendarMonth,
-                stepsPerDay = uiState.calendarSteps,
-                goal = uiState.stepGoal,
-                total = uiState.calendarTotal,
-                accentColor = AppColors.colorForId(prefs.ringColorId),
-                onPreviousMonth = { viewModel.navigateCalendarPrevious() },
-                onNextMonth = { viewModel.navigateCalendarNext() },
-                onDayTap = { date -> viewModel.onCalendarDayTap(date) },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        // ── 6. Graphe comparaison hebdomadaire ────────────────────────────────
-        if (prefs.showWeeklyChart) {
-            WeeklyChartView(
-                currentWeek = uiState.currentWeekSteps,
-                previousWeek = uiState.previousWeekSteps,
-                dayLabels = uiState.weekDayLabels,
-                todayIndex = uiState.weekTodayIndex,
-                accentColor = AppColors.colorForId(prefs.ringColorId),
-                modifier = Modifier.fillMaxWidth(),
-                onTap = onNavigateToHistory,
-            )
         }
     }
 }

@@ -26,6 +26,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.res.stringResource
+import com.fviret.podometre.R
 import com.fviret.podometre.data.aphorism.Aphorism
 
 /**
@@ -75,7 +77,7 @@ fun AphorismPopup(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Pensée du jour",
+                    text = stringResource(R.string.aphorism_popup_title),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold,

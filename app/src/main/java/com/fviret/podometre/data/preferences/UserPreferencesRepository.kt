@@ -43,6 +43,8 @@ class UserPreferencesRepository @Inject constructor(
             aphorismEnabled = prefs[PreferenceKeys.APHORISM_ENABLED] ?: true,
             lastAphorismDate = prefs[PreferenceKeys.LAST_APHORISM_DATE] ?: "",
             showTodayMetrics = prefs[PreferenceKeys.SHOW_TODAY_METRICS] ?: true,
+            sectionOrder = HomeSection.fromCsv(prefs[PreferenceKeys.SECTION_ORDER] ?: ""),
+            lastWeeklyRecapDate = prefs[PreferenceKeys.LAST_WEEKLY_RECAP_DATE] ?: "",
         )
     }
 
@@ -122,6 +124,11 @@ class UserPreferencesRepository @Inject constructor(
         dataStore.edit { it[PreferenceKeys.SHOW_TODAY_METRICS] = show }
     }
 
+    /** Persiste l'ordre des sections de l'écran principal choisi par l'utilisateur. */
+    suspend fun setSectionOrder(order: List<HomeSection>) {
+        dataStore.edit { it[PreferenceKeys.SECTION_ORDER] = HomeSection.toCsv(order) }
+    }
+
     /** Active ou désactive la popup "Pensée du jour". */
     suspend fun setAphorismEnabled(enabled: Boolean) {
         dataStore.edit { it[PreferenceKeys.APHORISM_ENABLED] = enabled }
@@ -130,6 +137,11 @@ class UserPreferencesRepository @Inject constructor(
     /** Enregistre la date ISO du dernier affichage de la popup "Pensée du jour". */
     suspend fun setLastAphorismDate(date: String) {
         dataStore.edit { it[PreferenceKeys.LAST_APHORISM_DATE] = date }
+    }
+
+    /** Enregistre la date ISO du lundi pour lequel le récapitulatif hebdo a été affiché. */
+    suspend fun setLastWeeklyRecapDate(date: String) {
+        dataStore.edit { it[PreferenceKeys.LAST_WEEKLY_RECAP_DATE] = date }
     }
 
     /**

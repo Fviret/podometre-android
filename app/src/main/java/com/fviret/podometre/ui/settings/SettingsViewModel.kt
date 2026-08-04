@@ -182,6 +182,11 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { userPreferencesRepository.setShowTodayMetrics(show) }
     }
 
+    /** Persiste le nouvel ordre des sections de l'écran principal après un glisser-déposer. */
+    fun updateSectionOrder(order: List<com.fviret.podometre.data.preferences.HomeSection>) {
+        viewModelScope.launch { userPreferencesRepository.setSectionOrder(order) }
+    }
+
     /**
      * Active ou désactive la popup "Pensée du jour".
      * Si réactivée, remet à zéro la garde "1×/jour" afin que la popup se ré-affiche

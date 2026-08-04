@@ -1,6 +1,8 @@
 package com.fviret.podometre.data.weather
 
+import android.content.Context
 import android.util.Log
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -8,11 +10,16 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import javax.inject.Inject
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 import javax.inject.Singleton
 
 // ── Modèle public ────────────────────────────────────────────────────────────
@@ -60,16 +67,49 @@ private data class DailyWeather(
     @SerialName("precipitation_sum") val precipitationSum: List<Double>,
 )
 
+// ── Cache disque ─────────────────────────────────────────────────────────────
+
+/** Entrée persistée sur disque après chaque appel réseau météo réussi. */
+@Serializable
+private data class WeatherCacheEntry(
+    val timestampMs: Long,
+    val latitude: Double,
+    val longitude: Double,
+    val cityName: String,
+    val weatherStateName: String,
+    val forecasts: List<CachedDailyForecast>,
+)
+
+@Serializable
+private data class CachedDailyForecast(
+    val dateIso: String,
+    val weatherCode: Int,
+    val tempMaxCelsius: Double,
+    val tempMinCelsius: Double,
+    val precipitationMm: Double,
+    val hourlyForecasts: List<CachedHourlyForecast>,
+)
+
+@Serializable
+private data class CachedHourlyForecast(
+    val hour: Int,
+    val tempCelsius: Double,
+    val weatherCode: Int,
+    val precipProbability: Int,
+)
+
 // ── Repository ───────────────────────────────────────────────────────────────
 
 /**
  * Accès aux données météo via l'API Open-Meteo (gratuite, sans clé).
  * Un seul appel HTTP fournit : état actuel, heure suivante et prévisions 7 jours.
- * Cache 30 min pour éviter les appels redondants.
- * Équivalent iOS : WeatherService.swift
+ * Cache mémoire 30 min + cache disque pour affichage immédiat au démarrage.
+ * Pas d'appel réseau si la position n'a pas bougé de plus de 3 km et que le cache < 30 min.
+ * Équivalent iOS : WeatherService.swift / WeatherCache
  */
 @Singleton
 class WeatherRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val okHttpClient: OkHttpClient,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
@@ -77,7 +117,30 @@ class WeatherRepository @Inject constructor(
     private var cachedState: WeatherState? = null
     private var cachedForecasts: List<DailyForecast> = emptyList()
     private var cachedData: WeatherData? = null
+    private var cachedCityName: String = ""
     private var lastFetchMs: Long = 0L
+    private var lastFetchLat: Double = Double.NaN
+    private var lastFetchLon: Double = Double.NaN
+
+    init {
+        loadDiskCache()
+    }
+
+    /** Retourne le snapshot en mémoire sans déclencher d'appel réseau. Null si aucun cache. */
+    fun getCachedSnapshot(): Triple<WeatherState, List<DailyForecast>, String>? {
+        val state = cachedState ?: return null
+        return Triple(state, cachedForecasts, cachedCityName)
+    }
+
+    /** Enregistre le nom de ville résolu (géocodage inverse) pour le persister dans le cache disque. */
+    fun updateCachedCityName(cityName: String) {
+        if (cachedCityName == cityName) return
+        cachedCityName = cityName
+        // Mise à jour partielle du fichier si on a déjà des données
+        if (cachedState != null && !lastFetchLat.isNaN()) {
+            saveDiskCache(lastFetchLat, lastFetchLon)
+        }
+    }
 
     /**
      * Retourne le [WeatherState] pour les coordonnées données.
@@ -107,7 +170,10 @@ class WeatherRepository @Inject constructor(
 
     private suspend fun ensureFresh(latitude: Double, longitude: Double) {
         val now = System.currentTimeMillis()
-        if (cachedState != null && now - lastFetchMs < CACHE_DURATION_MS) return
+        val cacheAge = now - lastFetchMs
+        val positionUnchanged = !lastFetchLat.isNaN() &&
+            haversineKm(lastFetchLat, lastFetchLon, latitude, longitude) < POSITION_CHANGE_THRESHOLD_KM
+        if (cachedState != null && cacheAge < CACHE_DURATION_MS && positionUnchanged) return
         fetch(latitude, longitude)
     }
 
@@ -166,6 +232,9 @@ class WeatherRepository @Inject constructor(
             }
 
             lastFetchMs = System.currentTimeMillis()
+            lastFetchLat = latitude
+            lastFetchLon = longitude
+            saveDiskCache(latitude, longitude)
         }.onFailure { Log.w(TAG, "Échec de la récupération météo Open-Meteo, cache non mis à jour", it) }
     }
 
@@ -192,8 +261,79 @@ class WeatherRepository @Inject constructor(
             "&forecast_days=7" +
             "&timezone=auto"
 
+    /** Charge le cache disque en mémoire au démarrage. Erreurs ignorées silencieusement. */
+    private fun loadDiskCache() {
+        runCatching {
+            val file = diskCacheFile()
+            if (!file.exists()) return
+            val entry = json.decodeFromString<WeatherCacheEntry>(file.readText())
+            cachedState = runCatching { WeatherState.valueOf(entry.weatherStateName) }.getOrNull()
+                ?: return
+            cachedCityName = entry.cityName
+            cachedForecasts = entry.forecasts.mapNotNull { cached ->
+                val date = runCatching { LocalDate.parse(cached.dateIso) }.getOrNull()
+                    ?: return@mapNotNull null
+                DailyForecast(
+                    date = date,
+                    weatherCode = cached.weatherCode,
+                    tempMaxCelsius = cached.tempMaxCelsius,
+                    tempMinCelsius = cached.tempMinCelsius,
+                    precipitationMm = cached.precipitationMm,
+                    hourlyForecasts = cached.hourlyForecasts.map { h ->
+                        HourlyForecast(h.hour, h.tempCelsius, h.weatherCode, h.precipProbability)
+                    },
+                )
+            }
+            lastFetchMs = entry.timestampMs
+            lastFetchLat = entry.latitude
+            lastFetchLon = entry.longitude
+        }.onFailure { Log.w(TAG, "Impossible de charger le cache météo disque", it) }
+    }
+
+    /** Persiste le cache météo sur disque après un appel réseau réussi. */
+    private fun saveDiskCache(latitude: Double, longitude: Double) {
+        runCatching {
+            val entry = WeatherCacheEntry(
+                timestampMs = lastFetchMs,
+                latitude = latitude,
+                longitude = longitude,
+                cityName = cachedCityName,
+                weatherStateName = cachedState?.name ?: return,
+                forecasts = cachedForecasts.map { f ->
+                    CachedDailyForecast(
+                        dateIso = f.date.toString(),
+                        weatherCode = f.weatherCode,
+                        tempMaxCelsius = f.tempMaxCelsius,
+                        tempMinCelsius = f.tempMinCelsius,
+                        precipitationMm = f.precipitationMm,
+                        hourlyForecasts = f.hourlyForecasts.map { h ->
+                            CachedHourlyForecast(h.hour, h.tempCelsius, h.weatherCode, h.precipProbability)
+                        },
+                    )
+                },
+            )
+            diskCacheFile().writeText(json.encodeToString(WeatherCacheEntry.serializer(), entry))
+        }.onFailure { Log.w(TAG, "Impossible de sauvegarder le cache météo disque", it) }
+    }
+
+    private fun diskCacheFile(): File = File(context.filesDir, CACHE_FILE_NAME)
+
+    /** Distance approchée en km entre deux coordonnées (formule de Haversine). */
+    private fun haversineKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val r = 6371.0
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        val sinDLat = sin(dLat / 2)
+        val sinDLon = sin(dLon / 2)
+        val a = sinDLat * sinDLat +
+            cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) * sinDLon * sinDLon
+        return r * 2 * atan2(sqrt(a), sqrt(1 - a))
+    }
+
     companion object {
         private const val TAG = "WeatherRepository"
         private const val CACHE_DURATION_MS = 30 * 60 * 1_000L
+        private const val POSITION_CHANGE_THRESHOLD_KM = 3.0
+        private const val CACHE_FILE_NAME = "weather_cache.json"
     }
 }

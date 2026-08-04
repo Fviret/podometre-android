@@ -27,6 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -184,6 +186,7 @@ private fun CalendarDayCell(
 ) {
     val ringColor = accentColor
     val a11yLabel = buildA11yLabel(date, steps, goal, isFuture)
+    val haptic = LocalHapticFeedback.current
 
     Box(
         contentAlignment = Alignment.Center,
@@ -192,7 +195,10 @@ private fun CalendarDayCell(
             .padding(2.dp)
             .alpha(if (isFuture) 0.3f else 1f)
             .then(
-                if (onTap != null) Modifier.clickable { onTap(date) } else Modifier
+                if (onTap != null) Modifier.clickable {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onTap(date)
+                } else Modifier
             )
             .clearAndSetSemantics {
                 contentDescription = a11yLabel

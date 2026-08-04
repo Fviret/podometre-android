@@ -65,7 +65,7 @@ class ActivityScreenTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         viewModel = ActivityViewModel(
             healthConnectRepository = TestFactories.healthConnectRepository(context),
-            weatherRepository = TestFactories.weatherRepository(),
+            weatherRepository = TestFactories.weatherRepository(context),
             userPreferencesRepository = TestFactories.userPreferencesRepository(),
             aphorismRepository = com.fviret.podometre.data.aphorism.AphorismRepository(
                 context = context,

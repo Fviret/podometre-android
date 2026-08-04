@@ -54,6 +54,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.invisibleToUser
 import androidx.compose.ui.semantics.semantics
@@ -72,7 +73,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.fviret.podometre.R
 import com.fviret.podometre.domain.model.displayName
+import com.fviret.podometre.ui.theme.AppColors
 import com.fviret.podometre.ui.theme.rememberReduceMotion
+import androidx.compose.ui.graphics.Color
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -90,6 +93,7 @@ fun JourneyListScreen(
     val progressMap by viewModel.progressMap.collectAsStateWithLifecycle()
     val preferences by viewModel.preferences.collectAsStateWithLifecycle()
     val activeJourneyCard by viewModel.activeJourneyCard.collectAsStateWithLifecycle()
+    val accentColor = AppColors.colorForId(preferences.ringColorId)
 
     var selectedJourney by remember { mutableStateOf<Journey?>(null) }
     var showAbandonDialog by rememberSaveable { mutableStateOf(false) }
@@ -133,6 +137,7 @@ fun JourneyListScreen(
             item(key = "active_journey_card") {
                 ActiveJourneyCard(
                     cardData = cardData,
+                    accentColor = accentColor,
                     onClick = { onNavigateToDetail(cardData.journey.id.toString()) },
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                 )
@@ -200,6 +205,7 @@ fun JourneyListScreen(
                         journey = journey,
                         progress = progress,
                         isCompleted = false,
+                        accentColor = accentColor,
                         onPreview = { selectedJourney = journey },
                         onDetail = if (isInProgress) {
                             { onNavigateToDetail(journey.id.toString()) }
@@ -226,6 +232,7 @@ fun JourneyListScreen(
             progress = progressMap[journey.id.toString()],
             isCompleted = journey.id.toString() in preferences.completedJourneyIds,
             isActive = isThisJourneyActive,
+            accentColor = accentColor,
             onDismiss = { selectedJourney = null },
             onStart = {
                 if (hasActiveOther) {
@@ -332,7 +339,10 @@ private fun CategoryHeader(
         }
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-            contentDescription = if (isExpanded) "Replier $displayName" else "Déplier $displayName",
+            contentDescription = if (isExpanded)
+                stringResource(R.string.journey_category_collapse, displayName)
+            else
+                stringResource(R.string.journey_category_expand, displayName),
             modifier = Modifier
                 .size(12.dp)
                 .graphicsLayer { rotationZ = rotation },
@@ -479,6 +489,7 @@ private fun CompletedJourneyPopup(
 @Composable
 private fun ActiveJourneyCard(
     cardData: ActiveJourneyCardData,
+    accentColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -488,16 +499,21 @@ private fun ActiveJourneyCard(
         "le ${date.format(DateTimeFormatter.ofPattern("d MMM", Locale.FRENCH))}"
     }
 
+    val activeDesc = stringResource(R.string.journey_active_card_a11y, journey.name, globalPct)
+    val milestoneDesc = stringResource(R.string.journey_active_card_milestone, cardData.nextMilestoneLabel, formatKm(cardData.kmToNextMilestone))
+    val etaDesc = etaText?.let { stringResource(R.string.journey_active_card_eta, it) }
     val a11yDescription = buildString {
-        append("Trajet en cours : ${journey.name}, $globalPct %. ")
-        append("Prochaine étape : ${cardData.nextMilestoneLabel} dans ${formatKm(cardData.kmToNextMilestone)}. ")
-        etaText?.let { append("Arrivée estimée $it.") }
+        append(activeDesc)
+        append(" ")
+        append(milestoneDesc)
+        etaDesc?.let { append(" "); append(it) }
     }
 
     Card(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
+            .testTag("active_journey_card")
             .semantics { contentDescription = a11yDescription },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
@@ -546,7 +562,8 @@ private fun ActiveJourneyCard(
             SegmentTrack(
                 leftLabel = cardData.lastMilestoneLabel,
                 rightLabel = cardData.nextMilestoneLabel,
-                progress = cardData.segmentProgress
+                progress = cardData.segmentProgress,
+                accentColor = accentColor
             )
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -584,11 +601,12 @@ private fun SegmentTrack(
     leftLabel: String,
     rightLabel: String,
     progress: Float,
+    accentColor: Color,
     modifier: Modifier = Modifier
 ) {
     val trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
-    val progressColor = MaterialTheme.colorScheme.primary
-    val markerColor = MaterialTheme.colorScheme.primary
+    val progressColor = accentColor
+    val markerColor = accentColor
 
     Column(modifier = modifier.fillMaxWidth()) {
         Canvas(
@@ -674,6 +692,7 @@ private fun JourneyCard(
     journey: Journey,
     progress: JourneyProgress?,
     isCompleted: Boolean,
+    accentColor: Color,
     onPreview: () -> Unit,
     onDetail: (() -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -761,13 +780,13 @@ private fun JourneyCard(
                         if (!isCompleted) {
                             Surface(
                                 shape = RoundedCornerShape(4.dp),
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                color = accentColor.copy(alpha = 0.12f),
                                 modifier = Modifier.semantics { invisibleToUser() }
                             ) {
                                 Text(
                                     text = a11yActionLabel,
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary,
+                                    color = accentColor,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
                             }
@@ -872,6 +891,7 @@ private fun JourneyPreviewSheet(
     progress: JourneyProgress?,
     isCompleted: Boolean,
     isActive: Boolean,
+    accentColor: Color,
     onDismiss: () -> Unit,
     onStart: () -> Unit
 ) {
@@ -944,11 +964,12 @@ private fun JourneyPreviewSheet(
                     description = milestone.description,
                     isUnlocked = isUnlocked,
                     showConnector = true,
+                    accentColor = accentColor,
                 )
             }
 
             // ── Terminus de la timeline ──────────────────────────────────────
-            TimelineTerminus(label = stringResource(R.string.journey_timeline_end))
+            TimelineTerminus(label = stringResource(R.string.journey_timeline_end), accentColor = accentColor)
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -986,8 +1007,9 @@ private fun MilestoneRow(
     description: String,
     isUnlocked: Boolean,
     showConnector: Boolean,
+    accentColor: Color,
 ) {
-    val circleColor = if (isUnlocked) MaterialTheme.colorScheme.primary
+    val circleColor = if (isUnlocked) accentColor
     else MaterialTheme.colorScheme.surfaceVariant
     val connectorColor = MaterialTheme.colorScheme.outlineVariant
 
@@ -1054,8 +1076,8 @@ private fun MilestoneRow(
  * Indique la fin du trajet après le dernier jalon.
  */
 @Composable
-private fun TimelineTerminus(label: String) {
-    val primaryColor = MaterialTheme.colorScheme.primary
+private fun TimelineTerminus(label: String, accentColor: Color) {
+    val primaryColor = accentColor
     val connectorColor = MaterialTheme.colorScheme.outlineVariant
 
     Row(modifier = Modifier.fillMaxWidth()) {
