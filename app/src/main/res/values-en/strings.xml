@@ -52,6 +52,7 @@
     <string name="activity_ring_streak_accessibility_plural">Streak of %1$d consecutive days</string>
     <string name="activity_ring_percent_label">%1$d%%</string>
     <string name="activity_ring_empty_state">Start your day!</string>
+    <string name="activity_goal_reached_badge">Goal reached 🎉</string>
 
     <!-- Activity screen — weather banner -->
     <string name="weather_forecast_section_title">Weather · 7 days</string>
