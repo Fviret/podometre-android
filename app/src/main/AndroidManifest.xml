@@ -5,6 +5,9 @@
     <!-- Internet (Open-Meteo API) -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Vibration (haptique de célébration, KAN-155) -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <!-- Localisation (météo) -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
