@@ -1,5 +1,13 @@
 package com.fviret.podometre.ui.activity
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.view.HapticFeedbackConstants
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,21 +20,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import android.Manifest
-import android.os.Build
-import android.view.HapticFeedbackConstants
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,11 +38,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.core.content.ContextCompat
-import android.content.pm.PackageManager
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -76,6 +80,12 @@ fun ActivityScreen(
 
     /** Prévision sélectionnée — non null → bottom sheet de détail météo ouvert. */
     var selectedForecast by remember { mutableStateOf<DailyForecast?>(null) }
+
+    /**
+     * Vrai une seule fois au franchissement de l'objectif du jour (one-shot).
+     * Remis à false par [onCelebrationEnd] dans [StepRing] à la fin de l'animation.
+     */
+    var showCelebration by remember { mutableStateOf(false) }
 
     // Demande ACCESS_FINE_LOCATION / ACCESS_COARSE_LOCATION pour la météo.
     val locationLauncher = rememberLauncherForActivityResult(
@@ -132,10 +142,32 @@ fun ActivityScreen(
         val current = uiState.stepsToday
         val goal = uiState.stepGoal.toLong()
         if (uiState.selectedDayOffset == 0 && prev >= 0L && prev < goal && current >= goal) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+            // Déclenche l'overlay de célébration (badge + particules)
+            showCelebration = true
+            // Séquence haptique en crescendo : léger → moyen → fort → succès.
+            // Sur API 31+ (Android 12), on compose des primitives VibrationEffect pour un
+            // rendu précis. Sur API 26–30, on séquence des HapticFeedbackConstants avec délais.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val vibrator = context.getSystemService(Vibrator::class.java)
+                vibrator?.let { vib ->
+                    val fx = VibrationEffect.startComposition()
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.3f)
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.6f, 80)
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_THUD, 1.0f, 80)
+                        .compose()
+                    vib.vibrate(fx)
+                }
             } else {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                // Séquence manuelle via coroutine
+                launch {
+                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                    delay(100)
+                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    delay(100)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    }
+                }
             }
         }
         prevStepsRef.longValue = current
@@ -258,6 +290,8 @@ fun ActivityScreen(
                 ringColor = AppColors.colorForId(prefs.ringColorId),
                 streak = uiState.streak,
                 isToday = uiState.selectedDayOffset == 0,
+                showCelebration = showCelebration,
+                onCelebrationEnd = { showCelebration = false },
             )
 
             if (uiState.selectedDayOffset < 0) {

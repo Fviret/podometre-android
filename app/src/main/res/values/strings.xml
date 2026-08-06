@@ -44,6 +44,8 @@
     <string name="activity_ring_percent_label">%1$d %%</string>
     <!-- Message motivant affiché dans l'anneau quand aucun pas n'est compté (KAN-105) -->
     <string name="activity_ring_empty_state">Démarrez votre journée !</string>
+    <!-- Badge de célébration au franchissement de l'objectif (KAN-155) -->
+    <string name="activity_goal_reached_badge">Objectif atteint 🎉</string>
 
     <!-- Écran Activité — bannière météo (KAN-22) -->
     <string name="weather_forecast_section_title">Météo · 7 jours</string>

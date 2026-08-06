@@ -1,6 +1,7 @@
 package com.fviret.podometre.ui.activity
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.InfiniteRepeatableSpec
 import androidx.compose.animation.core.LinearOutSlowInEasing
@@ -17,11 +18,14 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
 import com.fviret.podometre.ui.theme.rememberReduceMotion
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,10 +50,125 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.fviret.podometre.R
 import com.fviret.podometre.util.formatSteps
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** Alpha de l'ombre interne de la piste (effet creusé). */
 private const val TRACK_INNER_SHADOW_ALPHA = 0.12f
+
+/** Durée d'apparition du badge de célébration (ms). */
+private const val CELEBRATION_APPEAR_MS = 300
+
+/** Durée de maintien du badge visible avant dissolution (ms). */
+private const val CELEBRATION_HOLD_MS = 1200
+
+/** Durée de dissolution du badge (ms). */
+private const val CELEBRATION_DISSOLVE_MS = 400
+
+/** Nombre de particules dans le burst de célébration. */
+private const val CELEBRATION_PARTICLE_COUNT = 12
+
+/** Distance maximale des particules depuis le centre de l'anneau (dp). */
+private const val CELEBRATION_PARTICLE_MAX_DIST_DP = 80
+
+/**
+ * Overlay ponctuel de célébration affiché une seule fois au franchissement de l'objectif.
+ * Affiche un badge "Objectif atteint 🎉" avec un burst de 12 particules colorées.
+ * En mode "Réduire les animations", seul le badge est affiché (pas de particules ni de scale).
+ * L'overlay est purement décoratif pour TalkBack — exclu de l'arbre A11y.
+ *
+ * @param show     Vrai une seule fois quand l'objectif vient d'être franchi.
+ * @param onDone   Appelé à la fin de l'animation pour réinitialiser l'état parent.
+ */
+@Composable
+private fun CelebrationOverlay(
+    show: Boolean,
+    ringColor: Color,
+    reduceMotion: Boolean,
+    onDone: () -> Unit,
+) {
+    val alpha = remember { Animatable(0f) }
+    val scale = remember { Animatable(0.6f) }
+    val particleProgress = remember { Animatable(0f) }
+
+    LaunchedEffect(show) {
+        if (!show) return@LaunchedEffect
+        // Apparition parallèle : fondu + scale spring + particules
+        launch { alpha.animateTo(1f, tween(if (reduceMotion) 200 else CELEBRATION_APPEAR_MS)) }
+        if (!reduceMotion) {
+            launch {
+                scale.animateTo(
+                    1f,
+                    spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
+                )
+            }
+            launch { particleProgress.animateTo(1f, tween(400, easing = FastOutSlowInEasing)) }
+        } else {
+            scale.snapTo(1f)
+        }
+        delay(if (reduceMotion) 800L else CELEBRATION_HOLD_MS.toLong())
+        // Dissolution
+        launch { scale.animateTo(0.8f, tween(if (reduceMotion) 200 else CELEBRATION_DISSOLVE_MS)) }
+        alpha.animateTo(0f, tween(if (reduceMotion) 200 else CELEBRATION_DISSOLVE_MS))
+        // Remise à zéro pour un éventuel déclenchement futur
+        scale.snapTo(0.6f)
+        particleProgress.snapTo(0f)
+        onDone()
+    }
+
+    if (alpha.value > 0f) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clearAndSetSemantics { /* décoratif — exclu de l'arbre A11y */ },
+            contentAlignment = Alignment.Center
+        ) {
+            // Burst de particules (désactivé si "Réduire les animations")
+            if (!reduceMotion && particleProgress.value > 0f) {
+                val pProgress = particleProgress.value
+                val pAlpha = alpha.value * (1f - pProgress * 0.5f)
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val particleRadiusPx = 5.dp.toPx()
+                    val maxDistPx = CELEBRATION_PARTICLE_MAX_DIST_DP.dp.toPx()
+                    for (i in 0 until CELEBRATION_PARTICLE_COUNT) {
+                        val angle = Math.toRadians((i * 360.0 / CELEBRATION_PARTICLE_COUNT) - 90.0)
+                        val distance = maxDistPx * pProgress
+                        val x = center.x + (cos(angle) * distance).toFloat()
+                        val y = center.y + (sin(angle) * distance).toFloat()
+                        // Varier légèrement la taille pour plus de naturel
+                        val radius = if (i % 3 == 0) particleRadiusPx * 1.4f else particleRadiusPx
+                        drawCircle(
+                            color = ringColor.copy(alpha = pAlpha),
+                            radius = radius,
+                            center = Offset(x, y),
+                        )
+                    }
+                }
+            }
+            // Badge "Objectif atteint 🎉"
+            Box(
+                modifier = Modifier
+                    .graphicsLayer {
+                        scaleX = scale.value
+                        scaleY = scale.value
+                        this.alpha = alpha.value
+                    }
+                    .background(ringColor.copy(alpha = 0.92f), shape = RoundedCornerShape(50))
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.activity_goal_reached_badge),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White,
+                )
+            }
+        }
+    }
+}
 
 /**
  * Retourne la couleur de la flamme et du texte streak selon le palier de jours.
@@ -89,6 +208,10 @@ private const val COUNTER_ANIMATION_DURATION_MS = 600
  * @param streak Nombre de jours consécutifs avec l'objectif atteint (0 = pas de série).
  * @param isToday Vrai uniquement si le jour affiché est aujourd'hui (offset == 0).
  *               Par défaut à false pour éviter un affichage fantôme si le paramètre est omis.
+ * @param showCelebration Vrai une seule fois au moment du franchissement de l'objectif.
+ *                        Déclenche l'overlay ponctuel (badge + particules). Doit être remis à
+ *                        false par le parent via [onCelebrationEnd] dès la fin de l'animation.
+ * @param onCelebrationEnd Appelé quand l'animation de célébration est terminée.
  */
 @Composable
 fun StepRing(
@@ -98,6 +221,8 @@ fun StepRing(
     modifier: Modifier = Modifier,
     streak: Int = 0,
     isToday: Boolean = false,
+    showCelebration: Boolean = false,
+    onCelebrationEnd: () -> Unit = {},
 ) {
     val reduceMotion = rememberReduceMotion()
     val rawProgress = if (goal > 0) steps.toFloat() / goal.toFloat() else 0f
@@ -196,6 +321,15 @@ fun StepRing(
                     )
                 }
             }
+            // ────────────────────────────────────────────────────────────────
+
+            // ── Overlay de célébration (badge + particules, one-shot) ────────
+            CelebrationOverlay(
+                show = showCelebration,
+                ringColor = ringColor,
+                reduceMotion = reduceMotion,
+                onDone = onCelebrationEnd,
+            )
             // ────────────────────────────────────────────────────────────────
 
             Canvas(modifier = Modifier.fillMaxWidth().size(240.dp)) {
