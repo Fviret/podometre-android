@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import com.fviret.podometre.data.health.HealthConnectRepository
+import com.fviret.podometre.data.health.SensorStepHistoryRepository
 import com.fviret.podometre.data.journey.JourneyProgressRepository
 import com.fviret.podometre.data.preferences.UserPreferencesRepository
 import com.fviret.podometre.data.weather.WeatherRepository
@@ -28,6 +29,15 @@ object TestFactories {
 
     /** [WeatherRepository] réel — jamais appelé en mode émulateur, un vrai OkHttpClient suffit. */
     fun weatherRepository(context: Context): WeatherRepository = WeatherRepository(context, OkHttpClient())
+
+    /**
+     * [SensorStepHistoryRepository] réel adossé au [Context] d'instrumentation — jamais sollicité
+     * en mode émulateur (capteur non fiable, court-circuité par [com.fviret.podometre.util.isEmulator]).
+     * Écrit dans le répertoire de fichiers réel de l'app de test — le fichier
+     * `sensor_step_history.json` doit être nettoyé entre les tests si besoin (voir `@After`).
+     */
+    fun sensorStepHistoryRepository(context: Context): SensorStepHistoryRepository =
+        SensorStepHistoryRepository(context)
 
     /**
      * [JourneyProgressRepository] réel adossé au [Context] d'instrumentation.
