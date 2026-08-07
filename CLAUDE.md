@@ -146,6 +146,8 @@ Ne pas créer de nouvelles clés sans les ajouter ici.
 
 La `journeyProgressMap` est persistée en JSON dans un fichier dédié (`journey_progress.json`) car trop volumineuse pour DataStore.
 
+L'historique de pas capteur (`SensorStepHistoryRepository`, KAN-156) est persisté en JSON dans un fichier dédié (`sensor_step_history.json`) : `{ stepsByDay: Map<date ISO, Long>, lastCaptureDate, lastRawCounterValue }`. Il s'agit de données capteur brutes (pas Health Connect) servant de fallback local quand Health Connect ne retourne aucune donnée (OEM comme Honor/Huawei/Xiaomi qui n'écrivent pas dans Health Connect) — alimenté quotidiennement par `SyncSensorStepHistoryWorker`.
+
 ---
 
 ## Conventions
