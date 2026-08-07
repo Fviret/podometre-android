@@ -119,4 +119,27 @@ class SensorStepHistoryRepositoryTest {
         val history = repository.readStepsByDay(day1, day1)
         assertEquals(0L, history[day1])
     }
+
+    // ── readStepsSince (KAN-158 — fallback distance trajets) ─────────────────
+
+    @Test
+    fun `readStepsSince combine jours finalises et estimation du jour courant`() = runTest {
+        repository.recordSnapshot(rawCounterValue = 0L, today = day1)
+        repository.recordSnapshot(rawCounterValue = 6_000L, today = day1)
+        repository.recordSnapshot(rawCounterValue = 15_000L, today = day2) // finalise day1 = 6 000
+        repository.recordSnapshot(rawCounterValue = 22_500L, today = day2) // estimation day2 = 7 500
+
+        assertEquals(13_500L, repository.readStepsSince(from = day1, today = day2))
+    }
+
+    @Test
+    fun `readStepsSince retourne 0 si from est apres aujourd hui`() = runTest {
+        repository.recordSnapshot(rawCounterValue = 1_000L, today = day1)
+        assertEquals(0L, repository.readStepsSince(from = day2, today = day1))
+    }
+
+    @Test
+    fun `readStepsSince retourne 0 sans aucun releve`() = runTest {
+        assertEquals(0L, repository.readStepsSince(from = day1, today = day1))
+    }
 }

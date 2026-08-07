@@ -9,16 +9,19 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.fviret.podometre.data.health.HealthConnectRepository
+import com.fviret.podometre.data.health.SensorStepHistoryRepository
 import com.fviret.podometre.data.journey.JourneySyncResult
 import com.fviret.podometre.data.journey.JourneyProgressRepository
 import com.fviret.podometre.data.preferences.UserPreferencesRepository
 import com.fviret.podometre.domain.JourneyData
+import com.fviret.podometre.domain.model.stepsToKm
 import com.fviret.podometre.util.isEmulator
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import java.time.Instant
+import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 
 /**
@@ -44,6 +47,7 @@ class SyncJourneyWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted workerParams: WorkerParameters,
     private val healthConnectRepository: HealthConnectRepository,
+    private val sensorStepHistoryRepository: SensorStepHistoryRepository,
     private val journeyProgressRepository: JourneyProgressRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val journeyNotificationService: JourneyNotificationService,
@@ -62,7 +66,9 @@ class SyncJourneyWorker @AssistedInject constructor(
         val progress = journeyProgressRepository.getProgress(activeJourneyId) ?: return Result.success()
 
         val startInstant = Instant.ofEpochMilli(progress.startDateMs)
-        val newKm = healthConnectRepository.readDistance(from = startInstant)
+        val hcKm = healthConnectRepository.readDistance(from = startInstant)
+        val fallbackKm = fallbackDistanceFromSensorSteps(startInstant)
+        val newKm = maxOf(hcKm, fallbackKm)
 
         val result = journeyProgressRepository.syncJourney(journey, newKm)
 
@@ -78,6 +84,19 @@ class SyncJourneyWorker @AssistedInject constructor(
         }
 
         return Result.success()
+    }
+
+    /**
+     * Estime une distance de repli (km) depuis les pas capteur locaux ([SensorStepHistoryRepository])
+     * entre [startInstant] et maintenant, via la constante [com.fviret.podometre.domain.model.KM_PER_STEP].
+     * Utilisé quand Health Connect ne progresse pas (appareil OEM sans écriture HC, voir KAN-156/KAN-158) —
+     * Health Connect reste toujours prioritaire (donnée GPS plus précise), ce fallback ne fait
+     * qu'apporter un plancher (`maxOf`) sans jamais faire régresser la progression.
+     */
+    private suspend fun fallbackDistanceFromSensorSteps(startInstant: Instant): Double {
+        val startDate = startInstant.atZone(ZoneId.systemDefault()).toLocalDate()
+        val steps = sensorStepHistoryRepository.readStepsSince(from = startDate)
+        return stepsToKm(steps)
     }
 
     companion object {

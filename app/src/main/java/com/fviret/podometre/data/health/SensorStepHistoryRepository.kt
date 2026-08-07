@@ -172,6 +172,19 @@ class SensorStepHistoryRepository @Inject constructor(
         readStepsByDay(from, to).values.sum()
 
     /**
+     * Retourne le total de pas capteur depuis [from] (inclus) jusqu'à aujourd'hui (inclus),
+     * en combinant les jours finalisés ([readStepsByDay]) et l'estimation du jour courant
+     * ([readTodayStepsEstimate]). Utilisé comme source de repli (KAN-158) pour estimer une
+     * distance parcourue quand Health Connect ne progresse pas (OEM sans écriture HC).
+     */
+    suspend fun readStepsSince(from: LocalDate, today: LocalDate = LocalDate.now()): Long {
+        if (from.isAfter(today)) return 0L
+        val finalizedTotal = readStepsByDay(from, today).values.sum()
+        val todayEstimate = readTodayStepsEstimate(today) ?: 0L
+        return finalizedTotal + todayEstimate
+    }
+
+    /**
      * Écrit l'état complet dans [FILE_NAME] de manière atomique (fichier temp + rename).
      */
     @Throws(IOException::class)
