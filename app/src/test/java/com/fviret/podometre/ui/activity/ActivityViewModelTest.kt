@@ -172,49 +172,49 @@ class ActivityViewModelTest {
         assertEquals(-4, newOffset)
     }
 
-    // ── mergeStepsByDay — fallback capteur local (KAN-156) ────────────────────
+    // ── mergeStepsByDay — capteur local primaire, Health Connect secondaire (KAN-156) ─────
 
     private val day1 = LocalDate.of(2026, 8, 1)
     private val day2 = LocalDate.of(2026, 8, 2)
     private val day3 = LocalDate.of(2026, 8, 3)
 
     @Test
-    fun `mergeStepsByDay privilegie Health Connect quand il a une valeur non nulle`() {
-        val hc = mapOf(day1 to 5_000L)
-        val sensor = mapOf(day1 to 9_999L)
-        val merged = mergeStepsByDay(hc, sensor)
+    fun `mergeStepsByDay privilegie le capteur quand il a une valeur non nulle`() {
+        val sensor = mapOf(day1 to 5_000L)
+        val hc = mapOf(day1 to 9_999L)
+        val merged = mergeStepsByDay(sensor, hc)
         assertEquals(5_000L, merged[day1])
     }
 
     @Test
-    fun `mergeStepsByDay bascule sur le capteur quand Health Connect n a aucune valeur`() {
-        val hc = mapOf(day1 to 0L)
-        val sensor = mapOf(day1 to 7_200L)
-        val merged = mergeStepsByDay(hc, sensor)
+    fun `mergeStepsByDay bascule sur Health Connect quand le capteur n a aucune valeur`() {
+        val sensor = mapOf(day1 to 0L)
+        val hc = mapOf(day1 to 7_200L)
+        val merged = mergeStepsByDay(sensor, hc)
         assertEquals(7_200L, merged[day1])
     }
 
     @Test
-    fun `mergeStepsByDay bascule sur le capteur quand le jour est absent de Health Connect`() {
-        val hc = emptyMap<LocalDate, Long>()
-        val sensor = mapOf(day1 to 4_300L)
-        val merged = mergeStepsByDay(hc, sensor)
+    fun `mergeStepsByDay bascule sur Health Connect quand le jour est absent du capteur`() {
+        val sensor = emptyMap<LocalDate, Long>()
+        val hc = mapOf(day1 to 4_300L)
+        val merged = mergeStepsByDay(sensor, hc)
         assertEquals(4_300L, merged[day1])
     }
 
     @Test
     fun `mergeStepsByDay retourne 0 quand aucune des deux sources n a de donnee`() {
-        val hc = mapOf(day1 to 0L)
-        val sensor = emptyMap<LocalDate, Long>()
-        val merged = mergeStepsByDay(hc, sensor)
+        val sensor = mapOf(day1 to 0L)
+        val hc = emptyMap<LocalDate, Long>()
+        val merged = mergeStepsByDay(sensor, hc)
         assertEquals(0L, merged[day1])
     }
 
     @Test
     fun `mergeStepsByDay fusionne des jours disjoints des deux sources`() {
-        val hc = mapOf(day1 to 5_000L)
-        val sensor = mapOf(day2 to 6_000L)
-        val merged = mergeStepsByDay(hc, sensor)
+        val sensor = mapOf(day1 to 5_000L)
+        val hc = mapOf(day2 to 6_000L)
+        val merged = mergeStepsByDay(sensor, hc)
         assertEquals(5_000L, merged[day1])
         assertEquals(6_000L, merged[day2])
         assertEquals(2, merged.size)
