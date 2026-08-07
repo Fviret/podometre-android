@@ -16,6 +16,8 @@ import androidx.work.WorkManager
 import com.fviret.podometre.data.aphorism.Aphorism
 import com.fviret.podometre.data.aphorism.AphorismRepository
 import com.fviret.podometre.data.health.HealthConnectRepository
+import com.fviret.podometre.data.health.SensorStepHistoryRepository
+import com.fviret.podometre.data.health.computeDailyDelta
 import com.fviret.podometre.data.preferences.UserPreferences
 import com.fviret.podometre.data.preferences.UserPreferencesRepository
 import com.fviret.podometre.data.weather.DailyForecast
@@ -54,17 +56,50 @@ import kotlin.coroutines.resume
 private const val MAX_CALENDAR_MONTHS_BACK = 12
 
 /**
- * Calcule le nombre de pas live en combinant la référence Health Connect et le delta capteur.
+ * Fusionne deux sources de pas/jour par priorité : [primary] gagne pour chaque jour où elle a
+ * une valeur exploitable (> 0), [secondary] ne comble que les jours où [primary] n'a rien.
  *
- * @param hcBaseline Nombre de pas HC au démarrage du capteur (source de vérité).
- * @param sensorStart Valeur cumulative du capteur au démarrage (-1 si pas encore initialisé).
- * @param sensorCurrent Valeur cumulative courante du capteur.
- * @return Pas estimés depuis minuit : [hcBaseline] + delta capteur, jamais négatif.
+ * Depuis KAN-156 (élargissement), le capteur local (`SensorStepHistoryRepository`) est la source
+ * **primaire** — accès direct au hardware, sans dépendre d'une app tierce. Health Connect n'est
+ * plus que la source secondaire, utilisée pour combler les jours sans relevé capteur (avant la
+ * première capture, permission `ACTIVITY_RECOGNITION` refusée temporairement…). Cette inversion
+ * corrige le cas des OEM (Honor, Huawei, Xiaomi…) qui n'écrivent jamais dans Health Connect —
+ * plutôt que de dépendre d'eux en source par défaut, l'app ne s'y fie qu'en secours.
  */
-internal fun computeLiveSteps(hcBaseline: Long, sensorStart: Long, sensorCurrent: Long): Long {
-    if (sensorStart < 0L) return hcBaseline
-    val delta = (sensorCurrent - sensorStart).coerceAtLeast(0L)
-    return hcBaseline + delta
+internal fun mergeStepsByDay(
+    primary: Map<LocalDate, Long>,
+    secondary: Map<LocalDate, Long>,
+): Map<LocalDate, Long> {
+    val allDates = primary.keys + secondary.keys
+    return allDates.associateWith { date ->
+        val primarySteps = primary[date] ?: 0L
+        if (primarySteps > 0L) primarySteps else (secondary[date] ?: 0L)
+    }
+}
+
+/**
+ * Calcule le streak de jours consécutifs où les pas >= [goalSteps], depuis [today] en remontant.
+ * Version pure de [HealthConnectRepository.computeStreak] qui accepte une map déjà fusionnée
+ * (Health Connect + fallback capteur) au lieu de lire directement Health Connect.
+ */
+internal fun computeStreakFromMap(
+    stepsByDay: Map<LocalDate, Long>,
+    goalSteps: Long,
+    today: LocalDate,
+): Int {
+    var streak = 0
+    var day = today
+    val limit = today.minusDays(364)
+    while (day >= limit) {
+        val steps = stepsByDay[day] ?: 0L
+        if (steps >= goalSteps) {
+            streak++
+            day = day.minusDays(1)
+        } else {
+            break
+        }
+    }
+    return streak
 }
 
 /** Pas mockés par décalage en jours (0 = aujourd'hui) pour l'émulateur. */
@@ -136,6 +171,7 @@ data class ActivityUiState(
 @HiltViewModel
 class ActivityViewModel @Inject constructor(
     private val healthConnectRepository: HealthConnectRepository,
+    private val sensorStepHistoryRepository: SensorStepHistoryRepository,
     private val weatherRepository: WeatherRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val aphorismRepository: AphorismRepository,
@@ -184,11 +220,12 @@ class ActivityViewModel @Inject constructor(
 
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
-    /** Référence HC au moment du démarrage du capteur — ne recule jamais. */
-    @Volatile private var hcStepsRef: Long = 0L
-
-    /** Valeur cumulative du capteur TYPE_STEP_COUNTER au démarrage de la session. -1 = non initialisé. */
-    @Volatile private var sensorStart: Long = -1L
+    /**
+     * Baseline du jour courant (valeur brute capteur à "minuit"), persistée par
+     * [SensorStepHistoryRepository] et chargée au démarrage du capteur live.
+     * -1 = pas encore chargée/établie pour aujourd'hui.
+     */
+    @Volatile private var sensorDayStartRaw: Long = -1L
 
     /** Timestamp (ms) de la dernière écriture dans Health Connect. Throttle à 60 s minimum. */
     @Volatile private var lastHcWriteMs: Long = 0L
@@ -196,14 +233,28 @@ class ActivityViewModel @Inject constructor(
     /** Nombre de pas lors de la dernière écriture HC. Throttle par palier de 50 pas. */
     @Volatile private var lastHcWriteSteps: Long = 0L
 
+    /** Timestamp (ms) du dernier relevé persisté dans [SensorStepHistoryRepository]. Throttle à 60 s. */
+    @Volatile private var lastSensorWriteMs: Long = 0L
+
+    /**
+     * Écoute du capteur TYPE_STEP_COUNTER — source primaire des pas d'aujourd'hui (KAN-156).
+     * Le calcul ne dépend plus de Health Connect : [sensorDayStartRaw] (persisté localement)
+     * sert seul de référence "minuit", via [computeDailyDelta].
+     */
     private val stepListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent) {
             if (_uiState.value.selectedDayOffset != 0) return
             val raw = event.values[0].toLong()
-            if (sensorStart < 0L) sensorStart = raw
-            val live = computeLiveSteps(hcStepsRef, sensorStart, raw)
+            if (sensorDayStartRaw < 0L) {
+                // Baseline pas encore établie pour aujourd'hui (avant le premier passage du worker
+                // périodique) : on la fixe à ce premier relevé, comme au tout premier lancement.
+                sensorDayStartRaw = raw
+                viewModelScope.launch(Dispatchers.IO) { sensorStepHistoryRepository.recordSnapshot(raw) }
+            }
+            val live = computeDailyDelta(sensorDayStartRaw, raw)
             _uiState.value = _uiState.value.copy(stepsToday = maxOf(_uiState.value.stepsToday, live))
             maybeWriteStepsToHealthConnect(live)
+            maybeRecordSensorSnapshot(raw)
         }
         override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
     }
@@ -212,6 +263,7 @@ class ActivityViewModel @Inject constructor(
      * Écrit les pas dans Health Connect si le throttle le permet.
      * Conditions : au moins 60 secondes depuis la dernière écriture OU au moins 50 pas de plus.
      * Appellé uniquement pour aujourd'hui (selectedDayOffset == 0).
+     * Écriture secondaire pour l'interopérabilité (autres apps santé) — plus la source de vérité.
      */
     private fun maybeWriteStepsToHealthConnect(currentSteps: Long) {
         val nowMs = System.currentTimeMillis()
@@ -226,25 +278,43 @@ class ActivityViewModel @Inject constructor(
     }
 
     /**
+     * Persiste le relevé capteur courant dans [SensorStepHistoryRepository] si le throttle le
+     * permet (60 s minimum) — garde l'estimation du jour ([SensorStepHistoryRepository.readTodayStepsEstimate])
+     * fraîche pour un prochain cold start sans attendre le worker périodique (15 min).
+     */
+    private fun maybeRecordSensorSnapshot(rawCounterValue: Long) {
+        val nowMs = System.currentTimeMillis()
+        if (nowMs - lastSensorWriteMs < 60_000L) return
+        lastSensorWriteMs = nowMs
+        viewModelScope.launch(Dispatchers.IO) {
+            sensorStepHistoryRepository.recordSnapshot(rawCounterValue)
+        }
+    }
+
+    /**
      * Démarre l'écoute du capteur TYPE_STEP_COUNTER.
      * Sans effet sur émulateur ou si l'utilisateur est sur un jour passé.
      * Appelé depuis [ActivityScreen] sur ON_RESUME (permission déjà vérifiée côté UI).
+     * Charge la baseline persistée du jour avant d'enregistrer le listener (voir [sensorDayStartRaw]).
      */
     fun startLiveSensor() {
         if (_uiState.value.selectedDayOffset != 0) return
         if (isEmulator()) return
         val stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER) ?: return
-        sensorStart = -1L
-        sensorManager.registerListener(stepListener, stepSensor, SensorManager.SENSOR_DELAY_NORMAL)
+        viewModelScope.launch {
+            sensorDayStartRaw = sensorStepHistoryRepository.getTodayBaseline() ?: -1L
+            sensorManager.registerListener(stepListener, stepSensor, SensorManager.SENSOR_DELAY_NORMAL)
+        }
     }
 
     /**
      * Arrête l'écoute du capteur (arrière-plan, jour passé, destruction du ViewModel).
-     * Réinitialise [sensorStart] pour forcer un re-calibrage au prochain démarrage.
+     * Réinitialise [sensorDayStartRaw] pour forcer un rechargement au prochain démarrage
+     * (au cas où le jour aurait changé pendant que l'app était en arrière-plan).
      */
     fun stopLiveSensor() {
         sensorManager.unregisterListener(stepListener)
-        sensorStart = -1L
+        sensorDayStartRaw = -1L
     }
 
     override fun onCleared() {
@@ -399,11 +469,32 @@ class ActivityViewModel @Inject constructor(
      * changement de jour (KAN-92). [computeStreak] part toujours d'aujourd'hui : la valeur
      * est donc indépendante du jour affiché. L'affichage est de plus conditionné par
      * [StepRing] à `isToday && steps >= goal && streak > 0`.
+     *
+     * Fusionne le capteur local (primaire, KAN-156) avec Health Connect (secondaire) : sur
+     * émulateur, délègue directement à [HealthConnectRepository.computeStreak] (mock déterministe).
      */
     private fun loadStreak() {
         viewModelScope.launch {
             val goal = userPreferences.value.dailyStepGoal.toLong()
-            val streak = healthConnectRepository.computeStreak(goal)
+            val streak = if (isEmulator()) {
+                healthConnectRepository.computeStreak(goal)
+            } else {
+                val zone = ZoneId.systemDefault()
+                val today = LocalDate.now(zone)
+                val from = today.minusDays(364)
+                val sensorMap = sensorStepHistoryRepository.readStepsByDay(from, today.minusDays(1))
+                val hcMap = healthConnectRepository.readStepsByDay(
+                    from.atStartOfDay(zone).toInstant(), Instant.now()
+                )
+                // Aujourd'hui : privilégie l'état live déjà affiché (plus frais que l'estimation
+                // capteur, elle-même throttlée à 60 s — voir maybeRecordSensorSnapshot).
+                val todaySteps = maxOf(
+                    _uiState.value.stepsToday,
+                    sensorStepHistoryRepository.readTodayStepsEstimate(today) ?: 0L,
+                )
+                val merged = mergeStepsByDay(sensorMap, hcMap) + (today to todaySteps)
+                computeStreakFromMap(merged, goal, today)
+            }
             _uiState.value = _uiState.value.copy(streak = streak)
         }
     }
@@ -491,8 +582,9 @@ class ActivityViewModel @Inject constructor(
     }
 
     /**
-     * Charge les pas depuis Health Connect pour le jour correspondant à [offset] (0 = aujourd'hui).
-     * Requête idempotente : recalcule depuis le début du jour cible.
+     * Charge les pas pour le jour correspondant à [offset] (0 = aujourd'hui).
+     * Source primaire : le capteur local (KAN-156) — Health Connect ne comble que les jours
+     * sans relevé capteur (avant la première capture, permission refusée temporairement…).
      * Déclenche également [loadMetrics] pour mettre à jour distance, temps actif et calories.
      */
     private fun loadStepsForOffset(offset: Int) {
@@ -501,16 +593,23 @@ class ActivityViewModel @Inject constructor(
                 EMULATOR_STEPS_BY_OFFSET[offset] ?: (5_000L + (offset * -137L).coerceAtLeast(0))
             } else {
                 val targetDate = LocalDate.now().plusDays(offset.toLong())
-                val from = targetDate.atStartOfDay(ZoneId.systemDefault()).toInstant()
-                val to = if (offset == 0) Instant.now()
-                else targetDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
-                healthConnectRepository.readSteps(from = from, to = to)
+                val sensorSteps = if (offset == 0) {
+                    sensorStepHistoryRepository.readTodayStepsEstimate(targetDate) ?: 0L
+                } else {
+                    sensorStepHistoryRepository.readSteps(targetDate, targetDate)
+                }
+                if (sensorSteps > 0L) {
+                    sensorSteps
+                } else {
+                    val from = targetDate.atStartOfDay(ZoneId.systemDefault()).toInstant()
+                    val to = if (offset == 0) Instant.now()
+                    else targetDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
+                    healthConnectRepository.readSteps(from = from, to = to)
+                }
             }
-            // Pour aujourd'hui : mémorise la référence HC pour le calcul live et ne recule jamais.
-            // Pour aujourd'hui : max pour ne jamais reculer en dessous du live/cache.
+            // Pour aujourd'hui : max pour ne jamais reculer en dessous du live/cache déjà affiché.
             // Pour les jours passés : valeur brute (pas de max — chaque jour a ses propres pas).
             if (offset == 0) {
-                hcStepsRef = maxOf(hcStepsRef, steps)
                 _uiState.value = _uiState.value.copy(stepsToday = maxOf(_uiState.value.stepsToday, steps))
             } else {
                 _uiState.value = _uiState.value.copy(stepsToday = steps)
@@ -536,7 +635,8 @@ class ActivityViewModel @Inject constructor(
     }
 
     /**
-     * Charge les pas par jour pour le mois [month] depuis Health Connect.
+     * Charge les pas par jour pour le mois [month]. Source primaire : le capteur local
+     * (KAN-156), Health Connect ne comble que les jours sans relevé capteur.
      * Sur émulateur, génère des données mock réalistes basées sur le jour du mois.
      */
     private fun loadCalendarMonth(month: YearMonth) {
@@ -551,7 +651,20 @@ class ActivityViewModel @Inject constructor(
                 val from = month.atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
                 val to = if (month == YearMonth.now()) Instant.now()
                 else month.atEndOfMonth().plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
-                healthConnectRepository.readStepsByDay(from, to)
+                val sensorMap = sensorStepHistoryRepository.readStepsByDay(month.atDay(1), month.atEndOfMonth())
+                val hcMap = healthConnectRepository.readStepsByDay(from, to)
+                val merged = mergeStepsByDay(sensorMap, hcMap).toMutableMap()
+                // Le jour en cours n'est jamais dans l'historique capteur finalisé (readStepsByDay) :
+                // complète avec l'estimation live si le mois affiché inclut aujourd'hui.
+                if (!month.atDay(1).isAfter(today) && !month.atEndOfMonth().isBefore(today)) {
+                    val todaySteps = maxOf(
+                        _uiState.value.stepsToday,
+                        sensorStepHistoryRepository.readTodayStepsEstimate(today) ?: 0L,
+                        hcMap[today] ?: 0L,
+                    )
+                    if (todaySteps > 0L) merged[today] = todaySteps
+                }
+                merged
             }
             val total = stepsMap.values.sum()
             _uiState.value = _uiState.value.copy(
@@ -606,8 +719,20 @@ class ActivityViewModel @Inject constructor(
                 val prevFrom = prevWeekStart.atStartOfDay(zone).toInstant()
                 val prevTo = weekStart.atStartOfDay(zone).toInstant()
 
-                val currMap = healthConnectRepository.readStepsByDay(currFrom, Instant.now())
-                val prevMap = healthConnectRepository.readStepsByDay(prevFrom, prevTo)
+                val hcCurrMap = healthConnectRepository.readStepsByDay(currFrom, Instant.now())
+                val hcPrevMap = healthConnectRepository.readStepsByDay(prevFrom, prevTo)
+                // Semaine précédente : entièrement finalisée, pas de "aujourd'hui" à gérer à part.
+                val sensorPrevMap = sensorStepHistoryRepository.readStepsByDay(prevWeekStart, prevWeekStart.plusDays(6))
+                val prevMap = mergeStepsByDay(sensorPrevMap, hcPrevMap)
+                // Semaine courante : exclut aujourd'hui de l'historique finalisé (jamais présent),
+                // complété séparément par l'estimation live.
+                val sensorCurrMap = sensorStepHistoryRepository.readStepsByDay(weekStart, today.minusDays(1))
+                val todaySteps = maxOf(
+                    _uiState.value.stepsToday,
+                    sensorStepHistoryRepository.readTodayStepsEstimate(today) ?: 0L,
+                    hcCurrMap[today] ?: 0L,
+                )
+                val currMap = mergeStepsByDay(sensorCurrMap, hcCurrMap) + (today to todaySteps)
 
                 val currentWeek = List(7) { i ->
                     currMap[weekStart.plusDays(i.toLong())] ?: 0L
