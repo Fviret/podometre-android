@@ -16,6 +16,7 @@ import androidx.work.WorkManager
 import com.fviret.podometre.data.aphorism.Aphorism
 import com.fviret.podometre.data.aphorism.AphorismRepository
 import com.fviret.podometre.data.health.HealthConnectRepository
+import com.fviret.podometre.data.health.SensorStepHistoryRepository
 import com.fviret.podometre.data.preferences.UserPreferences
 import com.fviret.podometre.data.preferences.UserPreferencesRepository
 import com.fviret.podometre.data.weather.DailyForecast
@@ -65,6 +66,48 @@ internal fun computeLiveSteps(hcBaseline: Long, sensorStart: Long, sensorCurrent
     if (sensorStart < 0L) return hcBaseline
     val delta = (sensorCurrent - sensorStart).coerceAtLeast(0L)
     return hcBaseline + delta
+}
+
+/**
+ * Fusionne les pas/jour Health Connect avec le fallback capteur local ([SensorStepHistoryRepository]).
+ * Health Connect reste la source de vérité prioritaire pour chaque jour où elle a une valeur
+ * exploitable (> 0). Le fallback ne comble que les jours où HC n'a rien retourné — cas des OEM
+ * (Honor, Huawei, Xiaomi…) qui n'écrivent jamais dans Health Connect (KAN-156).
+ */
+internal fun mergeStepsByDay(
+    healthConnect: Map<LocalDate, Long>,
+    sensorFallback: Map<LocalDate, Long>,
+): Map<LocalDate, Long> {
+    val allDates = healthConnect.keys + sensorFallback.keys
+    return allDates.associateWith { date ->
+        val hcSteps = healthConnect[date] ?: 0L
+        if (hcSteps > 0L) hcSteps else (sensorFallback[date] ?: 0L)
+    }
+}
+
+/**
+ * Calcule le streak de jours consécutifs où les pas >= [goalSteps], depuis [today] en remontant.
+ * Version pure de [HealthConnectRepository.computeStreak] qui accepte une map déjà fusionnée
+ * (Health Connect + fallback capteur) au lieu de lire directement Health Connect.
+ */
+internal fun computeStreakFromMap(
+    stepsByDay: Map<LocalDate, Long>,
+    goalSteps: Long,
+    today: LocalDate,
+): Int {
+    var streak = 0
+    var day = today
+    val limit = today.minusDays(364)
+    while (day >= limit) {
+        val steps = stepsByDay[day] ?: 0L
+        if (steps >= goalSteps) {
+            streak++
+            day = day.minusDays(1)
+        } else {
+            break
+        }
+    }
+    return streak
 }
 
 /** Pas mockés par décalage en jours (0 = aujourd'hui) pour l'émulateur. */
@@ -136,6 +179,7 @@ data class ActivityUiState(
 @HiltViewModel
 class ActivityViewModel @Inject constructor(
     private val healthConnectRepository: HealthConnectRepository,
+    private val sensorStepHistoryRepository: SensorStepHistoryRepository,
     private val weatherRepository: WeatherRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val aphorismRepository: AphorismRepository,
@@ -399,11 +443,25 @@ class ActivityViewModel @Inject constructor(
      * changement de jour (KAN-92). [computeStreak] part toujours d'aujourd'hui : la valeur
      * est donc indépendante du jour affiché. L'affichage est de plus conditionné par
      * [StepRing] à `isToday && steps >= goal && streak > 0`.
+     *
+     * Fusionne Health Connect avec le fallback capteur local (KAN-156) : sur émulateur,
+     * délègue directement à [HealthConnectRepository.computeStreak] (mock déterministe).
      */
     private fun loadStreak() {
         viewModelScope.launch {
             val goal = userPreferences.value.dailyStepGoal.toLong()
-            val streak = healthConnectRepository.computeStreak(goal)
+            val streak = if (isEmulator()) {
+                healthConnectRepository.computeStreak(goal)
+            } else {
+                val zone = ZoneId.systemDefault()
+                val today = LocalDate.now(zone)
+                val from = today.minusDays(364)
+                val hcMap = healthConnectRepository.readStepsByDay(
+                    from.atStartOfDay(zone).toInstant(), Instant.now()
+                )
+                val sensorMap = sensorStepHistoryRepository.readStepsByDay(from, today)
+                computeStreakFromMap(mergeStepsByDay(hcMap, sensorMap), goal, today)
+            }
             _uiState.value = _uiState.value.copy(streak = streak)
         }
     }
@@ -504,7 +562,11 @@ class ActivityViewModel @Inject constructor(
                 val from = targetDate.atStartOfDay(ZoneId.systemDefault()).toInstant()
                 val to = if (offset == 0) Instant.now()
                 else targetDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
-                healthConnectRepository.readSteps(from = from, to = to)
+                val hcSteps = healthConnectRepository.readSteps(from = from, to = to)
+                // Fallback capteur local uniquement pour les jours passés (offset != 0) :
+                // aujourd'hui est déjà couvert par le capteur live (KAN-71).
+                if (hcSteps > 0L || offset == 0) hcSteps
+                else sensorStepHistoryRepository.readSteps(targetDate, targetDate)
             }
             // Pour aujourd'hui : mémorise la référence HC pour le calcul live et ne recule jamais.
             // Pour aujourd'hui : max pour ne jamais reculer en dessous du live/cache.
@@ -551,7 +613,9 @@ class ActivityViewModel @Inject constructor(
                 val from = month.atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
                 val to = if (month == YearMonth.now()) Instant.now()
                 else month.atEndOfMonth().plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
-                healthConnectRepository.readStepsByDay(from, to)
+                val hcMap = healthConnectRepository.readStepsByDay(from, to)
+                val sensorMap = sensorStepHistoryRepository.readStepsByDay(month.atDay(1), month.atEndOfMonth())
+                mergeStepsByDay(hcMap, sensorMap)
             }
             val total = stepsMap.values.sum()
             _uiState.value = _uiState.value.copy(
@@ -606,8 +670,12 @@ class ActivityViewModel @Inject constructor(
                 val prevFrom = prevWeekStart.atStartOfDay(zone).toInstant()
                 val prevTo = weekStart.atStartOfDay(zone).toInstant()
 
-                val currMap = healthConnectRepository.readStepsByDay(currFrom, Instant.now())
-                val prevMap = healthConnectRepository.readStepsByDay(prevFrom, prevTo)
+                val hcCurrMap = healthConnectRepository.readStepsByDay(currFrom, Instant.now())
+                val hcPrevMap = healthConnectRepository.readStepsByDay(prevFrom, prevTo)
+                val sensorCurrMap = sensorStepHistoryRepository.readStepsByDay(weekStart, weekStart.plusDays(6))
+                val sensorPrevMap = sensorStepHistoryRepository.readStepsByDay(prevWeekStart, prevWeekStart.plusDays(6))
+                val currMap = mergeStepsByDay(hcCurrMap, sensorCurrMap)
+                val prevMap = mergeStepsByDay(hcPrevMap, sensorPrevMap)
 
                 val currentWeek = List(7) { i ->
                     currMap[weekStart.plusDays(i.toLong())] ?: 0L

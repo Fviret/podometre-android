@@ -171,4 +171,74 @@ class ActivityViewModelTest {
         val newOffset = currentOffset - 1
         assertEquals(-4, newOffset)
     }
+
+    // ── mergeStepsByDay — fallback capteur local (KAN-156) ────────────────────
+
+    private val day1 = LocalDate.of(2026, 8, 1)
+    private val day2 = LocalDate.of(2026, 8, 2)
+    private val day3 = LocalDate.of(2026, 8, 3)
+
+    @Test
+    fun `mergeStepsByDay privilegie Health Connect quand il a une valeur non nulle`() {
+        val hc = mapOf(day1 to 5_000L)
+        val sensor = mapOf(day1 to 9_999L)
+        val merged = mergeStepsByDay(hc, sensor)
+        assertEquals(5_000L, merged[day1])
+    }
+
+    @Test
+    fun `mergeStepsByDay bascule sur le capteur quand Health Connect n a aucune valeur`() {
+        val hc = mapOf(day1 to 0L)
+        val sensor = mapOf(day1 to 7_200L)
+        val merged = mergeStepsByDay(hc, sensor)
+        assertEquals(7_200L, merged[day1])
+    }
+
+    @Test
+    fun `mergeStepsByDay bascule sur le capteur quand le jour est absent de Health Connect`() {
+        val hc = emptyMap<LocalDate, Long>()
+        val sensor = mapOf(day1 to 4_300L)
+        val merged = mergeStepsByDay(hc, sensor)
+        assertEquals(4_300L, merged[day1])
+    }
+
+    @Test
+    fun `mergeStepsByDay retourne 0 quand aucune des deux sources n a de donnee`() {
+        val hc = mapOf(day1 to 0L)
+        val sensor = emptyMap<LocalDate, Long>()
+        val merged = mergeStepsByDay(hc, sensor)
+        assertEquals(0L, merged[day1])
+    }
+
+    @Test
+    fun `mergeStepsByDay fusionne des jours disjoints des deux sources`() {
+        val hc = mapOf(day1 to 5_000L)
+        val sensor = mapOf(day2 to 6_000L)
+        val merged = mergeStepsByDay(hc, sensor)
+        assertEquals(5_000L, merged[day1])
+        assertEquals(6_000L, merged[day2])
+        assertEquals(2, merged.size)
+    }
+
+    // ── computeStreakFromMap ────────────────────────────────────────────────
+
+    @Test
+    fun `computeStreakFromMap compte les jours consecutifs sur des donnees fusionnees`() {
+        val steps = mapOf(day3 to 11_000L, day2 to 10_500L, day1 to 4_000L)
+        val streak = computeStreakFromMap(steps, goalSteps = 10_000L, today = day3)
+        assertEquals(2, streak)
+    }
+
+    @Test
+    fun `computeStreakFromMap retourne 0 si aujourd hui n atteint pas l objectif`() {
+        val steps = mapOf(day3 to 2_000L, day2 to 15_000L)
+        val streak = computeStreakFromMap(steps, goalSteps = 10_000L, today = day3)
+        assertEquals(0, streak)
+    }
+
+    @Test
+    fun `computeStreakFromMap traite les jours absents comme 0 pas`() {
+        val streak = computeStreakFromMap(emptyMap(), goalSteps = 10_000L, today = day3)
+        assertEquals(0, streak)
+    }
 }
