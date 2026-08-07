@@ -42,6 +42,16 @@ import java.util.concurrent.TimeUnit
  *   sont franchis entre deux exécutions, ils sont tous notifiés dans la même passe (avec délai
  *   inter-notification [INTER_NOTIFICATION_DELAY_MS]).
  */
+/**
+ * Détermine la distance (km) à retenir pour la progression du trajet actif.
+ * Health Connect reste strictement prioritaire dès qu'il a une valeur exploitable (> 0),
+ * même si elle est inférieure à l'estimation capteur — le fallback ne comble que
+ * l'absence de donnée HC exploitable (appareil OEM sans écriture HC, voir KAN-156/KAN-158).
+ * Fonction pure testable (top-level internal), même pattern que [computeLiveSteps].
+ */
+internal fun resolveJourneyDistanceKm(hcKm: Double, fallbackKm: Double): Double =
+    if (hcKm > 0.0) hcKm else fallbackKm
+
 @HiltWorker
 class SyncJourneyWorker @AssistedInject constructor(
     @Assisted context: Context,
@@ -68,7 +78,7 @@ class SyncJourneyWorker @AssistedInject constructor(
         val startInstant = Instant.ofEpochMilli(progress.startDateMs)
         val hcKm = healthConnectRepository.readDistance(from = startInstant)
         val fallbackKm = fallbackDistanceFromSensorSteps(startInstant)
-        val newKm = maxOf(hcKm, fallbackKm)
+        val newKm = resolveJourneyDistanceKm(hcKm, fallbackKm)
 
         val result = journeyProgressRepository.syncJourney(journey, newKm)
 
@@ -90,8 +100,7 @@ class SyncJourneyWorker @AssistedInject constructor(
      * Estime une distance de repli (km) depuis les pas capteur locaux ([SensorStepHistoryRepository])
      * entre [startInstant] et maintenant, via la constante [com.fviret.podometre.domain.model.KM_PER_STEP].
      * Utilisé quand Health Connect ne progresse pas (appareil OEM sans écriture HC, voir KAN-156/KAN-158) —
-     * Health Connect reste toujours prioritaire (donnée GPS plus précise), ce fallback ne fait
-     * qu'apporter un plancher (`maxOf`) sans jamais faire régresser la progression.
+     * Health Connect reste toujours prioritaire (donnée GPS plus précise) via [resolveJourneyDistanceKm].
      */
     private suspend fun fallbackDistanceFromSensorSteps(startInstant: Instant): Double {
         val startDate = startInstant.atZone(ZoneId.systemDefault()).toLocalDate()

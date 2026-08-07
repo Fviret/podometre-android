@@ -2,6 +2,7 @@ package com.fviret.podometre.worker
 
 import com.fviret.podometre.data.journey.JourneySyncResult
 import com.fviret.podometre.domain.model.Milestone
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -91,5 +92,29 @@ class SyncJourneyWorkerTest {
             ),
         )
         assertTrue(result)
+    }
+
+    @Test
+    fun `Health Connect gagne meme quand sa valeur est inferieure a l'estimation capteur`() {
+        val result = resolveJourneyDistanceKm(hcKm = 2.0, fallbackKm = 8.0)
+        assertEquals(2.0, result, 0.0001)
+    }
+
+    @Test
+    fun `Health Connect gagne quand sa valeur est superieure a l'estimation capteur`() {
+        val result = resolveJourneyDistanceKm(hcKm = 8.0, fallbackKm = 2.0)
+        assertEquals(8.0, result, 0.0001)
+    }
+
+    @Test
+    fun `le fallback capteur ne s'applique que si Health Connect n'a rien d'exploitable`() {
+        val result = resolveJourneyDistanceKm(hcKm = 0.0, fallbackKm = 3.5)
+        assertEquals(3.5, result, 0.0001)
+    }
+
+    @Test
+    fun `Health Connect negatif est traite comme non exploitable`() {
+        val result = resolveJourneyDistanceKm(hcKm = -1.0, fallbackKm = 1.5)
+        assertEquals(1.5, result, 0.0001)
     }
 }
