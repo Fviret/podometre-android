@@ -409,21 +409,29 @@ class ActivityViewModel @Inject constructor(
             val prevStart = prevMonday.atStartOfDay(zone).toInstant()
             val prevEnd = monday.atStartOfDay(zone).toInstant()
 
+            // Fusion capteur (primaire, KAN-156) / Health Connect (secondaire) sur les deux semaines,
+            // comme dans loadWeeklyData — plus d'appel HC direct pour ce récapitulatif (KAN-157).
+            val sensorMap = sensorStepHistoryRepository.readStepsByDay(prevMonday, today.minusDays(1))
+            val hcMap = healthConnectRepository.readStepsByDay(prevStart, currentEnd)
+            val mergedMap = mergeStepsByDay(sensorMap, hcMap).toMutableMap()
+            val todaySteps = maxOf(
+                _uiState.value.stepsToday,
+                sensorStepHistoryRepository.readTodayStepsEstimate(today) ?: 0L,
+                hcMap[today] ?: 0L,
+            )
+            if (todaySteps > 0L) mergedMap[today] = todaySteps
+
             // Pas par jour cette semaine
             val stepsPerDay = mutableListOf<Long?>()
             for (i in 0..6) {
                 val day = monday.plusDays(i.toLong())
-                if (day.isAfter(today)) {
-                    stepsPerDay.add(null)
-                } else {
-                    val dayStart = day.atStartOfDay(zone).toInstant()
-                    val dayEnd = day.plusDays(1).atStartOfDay(zone).toInstant()
-                    stepsPerDay.add(healthConnectRepository.readSteps(dayStart, dayEnd))
-                }
+                stepsPerDay.add(if (day.isAfter(today)) null else (mergedMap[day] ?: 0L))
             }
 
             val currentSteps = stepsPerDay.filterNotNull().sum()
-            val previousSteps = healthConnectRepository.readSteps(prevStart, prevEnd)
+            val previousSteps = (0..6)
+                .map { prevMonday.plusDays(it.toLong()) }
+                .sumOf { mergedMap[it] ?: 0L }
             val currentDistance = healthConnectRepository.readDistance(currentStart, currentEnd)
             val currentCalories = healthConnectRepository.readActiveCaloriesForRange(currentStart, currentEnd)
             val currentMinutes = healthConnectRepository.readActiveMinutesForRange(currentStart, currentEnd)
