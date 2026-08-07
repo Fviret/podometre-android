@@ -9,6 +9,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.fviret.podometre.data.health.HealthConnectRepository
+import com.fviret.podometre.data.health.SensorStepHistoryRepository
 import com.fviret.podometre.data.preferences.UserPreferencesRepository
 import com.fviret.podometre.util.isEmulator
 import dagger.assisted.Assisted
@@ -40,9 +41,23 @@ class SyncStepsWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted workerParams: WorkerParameters,
     private val healthConnectRepository: HealthConnectRepository,
+    private val sensorStepHistoryRepository: SensorStepHistoryRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val goalNotificationService: GoalNotificationService,
 ) : CoroutineWorker(context, workerParams) {
+
+    /**
+     * Lit les pas du jour : capteur local en source primaire (KAN-156), Health Connect en
+     * secours uniquement si le capteur n'a encore rien d'exploitable (avant la première
+     * capture, permission `ACTIVITY_RECOGNITION` refusée…). Ne contourne plus jamais le
+     * capteur pour interroger Health Connect en direct (KAN-157).
+     */
+    private suspend fun readTodaySteps(today: LocalDate): Long {
+        val sensorSteps = sensorStepHistoryRepository.readTodayStepsEstimate(today) ?: 0L
+        if (sensorSteps > 0L) return sensorSteps
+        val startOfDay = today.atStartOfDay(ZoneId.systemDefault()).toInstant()
+        return healthConnectRepository.readSteps(from = startOfDay, to = Instant.now())
+    }
 
     override suspend fun doWork(): Result {
         val today = LocalDate.now()
@@ -50,8 +65,7 @@ class SyncStepsWorker @AssistedInject constructor(
         val steps = if (isEmulator()) {
             EMULATOR_MOCK_STEPS
         } else {
-            val startOfDay = today.atStartOfDay(ZoneId.systemDefault()).toInstant()
-            healthConnectRepository.readSteps(from = startOfDay, to = Instant.now())
+            readTodaySteps(today)
         }
         // Guard : si HC est indisponible, readSteps() renvoie 0L.
         // On retente plus tard plutôt que d'écraser un cache valide avec 0.
