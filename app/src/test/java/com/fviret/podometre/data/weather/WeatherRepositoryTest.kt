@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.io.File
 import java.io.IOException
 import java.time.LocalDate
 
@@ -212,5 +213,40 @@ class WeatherRepositoryTest {
         mockResponse("{ceci n'est pas du JSON valide}")
 
         assertEquals(emptyList<DailyForecast>(), repository.getDailyForecasts(48.85, 2.35))
+    }
+
+    @Test
+    fun `updateCachedCityName n'ecrit pas sur disque si le nom de ville est identique`() = runTest {
+        mockResponse(openMeteoJson())
+        // Premier appel réseau : écrit le cache disque avec le nom de ville initial.
+        repository.getWeatherState(48.85, 2.35)
+        repository.updateCachedCityName("Paris")
+
+        val cacheFile = File(context.filesDir, "weather_cache.json")
+        assertTrue(cacheFile.exists())
+        val contentAfterFirstWrite = cacheFile.readText()
+        val modifiedAfterFirstWrite = cacheFile.lastModified()
+
+        // Deuxième appel avec le même nom de ville : aucune nouvelle écriture attendue.
+        Thread.sleep(10)
+        repository.updateCachedCityName("Paris")
+
+        assertEquals(contentAfterFirstWrite, cacheFile.readText())
+        assertEquals(modifiedAfterFirstWrite, cacheFile.lastModified())
+    }
+
+    @Test
+    fun `updateCachedCityName ecrit sur disque quand le nom de ville change`() = runTest {
+        mockResponse(openMeteoJson())
+        repository.getWeatherState(48.85, 2.35)
+        repository.updateCachedCityName("Paris")
+
+        val cacheFile = File(context.filesDir, "weather_cache.json")
+        val contentAfterFirstWrite = cacheFile.readText()
+
+        repository.updateCachedCityName("Lyon")
+
+        assertTrue(cacheFile.readText().contains("Lyon"))
+        assertTrue(cacheFile.readText() != contentAfterFirstWrite)
     }
 }
