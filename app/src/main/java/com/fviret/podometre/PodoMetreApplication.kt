@@ -7,7 +7,6 @@ import androidx.work.WorkManager
 import com.fviret.podometre.worker.GoalNotificationService
 import com.fviret.podometre.worker.JourneyNotificationService
 import com.fviret.podometre.worker.SyncJourneyWorker
-import com.fviret.podometre.worker.SyncSensorStepHistoryWorker
 import com.fviret.podometre.worker.SyncStepsWorker
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -34,6 +33,5 @@ class PodoMetreApplication : Application(), Configuration.Provider {
         val workManager = WorkManager.getInstance(this)
         SyncStepsWorker.schedule(workManager)
         SyncJourneyWorker.schedule(workManager)
-        SyncSensorStepHistoryWorker.schedule(workManager)
     }
 }

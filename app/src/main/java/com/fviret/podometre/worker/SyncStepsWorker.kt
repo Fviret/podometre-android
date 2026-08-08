@@ -1,6 +1,14 @@
 package com.fviret.podometre.worker
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import android.os.Build
+import androidx.core.content.ContextCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -15,16 +23,26 @@ import com.fviret.podometre.util.isEmulator
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
 
 /**
- * Worker périodique (15 min) qui lit le nombre de pas du jour via Health Connect
- * et le met en cache dans DataStore pour que l'UI puisse se rafraîchir sans requête HC synchrone.
- * Ne stocke pas de données HC de manière définitive — le cache est invalidé chaque jour.
+ * Worker périodique unique (15 min, minimum WorkManager) fusionnant les anciens
+ * `SyncStepsWorker` et `SyncSensorStepHistoryWorker` (KAN-159) pour ne consommer qu'un seul
+ * réveil système / fenêtre Doze au lieu de deux :
+ *
+ * 1. relève la valeur brute du capteur `TYPE_STEP_COUNTER` et la transmet à
+ *    [SensorStepHistoryRepository] (rôle de l'ex-`SyncSensorStepHistoryWorker`)
+ * 2. lit le nombre de pas du jour (capteur en priorité, Health Connect en secours) et le met
+ *    en cache dans DataStore, puis déclenche la notification "objectif atteint" si besoin
+ *    (rôle de l'ex-`SyncStepsWorker`)
+ *
  * Équivalent iOS : HKObserverQuery + enableBackgroundDelivery.
  *
  * Limites connues (Android) :
@@ -59,7 +77,31 @@ class SyncStepsWorker @AssistedInject constructor(
         return healthConnectRepository.readSteps(from = startOfDay, to = Instant.now())
     }
 
+    /**
+     * Relève la valeur brute du capteur `TYPE_STEP_COUNTER` et l'enregistre dans
+     * [SensorStepHistoryRepository] (ex-rôle de `SyncSensorStepHistoryWorker`).
+     * Sans effet sur émulateur (pas de capteur fiable) et si `ACTIVITY_RECOGNITION` n'est pas
+     * accordée — dans ce cas rien à faire tant que l'utilisateur n'a pas autorisé le capteur
+     * live (voir [com.fviret.podometre.ui.activity.ActivityViewModel.startLiveSensor]).
+     */
+    private suspend fun recordSensorSnapshot() {
+        if (isEmulator()) return
+
+        val hasPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ContextCompat.checkSelfPermission(
+                applicationContext, Manifest.permission.ACTIVITY_RECOGNITION
+            ) == PackageManager.PERMISSION_GRANTED
+        } else true
+        if (!hasPermission) return
+
+        val rawValue = readCurrentStepCounter(applicationContext) ?: return
+        sensorStepHistoryRepository.recordSnapshot(rawValue)
+    }
+
     override suspend fun doWork(): Result {
+        // Relève d'abord le capteur pour que readTodaySteps() dispose d'un historique à jour.
+        recordSensorSnapshot()
+
         val today = LocalDate.now()
         val todayStr = today.format(DateTimeFormatter.ISO_LOCAL_DATE)
         val steps = if (isEmulator()) {
@@ -99,7 +141,7 @@ class SyncStepsWorker @AssistedInject constructor(
         private const val EMULATOR_MOCK_STEPS = 7_430L
 
         /**
-         * Planifie (ou met à jour) le worker périodique de synchronisation des pas.
+         * Planifie (ou met à jour) le worker périodique fusionné (capteur + cache + notification).
          * Intervalle : 15 minutes (minimum Android WorkManager).
          * Utilise [ExistingPeriodicWorkPolicy.UPDATE] pour appliquer immédiatement tout changement
          * d'intervalle ou de contraintes sans attendre l'expiration du cycle en cours.
@@ -119,6 +161,31 @@ class SyncStepsWorker @AssistedInject constructor(
                 ExistingPeriodicWorkPolicy.UPDATE,
                 request
             )
+        }
+    }
+}
+
+/**
+ * Lit une seule fois la valeur cumulative courante du capteur `TYPE_STEP_COUNTER`.
+ * `TYPE_STEP_COUNTER` délivre un premier événement immédiatement après l'enregistrement
+ * du listener — pas besoin de rester à l'écoute plus longtemps.
+ * Retourne null si aucun capteur n'est disponible ou si aucune valeur n'arrive sous 5 s.
+ */
+internal suspend fun readCurrentStepCounter(context: Context): Long? {
+    val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager ?: return null
+    val stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER) ?: return null
+
+    return withTimeoutOrNull(5_000L) {
+        suspendCancellableCoroutine { cont ->
+            val listener = object : SensorEventListener {
+                override fun onSensorChanged(event: SensorEvent) {
+                    sensorManager.unregisterListener(this)
+                    if (cont.isActive) cont.resume(event.values[0].toLong())
+                }
+                override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+            }
+            cont.invokeOnCancellation { sensorManager.unregisterListener(listener) }
+            sensorManager.registerListener(listener, stepSensor, SensorManager.SENSOR_DELAY_NORMAL)
         }
     }
 }
