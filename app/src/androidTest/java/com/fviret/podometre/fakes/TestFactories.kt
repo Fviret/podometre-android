@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import com.fviret.podometre.data.health.HealthConnectRepository
+import com.fviret.podometre.data.health.HealthConnectRepositoryImpl
 import com.fviret.podometre.data.health.SensorStepHistoryRepository
 import com.fviret.podometre.data.journey.JourneyProgressRepository
 import com.fviret.podometre.data.preferences.UserPreferencesRepository
@@ -25,7 +26,7 @@ object TestFactories {
 
     /** [HealthConnectRepository] réel adossé à un [FakeHealthConnectClient] (non sollicité en mode émulateur). */
     fun healthConnectRepository(context: Context): HealthConnectRepository =
-        HealthConnectRepository(dagger.Lazy { FakeHealthConnectClient() }, context)
+        HealthConnectRepositoryImpl(dagger.Lazy { FakeHealthConnectClient() }, context)
 
     /** [WeatherRepository] réel — jamais appelé en mode émulateur, un vrai OkHttpClient suffit. */
     fun weatherRepository(context: Context): WeatherRepository = WeatherRepository(context, OkHttpClient())

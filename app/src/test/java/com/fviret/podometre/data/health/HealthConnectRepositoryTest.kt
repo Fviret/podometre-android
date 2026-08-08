@@ -33,7 +33,7 @@ class HealthConnectRepositoryTest {
     fun setup() {
         mockkStatic("com.fviret.podometre.util.DeviceUtilsKt")
         io.mockk.every { com.fviret.podometre.util.isEmulator() } returns false
-        repository = HealthConnectRepository(dagger.Lazy { client }, mockk(relaxed = true))
+        repository = HealthConnectRepositoryImpl(dagger.Lazy { client }, mockk(relaxed = true))
     }
 
     @AfterEach
