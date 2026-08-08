@@ -132,6 +132,21 @@ class WeatherRepository @Inject constructor(
         return Triple(state, cachedForecasts, cachedCityName)
     }
 
+    /**
+     * Timestamp (ms epoch) de la dernière récupération réseau réussie, ou null si aucun
+     * appel n'a jamais abouti (ni en mémoire, ni sur disque).
+     */
+    fun getLastSuccessfulFetchMs(): Long? = lastFetchMs.takeIf { it > 0L }
+
+    /**
+     * Indique si le cache météo affiché est périmé (dernier succès réseau plus vieux
+     * que [thresholdMs], par défaut 24h). Retourne true si aucun succès réseau n'a jamais eu lieu.
+     */
+    fun isCacheStale(thresholdMs: Long = STALE_THRESHOLD_MS): Boolean {
+        val lastSuccess = getLastSuccessfulFetchMs() ?: return true
+        return System.currentTimeMillis() - lastSuccess > thresholdMs
+    }
+
     /** Enregistre le nom de ville résolu (géocodage inverse) pour le persister dans le cache disque. */
     fun updateCachedCityName(cityName: String) {
         if (cachedCityName == cityName) return
@@ -335,5 +350,7 @@ class WeatherRepository @Inject constructor(
         private const val CACHE_DURATION_MS = 30 * 60 * 1_000L
         private const val POSITION_CHANGE_THRESHOLD_KM = 3.0
         private const val CACHE_FILE_NAME = "weather_cache.json"
+        /** Seuil au-delà duquel le cache météo est considéré périmé (24h). */
+        const val STALE_THRESHOLD_MS = 24 * 60 * 60 * 1_000L
     }
 }

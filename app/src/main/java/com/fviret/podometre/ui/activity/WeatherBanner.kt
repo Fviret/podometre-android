@@ -2,6 +2,7 @@ package com.fviret.podometre.ui.activity
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -29,12 +31,15 @@ import com.fviret.podometre.data.weather.WeatherState
  * Bannière discrète indiquant l'état des précipitations.
  * Fond bleu léger si pluie en cours ou imminente ; fond transparent si pas de pluie.
  * Invisible si [state] est null (permission localisation absente ou données indisponibles).
+ * Affiche un léger indicateur "Météo non actualisée" si [isStale] est vrai (cache > 24h,
+ * généralement suite à un échec réseau — voir KAN-161).
  * Équivalent iOS : WeatherBannerView.swift
  */
 @Composable
 fun WeatherBanner(
     state: WeatherState?,
     modifier: Modifier = Modifier,
+    isStale: Boolean = false,
 ) {
     if (state == null) return
 
@@ -54,29 +59,56 @@ fun WeatherBanner(
         WeatherState.NO_RAIN -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(color = bgColor, shape = RoundedCornerShape(12.dp))
-            .padding(horizontal = 16.dp, vertical = 10.dp)
-            .clearAndSetSemantics { contentDescription = label },
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            imageVector = Icons.Filled.WaterDrop,
-            contentDescription = null,
-            tint = iconTint,
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = when (state) {
-                WeatherState.RAIN_NOW, WeatherState.RAIN_SOON -> MaterialTheme.colorScheme.onPrimaryContainer
-                WeatherState.NO_RAIN -> MaterialTheme.colorScheme.onSurfaceVariant
+    val staleLabel = stringResource(R.string.weather_stale_indicator)
+    val contentDesc = if (isStale) "$label · $staleLabel" else label
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(color = bgColor, shape = RoundedCornerShape(12.dp))
+                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .clearAndSetSemantics { contentDescription = contentDesc },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Filled.WaterDrop,
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = when (state) {
+                    WeatherState.RAIN_NOW, WeatherState.RAIN_SOON -> MaterialTheme.colorScheme.onPrimaryContainer
+                    WeatherState.NO_RAIN -> MaterialTheme.colorScheme.onSurfaceVariant
+                }
+            )
+        }
+        if (isStale) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp, start = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.WarningAmber,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = staleLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
             }
-        )
+        }
     }
 }
