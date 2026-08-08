@@ -340,7 +340,8 @@ fun ActivityScreen(
                 HomeSection.WEATHER -> {
                     WeatherBanner(
                         state = uiState.weatherState,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        isStale = uiState.isWeatherStale,
                     )
                     if (uiState.dailyForecasts.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(12.dp))

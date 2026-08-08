@@ -52,6 +52,7 @@
     <string name="weather_rain_now">Pluie en cours</string>
     <string name="weather_rain_soon">Pluie dans moins d\'une heure</string>
     <string name="weather_no_rain">Pas de pluie prévue</string>
+    <string name="weather_stale_indicator">Météo non actualisée</string>
 
     <!-- Écran Activité — libellés de jour (KAN-146) -->
     <string name="activity_day_today">Aujourd\'hui</string>

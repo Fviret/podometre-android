@@ -134,6 +134,8 @@ data class ActivityUiState(
     val weatherState: WeatherState? = null,
     val dailyForecasts: List<DailyForecast> = emptyList(),
     val cityName: String? = null,
+    /** True si la dernière donnée météo affichée provient d'un cache de plus de 24h (échec réseau). */
+    val isWeatherStale: Boolean = false,
     val isHealthConnectAvailable: Boolean = false,
     /** Décalage en jours par rapport à aujourd'hui (0 = aujourd'hui, -1 = hier, etc.). */
     val selectedDayOffset: Int = 0,
@@ -785,6 +787,7 @@ class ActivityViewModel @Inject constructor(
                     weatherState = state,
                     dailyForecasts = forecasts,
                     cityName = city,
+                    isWeatherStale = weatherRepository.isCacheStale(),
                 )
             }
 
@@ -800,6 +803,7 @@ class ActivityViewModel @Inject constructor(
                 weatherState = state,
                 dailyForecasts = forecasts,
                 cityName = city,
+                isWeatherStale = weatherRepository.isCacheStale(),
             )
         }
     }

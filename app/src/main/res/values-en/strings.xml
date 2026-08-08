@@ -59,6 +59,7 @@
     <string name="weather_rain_now">Rain in progress</string>
     <string name="weather_rain_soon">Rain in less than an hour</string>
     <string name="weather_no_rain">No rain expected</string>
+    <string name="weather_stale_indicator">Weather not updated</string>
 
     <!-- Activity screen — day labels (KAN-146) -->
     <string name="activity_day_today">Today</string>
