@@ -92,11 +92,7 @@ class HealthConnectRepository @Inject constructor(
      * Sur émulateur, retourne une valeur mock réaliste selon le jour.
      */
     suspend fun readDistanceForDay(date: java.time.LocalDate): Double {
-        if (isEmulator()) {
-            val seed = date.dayOfMonth + date.monthValue * 31
-            val mocks = doubleArrayOf(3.2, 6.8, 5.1, 8.4, 2.7, 7.3, 4.5, 9.1, 1.9, 6.0)
-            return mocks[seed % mocks.size]
-        }
+        if (isEmulator()) return HealthConnectEmulatorMocks.distanceForDay(date)
         val zone = ZoneId.systemDefault()
         val from = date.atStartOfDay(zone).toInstant()
         val to = date.plusDays(1).atStartOfDay(zone).toInstant()
@@ -108,11 +104,7 @@ class HealthConnectRepository @Inject constructor(
      * Sur émulateur, retourne une valeur mock réaliste selon le jour.
      */
     suspend fun readActiveCaloriesForDay(date: java.time.LocalDate): Int {
-        if (isEmulator()) {
-            val seed = date.dayOfMonth + date.monthValue * 31
-            val mocks = intArrayOf(180, 320, 245, 410, 135, 370, 220, 455, 95, 290)
-            return mocks[seed % mocks.size]
-        }
+        if (isEmulator()) return HealthConnectEmulatorMocks.activeCaloriesForDay(date)
         val zone = ZoneId.systemDefault()
         val from = date.atStartOfDay(zone).toInstant()
         val to = date.plusDays(1).atStartOfDay(zone).toInstant()
@@ -144,11 +136,7 @@ class HealthConnectRepository @Inject constructor(
      * Équivalent iOS : CMMotionActivityManager / HKWorkoutType.
      */
     suspend fun readActiveMinutesForDay(date: java.time.LocalDate, stepsFallback: Long = 0L): Int {
-        if (isEmulator()) {
-            val seed = date.dayOfMonth + date.monthValue * 31
-            val mocks = intArrayOf(42, 75, 58, 92, 25, 85, 48, 105, 18, 63)
-            return mocks[seed % mocks.size]
-        }
+        if (isEmulator()) return HealthConnectEmulatorMocks.activeMinutesForDay(date)
         val zone = ZoneId.systemDefault()
         val from = date.atStartOfDay(zone).toInstant()
         val to = date.plusDays(1).atStartOfDay(zone).toInstant()
@@ -177,10 +165,7 @@ class HealthConnectRepository @Inject constructor(
      * Sur émulateur, retourne une valeur mock réaliste (~250 kcal/jour).
      */
     suspend fun readActiveCaloriesForRange(from: Instant, to: Instant): Int {
-        if (isEmulator()) {
-            val days = ((to.toEpochMilli() - from.toEpochMilli()) / 86_400_000.0).toInt().coerceAtLeast(1)
-            return days * 255
-        }
+        if (isEmulator()) return HealthConnectEmulatorMocks.activeCaloriesForRange(from, to)
         val request = ReadRecordsRequest(
             recordType = ActiveCaloriesBurnedRecord::class,
             timeRangeFilter = TimeRangeFilter.between(from, to)
@@ -196,10 +181,7 @@ class HealthConnectRepository @Inject constructor(
      * Sur émulateur, retourne une valeur mock réaliste (~55 min/jour).
      */
     suspend fun readActiveMinutesForRange(from: Instant, to: Instant): Int {
-        if (isEmulator()) {
-            val days = ((to.toEpochMilli() - from.toEpochMilli()) / 86_400_000.0).toInt().coerceAtLeast(1)
-            return days * 55
-        }
+        if (isEmulator()) return HealthConnectEmulatorMocks.activeMinutesForRange(from, to)
         val request = ReadRecordsRequest(
             recordType = ExerciseSessionRecord::class,
             timeRangeFilter = TimeRangeFilter.between(from, to)
@@ -220,9 +202,7 @@ class HealthConnectRepository @Inject constructor(
      * Équivalent iOS : BadgeData.swift countDaysAboveThreshold()
      */
     suspend fun readStepBadgeCounts(thresholds: List<Long>): Map<Long, Int> {
-        if (isEmulator()) {
-            return mapOf(5_000L to 45, 10_000L to 12, 20_000L to 3, 30_000L to 0, 50_000L to 0, 100_000L to 0)
-        }
+        if (isEmulator()) return HealthConnectEmulatorMocks.stepBadgeCounts
 
         val zone = ZoneId.systemDefault()
         val from = LocalDate.of(2020, 1, 1).atStartOfDay(zone).toInstant()
@@ -241,17 +221,7 @@ class HealthConnectRepository @Inject constructor(
      * Sur émulateur, retourne des dates mock réalistes.
      */
     suspend fun readStepBadgeFirstEarnedDates(thresholds: List<Long>): Map<Long, LocalDate?> {
-        if (isEmulator()) {
-            val today = LocalDate.now()
-            return mapOf(
-                5_000L  to today.minusDays(90),
-                10_000L to today.minusDays(60),
-                20_000L to today.minusDays(30),
-                30_000L to null,
-                50_000L to null,
-                100_000L to null,
-            )
-        }
+        if (isEmulator()) return HealthConnectEmulatorMocks.stepBadgeFirstEarnedDates()
 
         val zone = ZoneId.systemDefault()
         val from = LocalDate.of(2020, 1, 1).atStartOfDay(zone).toInstant()
@@ -274,7 +244,7 @@ class HealthConnectRepository @Inject constructor(
      * Équivalent iOS : computeStreak() dans StepCountViewModel.swift
      */
     suspend fun computeStreak(goalSteps: Long): Int {
-        if (isEmulator()) return 5
+        if (isEmulator()) return HealthConnectEmulatorMocks.STREAK
 
         val zone = ZoneId.systemDefault()
         val today = LocalDate.now(zone)
@@ -336,7 +306,7 @@ class HealthConnectRepository @Inject constructor(
      * Sur émulateur, retourne une valeur mock réaliste (8 500 pas/jour).
      */
     suspend fun readAverageDailyStepsLast6Days(): Long? {
-        if (isEmulator()) return 8_500L
+        if (isEmulator()) return HealthConnectEmulatorMocks.AVERAGE_DAILY_STEPS_LAST_6_DAYS
 
         val zone = ZoneId.systemDefault()
         val today = LocalDate.now(zone)
@@ -354,18 +324,7 @@ class HealthConnectRepository @Inject constructor(
      * Sur émulateur, retourne des données mock réalistes.
      */
     suspend fun readWeeklyStepTotals(nWeeks: Int = 10): List<Pair<LocalDate, Long>> {
-        if (isEmulator()) {
-            val today = LocalDate.now()
-            val monday = today.with(java.time.DayOfWeek.MONDAY)
-            return (0 until nWeeks).map { i ->
-                val weekStart = monday.minusWeeks(i.toLong())
-                val mockSteps = when (i) {
-                    0 -> 42_000L; 1 -> 58_000L; 2 -> 51_000L; 3 -> 63_000L; 4 -> 47_000L
-                    5 -> 55_000L; 6 -> 44_000L; 7 -> 60_000L; 8 -> 38_000L; else -> 52_000L
-                }
-                weekStart to mockSteps
-            }.reversed()
-        }
+        if (isEmulator()) return HealthConnectEmulatorMocks.weeklyStepTotals(nWeeks)
         val zone = ZoneId.systemDefault()
         val today = LocalDate.now(zone)
         val monday = today.with(java.time.DayOfWeek.MONDAY)
@@ -387,19 +346,7 @@ class HealthConnectRepository @Inject constructor(
      * Sur émulateur, retourne des données mock.
      */
     suspend fun readMonthlyStepsByYear(year: Int): Map<java.time.Month, Long> {
-        if (isEmulator()) {
-            val today = LocalDate.now()
-            return java.time.Month.values().associate { month ->
-                val ym = java.time.YearMonth.of(year, month)
-                val isFuture = year == today.year && month.value > today.monthValue
-                val mockVal = if (isFuture) 0L else {
-                    val base = 200_000L + (month.value * 17_000L)
-                    if (ym.year == today.year && ym.monthValue == today.monthValue)
-                        base / 3 else base
-                }
-                month to mockVal
-            }
-        }
+        if (isEmulator()) return HealthConnectEmulatorMocks.monthlyStepsByYear(year)
         val zone = ZoneId.systemDefault()
         val from = LocalDate.of(year, 1, 1).atStartOfDay(zone).toInstant()
         val to = LocalDate.of(year + 1, 1, 1).atStartOfDay(zone).toInstant()
@@ -418,7 +365,7 @@ class HealthConnectRepository @Inject constructor(
      * Sur émulateur, retourne une valeur mock.
      */
     suspend fun readBestDay(): Pair<Long, LocalDate?> {
-        if (isEmulator()) return 24_853L to LocalDate.now().minusDays(45)
+        if (isEmulator()) return HealthConnectEmulatorMocks.bestDay()
         val zone = ZoneId.systemDefault()
         val from = LocalDate.of(2020, 1, 1).atStartOfDay(zone).toInstant()
         val to = ZonedDateTime.now(zone).toInstant()
@@ -433,7 +380,7 @@ class HealthConnectRepository @Inject constructor(
      * Sur émulateur, retourne une valeur mock.
      */
     suspend fun readBestWeek(): Pair<Long, LocalDate?> {
-        if (isEmulator()) return 112_400L to LocalDate.now().minusWeeks(8).with(java.time.DayOfWeek.MONDAY)
+        if (isEmulator()) return HealthConnectEmulatorMocks.bestWeek()
         val zone = ZoneId.systemDefault()
         val from = LocalDate.of(2020, 1, 1).atStartOfDay(zone).toInstant()
         val to = ZonedDateTime.now(zone).toInstant()
@@ -452,7 +399,7 @@ class HealthConnectRepository @Inject constructor(
      * Sur émulateur, retourne une valeur mock.
      */
     suspend fun readBestMonth(): Pair<Long, LocalDate?> {
-        if (isEmulator()) return 385_000L to LocalDate.now().minusMonths(3).withDayOfMonth(1)
+        if (isEmulator()) return HealthConnectEmulatorMocks.bestMonth()
         val zone = ZoneId.systemDefault()
         val from = LocalDate.of(2020, 1, 1).atStartOfDay(zone).toInstant()
         val to = ZonedDateTime.now(zone).toInstant()
@@ -470,7 +417,7 @@ class HealthConnectRepository @Inject constructor(
      * Sur émulateur, retourne une valeur mock.
      */
     suspend fun readLongestStreak(goalSteps: Long): Pair<Int, LocalDate?> {
-        if (isEmulator()) return 21 to LocalDate.now().minusDays(60)
+        if (isEmulator()) return HealthConnectEmulatorMocks.longestStreak()
         val zone = ZoneId.systemDefault()
         val from = LocalDate.of(2020, 1, 1).atStartOfDay(zone).toInstant()
         val to = ZonedDateTime.now(zone).toInstant()
@@ -496,7 +443,7 @@ class HealthConnectRepository @Inject constructor(
      * Sur émulateur, retourne une valeur mock (1 234 567 pas).
      */
     suspend fun readTotalCumulativeSteps(): Long {
-        if (isEmulator()) return 1_234_567L
+        if (isEmulator()) return HealthConnectEmulatorMocks.TOTAL_CUMULATIVE_STEPS
         val zone = ZoneId.systemDefault()
         val from = LocalDate.of(2020, 1, 1).atStartOfDay(zone).toInstant()
         val to = ZonedDateTime.now(zone).toInstant()
@@ -508,7 +455,7 @@ class HealthConnectRepository @Inject constructor(
      * Sur émulateur, retourne une valeur mock (987.6 km).
      */
     suspend fun readTotalCumulativeDistance(): Double {
-        if (isEmulator()) return 987.6
+        if (isEmulator()) return HealthConnectEmulatorMocks.TOTAL_CUMULATIVE_DISTANCE
         val zone = ZoneId.systemDefault()
         val from = LocalDate.of(2020, 1, 1).atStartOfDay(zone).toInstant()
         val to = ZonedDateTime.now(zone).toInstant()
